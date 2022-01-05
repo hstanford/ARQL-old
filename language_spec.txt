@@ -1,0 +1,24 @@
+1. ABNF Query Language Specification for ARQL
+
+alphachain  =   1*ALPHA LWSP *("." LWSP 1*ALPHA LWSP)
+alias       =   1*ALPHA ":"
+join        =   ["?" / "!"] LWSP "."
+
+expr        =   ...TO BE DETERMINED...
+exprlist    =   [*(expr LWSP "," LWSP) expr LWSP [","]]
+transform   =   "|" LWSP alphachain LWSP ["(" LWSP exprlist LWSP ")"] LWSP
+
+source      =   (( "(" [alias] from ")" ) / alphachain) LWSP *(join LWSP source LWSP)
+from        =   source LWSP *transform LWSP [shape]
+to          =   alphachain LWSP *transform LWSP [shape]
+
+field       =   [alias] LWSP (from / expr)
+fieldlist   =   *(field LWSP "," LWSP) field LWSP [","]
+shape       =   "{" LWSP fieldlist LWSP "}"
+
+select      =   from
+insert      =   from LWSP "-+" LWSP to
+update      =   from LWSP "->" LWSP to
+delete      =   ("->" / "-x") LWSP to
+
+query       =   select / insert / update / delete
