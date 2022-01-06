@@ -31,8 +31,8 @@ exprlist    =   [*(expr LWSP "," LWSP) expr LWSP [","]]
 transform   =   "|" LWSP alphachain LWSP ["(" LWSP exprlist LWSP ")"] LWSP
 
 source      =   (( "(" [alias] from ")" ) / alphachain) LWSP *(join LWSP source LWSP)
-from        =   source LWSP *transform LWSP [shape]
-to          =   alphachain LWSP *transform LWSP [shape]
+from        =   source LWSP *transform [shape]
+to          =   alphachain LWSP *transform [shape]
 
 field       =   [alias] LWSP (from / expr)
 fieldlist   =   *(field LWSP "," LWSP) field LWSP [","]
