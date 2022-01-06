@@ -3,8 +3,30 @@
 alphachain  =   1*ALPHA LWSP *("." LWSP 1*ALPHA LWSP)
 alias       =   1*ALPHA ":"
 join        =   ["?" / "!"] LWSP "."
+param       =   "$" 1*DIGIT
+opchar      =   "+" /
+                "-" / 
+                "*" / 
+                "/" / 
+                "<" /
+                ">" /
+                "=" /
+                "~" /
+                "!" /
+                "@" /
+                "#" /
+                "%" /
+                "^" /
+                "&" /
+                "|" /
+                "`" /
+                "?"
+op          =   1*(opchar)
 
-expr        =   ...TO BE DETERMINED...
+expr        =   ("(" LWSP expr LWSP ")") /
+                param /
+                alphachain /
+                [op] LWSP expr LWSP [op] LWSP expr ; recursive, TODO postfix operators?
 exprlist    =   [*(expr LWSP "," LWSP) expr LWSP [","]]
 transform   =   "|" LWSP alphachain LWSP ["(" LWSP exprlist LWSP ")"] LWSP
 
