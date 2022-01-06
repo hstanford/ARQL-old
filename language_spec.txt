@@ -26,7 +26,7 @@ op          =   1*(opchar)
 expr        =   ("(" LWSP expr LWSP ")") /
                 param /
                 alphachain /
-                [op] LWSP expr LWSP [op] LWSP expr ; recursive, TODO postfix operators?
+                ([op] LWSP expr LWSP [op] LWSP expr) ; recursive, TODO postfix operators?
 exprlist    =   [*(expr LWSP "," LWSP) expr LWSP [","]]
 transform   =   "|" LWSP alphachain LWSP ["(" LWSP exprlist LWSP ")"] LWSP
 
