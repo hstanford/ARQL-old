@@ -1,5 +1,8 @@
 # Architecture
 
+The intention is for every part of this to be separate software components
+that adhere to stable interfaces.
+
 ```
 +-----------------------------------------------------+
 | Client                                              |
@@ -16,7 +19,7 @@
 |         v                            |              |
 |       Parser                         |              |
 |         |         typed interface    |              |
-|         v           ^       ^        |              |
+|         |           ^       ^        |              |
 |        AST          |       |        |              |
 |         |         models    |        |              |
 |         v           |       |        |              |
