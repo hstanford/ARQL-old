@@ -145,7 +145,6 @@ const exprOp = coroutine(function* () {
 
   yield optionalWhitespace;
   parts.push(...(yield exprUnary));
-  yield optionalWhitespace;
 
   let more;
   while (more = yield possibly(exprUnary)) {
