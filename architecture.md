@@ -12,7 +12,7 @@ that adhere to stable interfaces.
 |         |                            |              |
 +---------|----------------------------|--------------+
           |                            |
-       ARQL/JSON                     JSON
+      [ARQL/JSON]                   [JSON]
           |                            |
 ----------|----------------------------|--------------+
 | Server  |                            |              |
@@ -20,7 +20,7 @@ that adhere to stable interfaces.
 |       Parser                         |              |
 |         |         typed interface    |              |
 |         |           ^       ^        |              |
-|        AST          |       |        |              |
+|       [AST]         |       |        |              |
 |         |         models    |        |              |
 |         v           |       |        |              |
 |   Query Delegator <-+-- operators    |              |
@@ -32,3 +32,16 @@ that adhere to stable interfaces.
 |                                                     |
 +-----------------------------------------------------+
 ```
+
+| Component | Stage |
+|-----------|-------|
+| Language Design | 0.0.1 |
+| Query Builder | - |
+| Parser | 0.0.1 |
+| Query Delegator | - |
+| Query Resolver (JSON) | - |
+| Query Resolver (PG) | - |
+| Native Query Collector | - |
+| models | - |
+| operators | - |
+| typed interface | - |
