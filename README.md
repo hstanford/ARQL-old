@@ -175,7 +175,7 @@ query: '
       (c: conversations)
       .(cp: c.participants | filter(cp.conversationRoleId = $1))
       .(usr: c.participants | filter(!cp.conversationRoleId))
-      .?(cm: c.messages)
+      ?.(cm: c.messages)
     )
       | unique(c.id)
       | order.desc.nullsLast(cm.createdAt)
