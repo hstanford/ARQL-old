@@ -3,22 +3,25 @@ import {
   choice,
   coroutine,
   digits,
-  letters,
   many,
   many1,
   optionalWhitespace,
   possibly,
   recursiveParser,
+  regex,
   sequenceOf,
+  tapParser,
 } from 'arcsecond';
 
+const keyword = regex(/^[a-zA-Z][a-zA-Z0-9]*/);
+
 const alphachain = coroutine(function* () {
-  const root = yield letters;
+  const root = yield keyword;
   const parts = [];
   yield optionalWhitespace;
   while (yield possibly(char('.'))) {
     yield optionalWhitespace;
-    parts.push(yield letters);
+    parts.push(yield keyword);
     yield optionalWhitespace;
   }
   return {
@@ -29,14 +32,14 @@ const alphachain = coroutine(function* () {
 });
 
 const alias = coroutine(function* () {
-  const name = yield letters;
+  const name = yield keyword;
   yield optionalWhitespace;
   yield char(':');
   return name;
 });
 
 const join = coroutine(function* () {
-  const modifier = yield choice([char('?'), char('!')]);
+  const modifier = yield possibly(choice([char('?'), char('!')]));
   yield optionalWhitespace;
   yield char('.');
   return {
@@ -74,10 +77,11 @@ const opchar = choice([
   char('|'),
   char('`'),
   char('?'),
+  char(':'),
 ]);
 
 const op = coroutine(function* () {
-  const opstr = yield opchar;
+  let opstr = yield opchar;
   let next;
   while (next = yield possibly(opchar)) {
     opstr += next;
@@ -113,7 +117,18 @@ const exprUnary = coroutine(function* () {
   if (prefix) {
     parts.push(prefix, ...(yield exprUnary));
   } else {
-    parts.push(yield exprNoOp);
+    const ex = yield exprNoOp;
+    const args = yield possibly(coroutine(function* () {
+      yield char('(');
+      yield optionalWhitespace;
+      const exlist = yield exprlist;
+      yield optionalWhitespace;
+      yield char(')');
+      return exlist;
+    }));
+    if (args)
+      ex.args = args;
+    parts.push(ex);
   }
   yield optionalWhitespace;
   let suffix;
@@ -257,7 +272,23 @@ const from = coroutine(function* () {
 });
 
 const to = coroutine(function* () {
-  const src = yield alphachain;
+  const src = yield choice([
+    coroutine(function* () {
+      yield char('(');
+      yield optionalWhitespace;
+      const name = yield possibly(alias);
+      yield optionalWhitespace;
+      const value = yield alphachain;
+      yield optionalWhitespace;
+      yield char(')');
+      return {
+        type: 'model',
+        root: name || value.root,
+        value,
+      }
+    }),
+    alphachain,
+  ]);
   const transforms = [];
   yield optionalWhitespace;
   let t;
