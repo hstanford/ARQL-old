@@ -101,10 +101,7 @@ export default function buildParser (opResolver = (expr) => expr) {
         const subExpr = yield expr;
         yield optionalWhitespace;
         yield char(')');
-        return {
-          type: 'expr',
-          value: subExpr,
-        }
+        return subExpr;
       }),
       param,
       alphachain,

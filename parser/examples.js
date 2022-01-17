@@ -16,7 +16,7 @@ const updateUsers = `(u: users) {name} -> users`;
 const updateNameFamily = `
   (u: users) | filter(id = $1) {
     name
-  } -> (u2: users) | filter(u2.originalUserId = !u.id) {
+  } -> (u2: users) | filter(u2.originalUserId = (!u.id + $2)) {
     id
   }`;
 

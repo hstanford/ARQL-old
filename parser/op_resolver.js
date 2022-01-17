@@ -68,6 +68,6 @@ export default function (opMap) {
       match(out, op);
     }
 
-    return out;
+    return out[0];
   };
 };
