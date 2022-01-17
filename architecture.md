@@ -43,5 +43,5 @@ that adhere to stable interfaces.
 | Query Resolver (PG) | - |
 | Native Query Collector | - |
 | models | - |
-| operators | - |
+| operators | 0.0.1 |
 | typed interface | - |
