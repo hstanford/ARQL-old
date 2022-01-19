@@ -201,7 +201,7 @@ export default function buildParser (opResolver = (expr) => expr) {
   // is it a property access or a join??
   const source = coroutine(function* () {
     const joins = [];
-    const root = yield choice([
+    const value = yield choice([
       coroutine(function* () {
         yield char('(');
         yield optionalWhitespace;
@@ -229,9 +229,12 @@ export default function buildParser (opResolver = (expr) => expr) {
       });
       yield optionalWhitespace;
     }
-    return {
+    return value.type === 'source' ? {
+      ...value,
+      joins,
+    } : {
       type: 'source',
-      root,
+      value,
       joins,
     };
   });
@@ -246,6 +249,7 @@ export default function buildParser (opResolver = (expr) => expr) {
     }
     const shp = yield possibly(shape);
     return {
+      type: 'from',
       source: src,
       transforms,
       shape: shp,
@@ -269,23 +273,21 @@ export default function buildParser (opResolver = (expr) => expr) {
   });
 
   const to = coroutine(function* () {
-    const src = yield choice([
-      coroutine(function* () {
-        yield char('(');
-        yield optionalWhitespace;
-        const name = yield possibly(alias);
-        yield optionalWhitespace;
-        const value = yield alphachain;
-        yield optionalWhitespace;
+    const src = yield coroutine(function* () {
+      const bracket = yield possibly(char('('));
+      yield optionalWhitespace;
+      const name = yield possibly(alias);
+      yield optionalWhitespace;
+      const value = yield alphachain;
+      yield optionalWhitespace;
+      if (bracket)
         yield char(')');
-        return {
-          type: 'model',
-          root: name || value.root,
-          value,
-        }
-      }),
-      alphachain,
-    ]);
+      return {
+        type: 'model',
+        root: name || value.root,
+        value,
+      }
+    });
     const transforms = [];
     yield optionalWhitespace;
     let t;
