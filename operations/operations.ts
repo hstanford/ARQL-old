@@ -19,7 +19,16 @@ const baseOperators = [
 ];
 */
 
-export function getOperatorLookup (operators) {
+export interface Operator {
+  name: string;
+  pattern: (symbol | string)[];
+}
+
+export interface RankedOperator extends Operator {
+  rank: number;
+}
+
+export function getOperatorLookup (operators: Operator[]): Map<string, RankedOperator> {
   return operators.reduce((acc, item, idx) => {
     for (const token of item.pattern) {
       if (token === EXPR)

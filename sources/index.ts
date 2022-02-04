@@ -1,4 +1,4 @@
-import { Pg } from './postgresql.js';
+import { Pg } from './postgresql';
 
 export function postgresql () {
   return new Pg();

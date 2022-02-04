@@ -1,29 +1,37 @@
-import { EXPR } from '../operations/index.js';
+import { RankedOperator } from 'arql-operations';
+import type { ExprUnary } from 'arql-parser';
 
-function indexOfSymbol (arr, symbol) {
+function indexOfSymbol (arr: ExprUnary[], symbol: string) {
   for (let i = 0; i < arr.length; i++) {
-    if (arr[i].type === 'op' && arr[i].symbol === symbol)
+    const item: ExprUnary = arr[i];
+    if (item.type === 'op' && item.symbol === symbol)
       return i;
   }
   return -1;
 }
 
-function match (expr, op) {
+function match (expr: ExprUnary[], op: RankedOperator) {
   const args = [];
-  const initial = op.pattern.find(val => val !== EXPR);
+  const initial = op.pattern.find(val => !(typeof val === 'symbol'));
+  if (!initial || (typeof initial === 'symbol')) {
+    throw new Error(`Pattern only contains EXPRs`);
+  }
   const initPatternOffset = op.pattern.indexOf(initial);
 
   const initExprOffset = indexOfSymbol(expr, initial);
   const pOffset = initExprOffset - initPatternOffset;
-  if (pOffset < 0 || (pOffset + op.pattern.length) > expr.length)
+  if (pOffset < 0 || (pOffset + op.pattern.length) > expr.length) {
+    console.error(pOffset, op.pattern, expr, initial, initExprOffset);
     throw new Error(`Operator "${initial}" does not match`);
+  }
 
   for (let i = 0; i < op.pattern.length; i++) {
-    if (expr[i + pOffset].type === 'op') {
-      if (op.pattern[i] !== expr[i + pOffset].symbol)
+    const item: ExprUnary = expr[i + pOffset];
+    if (item.type === 'op') {
+      if (op.pattern[i] !== item.symbol)
         throw new Error('No match');
     } else {
-      if (op.pattern[i] !== EXPR)
+      if (!(typeof op.pattern[i] === 'symbol'))
         throw new Error('No match');
 
       args.push(expr[i + pOffset]);
@@ -32,14 +40,14 @@ function match (expr, op) {
 
   // matching pattern, splice
   expr.splice(pOffset, op.pattern.length, {
-    type: 'expr',
-    opName: op.name,
+    type: 'exprtree',
+    op: op.name,
     args,
   });
 }
 
-export default function (opMap) {
-  return function resolve (expr=[]) {
+export default function (opMap: Map<string, RankedOperator>) {
+  return function resolve (expr: ExprUnary[] = []) {
     const keys = [];
     let out = [...expr];
     for (const token of expr) {
@@ -63,7 +71,8 @@ export default function (opMap) {
     let op;
     while (ops.length) {
       op = ops.shift();
-      for (let i = 0; i < op.pattern.filter(x => x !== EXPR).length - 1; i++)
+      if (!op) continue;
+      for (let i = 0; i < op.pattern.filter(x => !(typeof x === 'symbol')).length - 1; i++)
         ops.shift();
       match(out, op);
     }

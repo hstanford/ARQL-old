@@ -1,4 +1,4 @@
-import { EXPR, getOperatorLookup } from './index.js';
+import { EXPR, getOperatorLookup } from './operations';
 
 const operators = [
   {

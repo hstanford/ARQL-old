@@ -1,24 +1,26 @@
-import { postgresql } from '../sources/index.js';
+import { postgresql } from 'arql-sources';
+import type { DataModel } from 'arql-contextualiser';
 
 const mainDb = postgresql();
 
-function selfReference (model) {
+function selfReference (model: DataModel) {
   for (const field of model.fields) {
     field.model = model;
   }
 }
 
-export const users = {
+export const users: DataModel = {
   name: 'users',
-  source: mainDb,
   fields: [
     {
       name: 'id',
       type: 'number',
+      source: mainDb,
     },
     {
       name: 'name',
       type: 'string',
+      source: mainDb,
     }
   ],
 };
