@@ -10,16 +10,19 @@ function selfReference (model: DataModel) {
 }
 
 export const users: DataModel = {
+  type: 'datamodel',
   name: 'users',
   fields: [
     {
+      type: 'datafield',
       name: 'id',
-      type: 'number',
+      datatype: 'number',
       source: mainDb,
     },
     {
+      type: 'datafield',
       name: 'name',
-      type: 'string',
+      datatype: 'string',
       source: mainDb,
     }
   ],

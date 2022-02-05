@@ -79,7 +79,7 @@ export interface Source {
   joins: Join[];
 }
 
-interface FullFrom {
+export interface FullFrom {
   type: 'from';
   source: Source | null;
   transforms: Transform[];

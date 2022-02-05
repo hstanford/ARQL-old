@@ -6,11 +6,13 @@ import { getOperatorLookup } from 'arql-operations';
 
 const transforms: TransformDef[] = [
   {
+    type: 'transformdef',
     name: 'filter',
     modifiers: [],
     nArgs: 1,
   },
   {
+    type: 'transformdef',
     name: 'sort',
     modifiers: ['desc', 'asc', 'nullsFirst', 'nullsLast'],
     nArgs: '1+',
@@ -56,6 +58,10 @@ const updateNameFamily = `
     idplus: id + $1
   }`;
 
-let ast = run(updateNameFamily);
-contextualise(ast, models, transforms);
-console.log(ast?.from?.transforms?.[1]);
+const t = `(u: users) {name} -> (u2: users) | filter(u2.name = u.id);`
+
+let ast = run(t);
+const contextualised = contextualise(ast, models, transforms);
+const arg = contextualised.to?.transforms?.[0]?.args?.[0];
+if (arg?.type === 'exprtree')
+  console.log(arg.args[0]);

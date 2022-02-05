@@ -6,11 +6,11 @@
   "type": "module",
   "dependencies": {
     "arql-contextualiser": "file:../contextualiser",
-    "arql-models": "^0.0.1",
-    "arql-op-resolver": "^0.0.1",
+    "arql-models": "file:../models",
+    "arql-op-resolver": "file:../op_resolver",
     "arql-operations": "file:../operations",
-    "arql-parser": "^0.0.1",
-    "arql-sources": "^0.0.1",
+    "arql-parser": "file:../parser",
+    "arql-sources": "file:../sources",
     "typescript": "^4.5.5"
   },
   "devDependencies": {},

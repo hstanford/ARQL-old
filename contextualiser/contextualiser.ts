@@ -1,29 +1,34 @@
-import type { Alphachain, Expr, Field, From, Model, Param, Query, To, Transform, Shape, Source, ExprUnary } from 'arql-parser';
+import type { Alphachain, Expr, Field, FullFrom, Model, Param, Query, To, Transform, Shape, Source, ExprUnary } from 'arql-parser';
 
 type DataSource = any;
 type dataType = 'string' | 'number' | 'boolean' | 'json';
-type ContextualisedField = DataField | DataModel | ContextualisedFrom | ContextualisedTo | ContextualisedExpr | ContextualisedParam;
+type ContextualisedField = DataField | DataModel | ContextualisedSource | ContextualisedExpr | ContextualisedParam;
 
 export interface DataField {
+  type: 'datafield';
   name: string;
-  type: dataType;
+  datatype: dataType;
   fields?: DataField[];
   source: DataSource;
   model?: DataModel;
+  from?: ContextualisedSource;
 }
 
 interface ContextualisedParam {
   index: number;
+  type: 'param';
   name?: string | undefined;
   fields?: undefined;
 }
 
 export interface DataModel {
+  type: 'datamodel';
   name: string;
   fields: DataField[];
 }
 
 export interface TransformDef {
+  type: 'transformdef';
   name: string;
   modifiers?: string[];
   nArgs: string | number;
@@ -34,39 +39,31 @@ interface ContextualiserState {
 }
 
 interface ContextualisedQuery {
-  from?: ContextualisedFrom;
-  to?: ContextualisedTo;
-}
-
-interface ContextualisedFrom {
-  source?: ContextualisedSource;
-  fields: ContextualisedField[];
-  name?: Alphachain | string;
-  subModels?: (DataModel | ContextualisedFrom)[];
-  transforms: ContextualisedTransform[];
-  shape?: ContextualisedField[];
-}
-
-interface ContextualisedTo {
-  source?: ContextualisedSource;
-  fields: ContextualisedField[];
-  name?: Alphachain | string;
-  subModels?: (DataModel | ContextualisedFrom)[];
-  transforms: ContextualisedTransform[];
-  shape?: ContextualisedField[];
+  type: 'query',
+  from?: ContextualisedSource;
+  to?: ContextualisedSource;
+  modifier: string | null;
 }
 
 interface ContextualisedSource {
+  type: 'from' | 'to' | 'source',
+  source?: ContextualisedSource;
   fields: ContextualisedField[];
-  subModels: (DataModel | ContextualisedFrom)[];
   name?: Alphachain | string;
+  subModels?: (DataModel | ContextualisedSource)[];
+  transforms: ContextualisedTransform[];
+  shape?: ContextualisedField[];
 }
 
 interface ContextualisedTransform {
-
+  type: 'transform',
+  name: string;
+  modifier: string[];
+  args: (ContextualisedField | ContextualisedExpr)[];
 }
 
 interface ContextualisedExpr {
+  type: 'exprtree',
   name?: Alphachain | string;
   fields?: undefined;
   args: ContextualisedExpr[];
@@ -87,17 +84,18 @@ class Contextualiser {
   }
 
   run (ast: Query) {
-    const contextualisedQuery: ContextualisedQuery = {};
+    const contextualisedQuery: ContextualisedQuery = { type: ast.type, modifier: ast.modifier };
     if (ast.from) {
       contextualisedQuery.from = this.handleFrom(ast.from);
     }
     if (ast.to) {
       contextualisedQuery.to = this.handleTo(ast.to, contextualisedQuery.from);
     }
+    return contextualisedQuery;
   }
 
-  handleFrom (from: From) {
-    const contextualisedFrom: ContextualisedFrom = { fields: [], transforms: [] };
+  handleFrom (from: FullFrom) {
+    const contextualisedFrom: ContextualisedSource = { type: from.type, fields: [], transforms: [] };
     if (from.source) {
       contextualisedFrom.source = this.handleSource(from.source);
       contextualisedFrom.fields = contextualisedFrom.source.fields;
@@ -113,8 +111,8 @@ class Contextualiser {
     return contextualisedFrom;
   }
 
-  handleTo (to: To, from?: ContextualisedFrom) {
-    const contextualisedTo: ContextualisedTo = { fields: [], transforms: []};
+  handleTo (to: To, from?: ContextualisedSource) {
+    const contextualisedTo: ContextualisedSource = { type: to.type, fields: [], transforms: []};
     if (to.source) {
       contextualisedTo.source = this.handleSource(to.source);
       contextualisedTo.fields = contextualisedTo.source.fields;
@@ -135,32 +133,37 @@ class Contextualiser {
   }
 
   handleSource (source: Source | Model) {
-    const contextualisedSource: ContextualisedSource = { fields: [], subModels: [] };
+    const contextualisedSource: ContextualisedSource = { type: 'source', fields: [], subModels: [], transforms: [] };
     // TODO: handle joins
     if (source.value?.type === 'alphachain') {
       // TODO: handle parts
       const model = this.getModel(source.value);
       contextualisedSource.subModels = [model];
-    } else if (source.value?.type === 'from' && source.value.shape) {
+    } else if (source.value?.type === 'from') {
       // sneaky typescripting: we know "from" here has shape
       const contextualisedFrom = this.handleFrom({...source.value, shape: source.value.shape});
       contextualisedSource.subModels = [contextualisedFrom];
     }
 
-    if (source.type === 'source' && source.joins?.length)
+    if (source.type === 'source' && source.joins?.length && contextualisedSource.subModels)
       contextualisedSource.subModels.push(...source.joins.map(j => ({
         ...this.handleSource(j.to),
         transforms: []
       })));
 
+    // TODO: make sure the aliases are scoped correctly
+    if (source.alias)
+      this.state.aliases.set(source.alias, source);
     contextualisedSource.name = source.alias || contextualisedSource.subModels?.[0].name;
 
     const initialSubfields: ContextualisedField[] = [];
     contextualisedSource.fields = uniqBy([
       { ...contextualisedSource, transforms: [] },
-      ...contextualisedSource.subModels,
-      ...contextualisedSource.subModels.reduce((acc, model) => acc.concat(model.fields), initialSubfields),
+      ...(contextualisedSource.subModels || []),
+      ...(contextualisedSource.subModels || []).reduce((acc, model) => acc.concat(model.fields), initialSubfields),
     ], 'name');
+
+    contextualisedSource.fields[0].fields = contextualisedSource.fields;
 
     return contextualisedSource;
   }
@@ -176,18 +179,20 @@ class Contextualiser {
     return model;
   }
 
-  getTransform (transform: Transform, model: ContextualisedFrom): ContextualisedTransform {
+  getTransform (transform: Transform, model: ContextualisedSource): ContextualisedTransform {
     const match = this.transforms.find(tr => tr.name === transform.description.root);
     if (!match)
       throw new Error(`Unrecognised transform ${transform.description.root}`);
+
     return {
+      type: 'transform',
       name: match.name,
       modifier: transform.description.parts.filter(part => match.modifiers && (match.modifiers.indexOf(part) !== -1)),
       args: transform.args.map(arg => this.getExpression(arg, model)),
     };
   }
 
-  getShape (shape: Shape, model: ContextualisedFrom | ContextualisedTo) {
+  getShape (shape: Shape, model: ContextualisedSource) {
     const out = [];
     for (let field of shape.fields) {
       out.push(this.getField(field, model));
@@ -195,7 +200,7 @@ class Contextualiser {
     return out;
   }
 
-  getField (field: Field, model: ContextualisedFrom | ContextualisedTo): ContextualisedField {
+  getField (field: Field, model: ContextualisedSource): ContextualisedField {
     let contextualisedField: ContextualisedField;
     if (field.value?.type === 'from') {
       contextualisedField = this.handleFrom(field.value);
@@ -207,9 +212,10 @@ class Contextualiser {
     return contextualisedField;
   }
 
-  getExpression (expr: ExprUnary, model: ContextualisedFrom | ContextualisedTo): ContextualisedField | ContextualisedExpr {
+  getExpression (expr: ExprUnary, model: ContextualisedSource): ContextualisedField | ContextualisedExpr {
     if (expr.type === 'alphachain') {
       const parts = [expr.root].concat(expr.parts);
+      //console.log('parts', parts, model);
       let field: ContextualisedField = model;
       let mod: ContextualisedField = model;
       while (parts.length) {
@@ -218,9 +224,13 @@ class Contextualiser {
         if (!field.fields) {
           throw new Error(`Unable to find nested field ${part} on ${field.name}`);
         }
+        //console.log(field.fields, part);
         const subField: ContextualisedField | undefined = field.fields.find(f => f.name === part);
-        if (subField)
+        if (subField) {
+          if (subField.type === 'datafield' && field.type === 'source')
+            subField.from = field;
           field = subField;
+        }
       }
       return field;
     }
@@ -228,12 +238,12 @@ class Contextualiser {
       return {...expr, args: expr.args.map(arg => this.getExpression(arg, model))} as ContextualisedExpr;
     }
     if (expr.type === 'param') {
-      return { index: expr.index } as ContextualisedParam;
+      return { type: 'param', index: expr.index } as ContextualisedParam;
     }
     throw new Error('Invalid expression type');
   }
 }
 
 export default function contextualise (ast: Query, models: Map<string, DataModel>, transforms: TransformDef[]) {
-  (new Contextualiser(models, transforms)).run(ast);
+  return (new Contextualiser(models, transforms)).run(ast);
 }
