@@ -15,7 +15,7 @@ import {
   Parser,
 } from 'arcsecond';
 
-type JoinModifier = 'inner' | 'left' | 'anti';
+export type JoinModifier = 'inner' | 'left' | 'anti';
 type OpChar = '+' | '-' | '*' | '/' | '<' | '>' | '=' | '~' | '!' | '@' | '#' | '%' | '^' | '& '| '|' | '`' | '?' | ':';
 interface Join {
   type: 'join';

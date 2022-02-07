@@ -27,7 +27,7 @@ const operators = [
     pattern: ['!', EXPR],
   },
   {
-    name: 'addition',
+    name: '+',
     pattern: [EXPR, '+', EXPR],
   },
   {
@@ -60,8 +60,13 @@ const updateNameFamily = `
 
 const t = `(u: users) {name} -> (u2: users) | filter(u2.name = u.id);`
 
-let ast = run(t);
+const multiModel = `
+  (u: users).(o: orders | filter(o.userId = u.id)) { username: users.name, ordername: o.name }
+`;
+
+let ast = run(multiModel);
 const contextualised = contextualise(ast, models, transforms);
-const arg = contextualised.to?.transforms?.[0]?.args?.[0];
-if (arg?.type === 'exprtree')
-  console.log(arg.args[0]);
+//const arg = contextualised.to?.transforms?.[0]?.args?.[0];
+//if (arg?.type === 'exprtree')
+//  console.log(arg.args[0]);
+export default contextualised;
