@@ -70,7 +70,7 @@ A collection of objects, which often contain fields from multiple base objects. 
 
 ### join
 
-An operation that forms a new source from multiple other sources. Inner joins are expressed using `.`, left joins using `?.`, and anti joins using `!.` e.g.: 
+An operation that forms a new source from multiple other sources. Inner joins are expressed using `.`, left joins using `?.`, and anti joins using `!.` e.g.:
 
 ```
 users
@@ -186,7 +186,7 @@ query: '
       cm.createdAt,
       usr.userId
     }
-  ) 
+  )
     | filter(id = $2)
     | order.desc.nullsLast(createdAt)
     | limit($3)

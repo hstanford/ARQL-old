@@ -16,7 +16,7 @@ const transforms: TransformDef[] = [
     name: 'sort',
     modifiers: ['desc', 'asc', 'nullsFirst', 'nullsLast'],
     nArgs: '1+',
-  }
+  },
 ];
 
 const EXPR = Symbol.for('EXPR');
@@ -58,7 +58,7 @@ const updateNameFamily = `
     idplus: id + $1
   }`;
 
-const t = `(u: users) {name} -> (u2: users) | filter(u2.name = u.id);`
+const t = `(u: users) {name} -> (u2: users) | filter(u2.name = u.id);`;
 
 const multiModel = `
   (u: users).(o: orders | filter(o.userId = u.id)) { username: users.name, ordername: o.name }

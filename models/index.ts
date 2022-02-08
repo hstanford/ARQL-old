@@ -4,7 +4,7 @@ import type { DataModel } from 'arql-contextualiser';
 const mainDb = postgresql();
 const secondaryDb = postgresql();
 
-function selfReference (model: DataModel) {
+function selfReference(model: DataModel) {
   for (const field of model.fields) {
     field.model = model;
   }
@@ -25,7 +25,7 @@ export const users: DataModel = {
       name: 'name',
       datatype: 'string',
       source: mainDb,
-    }
+    },
   ],
 };
 
@@ -51,7 +51,7 @@ export const orders: DataModel = {
       datatype: 'string',
       source: secondaryDb,
     },
-  ]
+  ],
 };
 
 selfReference(users);
@@ -59,4 +59,7 @@ selfReference(orders);
 mainDb.add(users);
 secondaryDb.add(orders);
 
-export default (new Map([['users', users], ['orders', orders]]));
+export default new Map([
+  ['users', users],
+  ['orders', orders],
+]);

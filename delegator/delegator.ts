@@ -1,4 +1,4 @@
-import type {ContextualisedQuery} from 'arql-contextualiser';
+import type { ContextualisedQuery } from 'arql-contextualiser';
 
 interface ResolutionTree {
   tree: any;
@@ -7,4 +7,4 @@ interface ResolutionTree {
 
 export default function delegator(ast: ContextualisedQuery): ResolutionTree {
   return { tree: null, queries: [ast] };
-};
+}

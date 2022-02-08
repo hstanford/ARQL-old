@@ -1,0 +1,29 @@
+{
+  "name": "arql",
+  "version": "1.0.0",
+  "description": "Abstract Relational Query Language",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "prettier": "^2.5.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hstanford/ARQL.git"
+  },
+  "author": "Henry Stanford",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/hstanford/ARQL/issues"
+  },
+  "homepage": "https://github.com/hstanford/ARQL#readme",
+  "prettier": {
+    "singleQuote": true
+  }
+}

@@ -1,4 +1,4 @@
-function nativeOp (name, ...args) {
+function nativeOp(name, ...args) {
   return {
     type: 'nativeOp',
     name,
@@ -7,26 +7,24 @@ function nativeOp (name, ...args) {
 }
 
 export class Native {
-  constructor ({ data }) {
+  constructor({ data }) {
     this.models = new Map();
     this.operators = new Map(
-      [
-        'addition',
-        'subtraction',
-        'negation',
-        'equality',
-        'ternary'
-      ].map(name => (...args) => nativeOp(name, ...args))
+      ['addition', 'subtraction', 'negation', 'equality', 'ternary'].map(
+        (name) =>
+          (...args) =>
+            nativeOp(name, ...args)
+      )
     );
 
     this.data = data;
   }
 
-  add (def) {
+  add(def) {
     this.models.set(def.name, def);
   }
 
-  resolveField (modelName, fieldName, ...parts) {
+  resolveField(modelName, fieldName, ...parts) {
     if (parts.length) console.log('Not yet supported');
     // TODO: error handling
     return {
@@ -35,7 +33,5 @@ export class Native {
     };
   }
 
-  run () {
-
-  }
-};
+  run() {}
+}

@@ -5,9 +5,9 @@ const sql = new Sql('postgres');
 type operatorOp = (...args: any[]) => any;
 
 export class Pg<T> {
-  models: Map<string, TableWithColumns<{[key: string]: any}>>;
+  models: Map<string, TableWithColumns<{ [key: string]: any }>>;
   operators: Map<string, operatorOp>;
-  constructor () {
+  constructor() {
     this.models = new Map();
     this.operators = new Map([
       ['addition', (a, b) => a.plus(b)],
@@ -18,8 +18,8 @@ export class Pg<T> {
     ]);
   }
 
-  add (def: DataModel) {
-    const model = sql.define<{[key: string]: any}>({
+  add(def: DataModel) {
+    const model = sql.define<{ [key: string]: any }>({
       name: def.name,
       columns: Object.keys(def.fields),
     });
@@ -27,13 +27,12 @@ export class Pg<T> {
     this.models.set(def.name, model);
   }
 
-  resolveField (modelName: string, fieldName: string, ...parts: any[]): any {
+  resolveField(modelName: string, fieldName: string, ...parts: any[]): any {
     if (parts.length) console.log('Not yet supported');
     // TODO: error handling
     const model = this.models.get(modelName);
     let field: any;
-    if (model && fieldName in model)
-      field = model[fieldName] as any;
+    if (model && fieldName in model) field = model[fieldName] as any;
     return model && model[fieldName];
   }
-};
+}
