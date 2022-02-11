@@ -64,7 +64,7 @@ export interface ContextualisedQuery {
 }
 
 export interface ContextualisedSource {
-  type: 'from' | 'to' | 'source';
+  type: 'from' | 'to' | 'source' | 'delegatedQueryResult';
   source?: ContextualisedSource;
   fields: ContextualisedField[];
   name?: Alphachain | string;
@@ -73,6 +73,7 @@ export interface ContextualisedSource {
   transforms: ContextualisedTransform[];
   shape?: ContextualisedField[];
   sources: DataSource[];
+  index?: number;
 }
 
 export interface ContextualisedTransform {
@@ -173,6 +174,8 @@ export class Contextualiser {
     }
     if (from.shape) {
       contextualisedFrom.shape = this.getShape(from.shape, contextualisedFrom);
+    } else {
+      contextualisedFrom.shape = contextualisedFrom.fields;
     }
     return contextualisedFrom;
   }

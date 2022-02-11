@@ -23,6 +23,10 @@ npm i
 npm i ../contextualiser
 npm i ../sources
 npm run build
+cd ../delegator
+npm i
+npm i ../contextualiser
+npm run build
 cd ../test
 rm -r node_modules
 rm package-lock.json
