@@ -1,20 +1,26 @@
 import { Sql, TableWithColumns } from 'sql-ts';
 import type { DataModel } from 'arql-contextualiser';
+import { DataSource } from 'arql-contextualiser';
 const sql = new Sql('postgres');
 
-type operatorOp = (...args: any[]) => any;
-
-export class Pg<T> {
-  models: Map<string, TableWithColumns<{ [key: string]: any }>>;
-  operators: Map<string, operatorOp>;
+export default class Pg extends DataSource<TableWithColumns<{ [key: string]: any }>, any> {
   constructor() {
-    this.models = new Map();
+    super();
     this.operators = new Map([
       ['addition', (a, b) => a.plus(b)],
       ['subtraction', (a, b) => a.minus(b)],
       ['negation', (a) => a.isNull()],
       ['equality', (a, b) => a.equals(b)],
       ['ternary', (a, b, c) => a.case([a], [b], c)],
+    ]);
+    this.transforms = new Map([
+      ['filter', () => {}],
+      ['sort', () => {}],
+    ]);
+    this.combinations = new Map([
+      [null, () => {}],
+      ['?', () => {}],
+      ['!', () => {}],
     ]);
   }
 

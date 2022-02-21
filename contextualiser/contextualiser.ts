@@ -2,6 +2,7 @@ import type {
   Alphachain,
   Field,
   FullFrom,
+  Join,
   JoinModifier,
   Model,
   Query,
@@ -12,7 +13,42 @@ import type {
   ExprUnary,
 } from 'arql-parser';
 
-export type DataSource = any;
+type operatorOp = (...args: any[]) => any;
+type transformFn = (...args: any[]) => any;
+type combinationFn = (...args: any[]) => any;
+
+export abstract class DataSource<ModelType, FieldType> {
+  models: Map<string, ModelType> = new Map();
+  operators: Map<string, operatorOp> = new Map();
+  transforms: Map<string, transformFn> = new Map();
+  combinations: Map<string | null, combinationFn> = new Map();
+
+  add(def: DataModel) {}
+
+  resolveField(
+    modelName: string,
+    fieldName: string,
+    ...parts: string[]
+  ): ModelType | FieldType {
+    throw new Error('Not implemented');
+  }
+
+  implementsOp(opName: string) {
+    return this.operators.has(opName);
+  }
+
+  implementsTransform(transform: ContextualisedTransform) {
+    return this.transforms.has(transform.name); // TODO: make it check modifiers and args
+  }
+
+  implementsCombination(combiner: Combiner) {
+    return this.combinations.has(combiner.modifier); // TODO: make it check range
+  }
+}
+
+export class UnresolveableSource extends DataSource<any, any> {}
+
+export type Combiner = Join;
 export type dataType = 'string' | 'number' | 'boolean' | 'json';
 export type ContextualisedField =
   | DataField
@@ -26,7 +62,7 @@ export interface DataField {
   name: string;
   datatype: dataType;
   fields?: DataField[];
-  source: DataSource;
+  source: DataSource<any, any>;
   model?: DataModel;
   from?: ContextualisedSource;
 }
@@ -60,20 +96,19 @@ export interface ContextualisedQuery {
   from?: ContextualisedSource;
   to?: ContextualisedSource;
   modifier: string | null;
-  sources: DataSource[];
+  sources: DataSource<any, any>[];
 }
 
 export interface ContextualisedSource {
-  type: 'from' | 'to' | 'source' | 'delegatedQueryResult';
-  source?: ContextualisedSource;
+  type: 'source';
+  source?: (ContextualisedSource | Join)[] | ContextualisedSource;
   fields: ContextualisedField[];
   name?: Alphachain | string;
   subModels?: (DataModel | ContextualisedSource | DataField)[];
   modifier?: JoinModifier;
-  transforms: ContextualisedTransform[];
   shape?: ContextualisedField[];
-  sources: DataSource[];
-  index?: number;
+  sources: DataSource<any, any>[];
+  transform?: ContextualisedTransform;
 }
 
 export interface ContextualisedTransform {
@@ -81,15 +116,15 @@ export interface ContextualisedTransform {
   name: string;
   modifier: string[];
   args: (ContextualisedField | ContextualisedExpr)[];
-  sources: DataSource[];
+  sources: DataSource<any, any>[];
 }
 
 export interface ContextualisedExpr {
   type: 'exprtree';
   name?: Alphachain | string;
   fields?: undefined;
-  args: ContextualisedExpr[];
-  sources: DataSource[];
+  args: (ContextualisedExpr | ContextualisedField)[];
+  sources: DataSource<any, any>[];
 }
 
 function uniq<T>(arr: T[]) {
@@ -104,9 +139,9 @@ function uniqBy<T>(arr: T[], key: keyof T) {
   );
 }
 
-function combineSources(fields: ContextualisedField[]) {
+export function combineSources(fields: ContextualisedField[]) {
   return fields.reduce((acc, m) => {
-    let sources: DataSource[] = [];
+    let sources: DataSource<any, any>[] = [];
     if (m.type === 'datafield') {
       sources = [m.source];
     } else if (m.type === 'datamodel') {
@@ -117,7 +152,7 @@ function combineSources(fields: ContextualisedField[]) {
       sources = m.sources;
     }
     return acc.concat(sources);
-  }, [] as DataSource[]);
+  }, [] as DataSource<any, any>[]);
 }
 
 export class Contextualiser {
@@ -150,134 +185,164 @@ export class Contextualiser {
     return contextualisedQuery;
   }
 
+  aggregateSources(contSource: ContextualisedSource) {
+    const sources = contSource.source
+      ? Array.isArray(contSource.source)
+        ? contSource.source
+        : [contSource.source]
+      : [];
+    contSource.fields = uniqBy(
+      sources.reduce(
+        (acc, source) =>
+          acc.concat(source.type === 'source' ? source.fields : []),
+        [] as ContextualisedField[]
+      ) || [],
+      'name'
+    );
+    contSource.subModels = uniqBy(
+      sources.reduce(
+        (acc, source) =>
+          source?.type === 'source' ? acc.concat(source.subModels || []) : acc,
+        [] as (DataField | DataModel | ContextualisedSource)[]
+      ) || [],
+      'name'
+    );
+    const firstSource = sources.find(
+      (s): s is ContextualisedSource => s.type !== 'join'
+    );
+    contSource.name = (firstSource || contSource.subModels?.[0])?.name;
+    contSource.sources = combineSources(contSource.subModels);
+  }
+
   handleFrom(from: FullFrom) {
     const contextualisedFrom: ContextualisedSource = {
-      type: from.type,
+      type: 'source',
       fields: [],
-      transforms: [],
       sources: [],
     };
+    let out = contextualisedFrom;
     if (from.source) {
       contextualisedFrom.source = this.handleSource(from.source);
-      contextualisedFrom.fields = contextualisedFrom.source.fields;
-      contextualisedFrom.subModels = contextualisedFrom.source.subModels;
-      contextualisedFrom.name =
-        contextualisedFrom.source.name ||
-        contextualisedFrom.subModels?.[0]?.name;
-      contextualisedFrom.sources = contextualisedFrom.source.sources;
+      this.aggregateSources(contextualisedFrom);
     }
     if (from.transforms.length) {
-      contextualisedFrom.transforms = from.transforms.map((transform) =>
-        this.getTransform(transform, contextualisedFrom)
-      );
+      for (const transform of from.transforms) {
+        const outTransform = this.getTransform(transform, out);
+        out = {
+          type: 'source',
+          transform: outTransform,
+          source: out,
+          fields: out.fields,
+          name: out.name,
+          subModels: out.subModels,
+          sources:
+            out.sources.length === 1 &&
+            out.sources[0].implementsTransform(outTransform)
+              ? out.sources
+              : [new UnresolveableSource()],
+        };
+      }
       // handle sources if they're not capable of the transforms
     }
     if (from.shape) {
-      contextualisedFrom.shape = this.getShape(from.shape, contextualisedFrom);
+      out.shape = this.getShape(from.shape, out);
+      contextualisedFrom.sources = uniq(
+        contextualisedFrom.sources.concat(combineSources(out.shape))
+      );
     } else {
       contextualisedFrom.shape = contextualisedFrom.fields;
     }
-    return contextualisedFrom;
+    return out;
   }
 
   handleTo(to: To, from?: ContextualisedSource) {
     const contextualisedTo: ContextualisedSource = {
-      type: to.type,
+      type: 'source',
       fields: [],
-      transforms: [],
       sources: [],
     };
+    let out = contextualisedTo;
     if (to.source) {
-      contextualisedTo.source = this.handleSource(to.source);
-      contextualisedTo.fields = contextualisedTo.source.fields;
-      contextualisedTo.subModels = contextualisedTo.source.subModels;
-      contextualisedTo.name =
-        contextualisedTo.source.name || contextualisedTo.subModels?.[0]?.name;
-      contextualisedTo.sources = contextualisedTo.source.sources;
+      contextualisedTo.source = this.handleSource([to.source]);
+      this.aggregateSources(contextualisedTo);
     }
     if (to.transforms.length) {
-      contextualisedTo.transforms = to.transforms.map((transform) =>
-        this.getTransform(transform, {
-          ...contextualisedTo,
-          fields: uniqBy(
-            (from?.fields || []).concat(
-              contextualisedTo.fields
-            ) as ContextualisedField[],
-            'name'
-          ),
-          transforms: [],
-        })
-      );
+      for (const transform of to.transforms) {
+        out = {
+          type: 'source',
+          transform: this.getTransform(transform, out),
+          source: out,
+          fields: out.fields,
+          name: out.name,
+          subModels: out.subModels,
+          sources: out.sources, // TODO: combine with if source supports transform
+        };
+      }
     }
     if (to.shape) {
-      contextualisedTo.shape = this.getShape(to.shape, contextualisedTo);
+      out.shape = this.getShape(to.shape, out);
+      out.sources = uniq(out.sources.concat(combineSources(out.shape)));
     }
     return contextualisedTo;
   }
 
-  handleSource(source: Source | Model) {
-    const contextualisedSource: ContextualisedSource = {
-      type: 'source',
-      fields: [],
-      subModels: [],
-      transforms: [],
-      sources: [],
-    };
-    // TODO: handle joins
-    if (source.value?.type === 'alphachain') {
-      const model = this.getModel(source.value);
+  handleSource(sources: (Source | Join | Model)[]) {
+    const contextualisedSources: (ContextualisedSource | Join)[] = [];
+    for (const source of sources) {
+      if (source.type === 'join') {
+        contextualisedSources.push(source);
+        continue;
+      }
 
-      contextualisedSource.subModels = [model];
-    } else if (source.value?.type === 'from') {
-      const contextualisedFrom = this.handleFrom(source.value);
-      contextualisedSource.subModels = [contextualisedFrom];
-    }
+      let contextualisedSource: ContextualisedSource = {
+        type: 'source',
+        fields: [],
+        subModels: [],
+        sources: [],
+      };
+      // TODO: handle joins
+      if (source.value?.type === 'alphachain') {
+        const model = this.getModel(source.value);
 
-    if (
-      source.type === 'source' &&
-      source.joins?.length &&
-      contextualisedSource.subModels
-    ) {
-      contextualisedSource.subModels.push(
-        ...source.joins.map((j) => ({
-          ...this.handleSource(j.to),
-          transforms: [],
-          modifier: j.modifier,
-        }))
+        contextualisedSource.subModels = [model];
+      } else if (source.value?.type === 'from') {
+        const contextualisedFrom = this.handleFrom(source.value);
+        contextualisedSource = contextualisedFrom;
+      }
+
+      contextualisedSource.sources = uniq(
+        combineSources(contextualisedSource.subModels || [])
       );
-    }
 
-    contextualisedSource.sources = uniq(
-      combineSources(contextualisedSource.subModels || [])
-    );
+      // TODO: make sure the aliases are scoped correctly
+      if (source.alias)
+        this.state.aliases.set(
+          typeof source.alias === 'string'
+            ? source.alias
+            : [source.alias.root, ...source.alias.parts].join(''),
+          contextualisedSource
+        );
+      contextualisedSource.name =
+        source.alias || contextualisedSource.subModels?.[0].name;
 
-    // TODO: make sure the aliases are scoped correctly
-    if (source.alias)
-      this.state.aliases.set(
-        typeof source.alias === 'string'
-          ? source.alias
-          : [source.alias.root, ...source.alias.parts].join(''),
-        contextualisedSource
+      const initialSubfields: ContextualisedField[] = [];
+      contextualisedSource.fields = uniqBy(
+        [
+          { ...contextualisedSource, transforms: [] },
+          ...(contextualisedSource.subModels || []),
+          ...(contextualisedSource.subModels || []).reduce(
+            (acc, model) => acc.concat(model.fields || []),
+            initialSubfields
+          ),
+        ],
+        'name'
       );
-    contextualisedSource.name =
-      source.alias || contextualisedSource.subModels?.[0].name;
 
-    const initialSubfields: ContextualisedField[] = [];
-    contextualisedSource.fields = uniqBy(
-      [
-        { ...contextualisedSource, transforms: [] },
-        ...(contextualisedSource.subModels || []),
-        ...(contextualisedSource.subModels || []).reduce(
-          (acc, model) => acc.concat(model.fields || []),
-          initialSubfields
-        ),
-      ],
-      'name'
-    );
+      contextualisedSource.fields[0].fields = contextualisedSource.fields;
 
-    contextualisedSource.fields[0].fields = contextualisedSource.fields;
-
-    return contextualisedSource;
+      contextualisedSources.push(contextualisedSource);
+    }
+    return contextualisedSources;
   }
 
   getModel(alphachain: Alphachain) {
@@ -377,7 +442,7 @@ export class Contextualiser {
         ...expr,
         args,
         sources: combineSources(args),
-      } as ContextualisedExpr;
+      };
     }
     if (expr.type === 'param') {
       return { type: 'param', index: expr.index } as ContextualisedParam;

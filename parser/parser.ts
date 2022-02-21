@@ -1,7 +1,7 @@
 import {
   char,
   choice,
-  coroutine,
+  digit,
   digits,
   many,
   many1,
@@ -11,12 +11,10 @@ import {
   regex,
   sequenceOf,
   str,
-  tapParser,
   Parser,
 } from 'arcsecond';
 
-export type JoinModifier = 'inner' | 'left' | 'anti';
-type OpChar =
+type BaseOpChar =
   | '+'
   | '-'
   | '*'
@@ -30,27 +28,24 @@ type OpChar =
   | '#'
   | '%'
   | '^'
-  | '& '
-  | '|'
+  | '&'
   | '`'
   | '?'
   | ':';
-interface Join {
+type OpChar = BaseOpChar | '|';
+
+export type JoinModifier =
+  | BaseOpChar
+  | `${BaseOpChar}${BaseOpChar}`
+  | `${BaseOpChar}${BaseOpChar}${BaseOpChar}`;
+
+export type Range = (number | null)[];
+
+export interface Join {
   type: 'join';
-  modifier: JoinModifier;
-  to: Source;
+  modifier: JoinModifier | null;
+  range: Range | null;
 }
-
-interface ModifierMap {
-  [key: string]: JoinModifier;
-}
-
-const modifierMap: ModifierMap = {
-  '?': 'left',
-  '!': 'anti',
-  '': 'inner',
-};
-
 export interface Alphachain {
   type: 'alphachain';
   root: string;
@@ -94,19 +89,20 @@ export interface Source {
   type: 'source';
   alias: Alphachain | string | undefined;
   value: Alphachain | FullFrom;
-  joins: Join[];
 }
 
 export interface FullFrom {
   type: 'from';
-  source: Source | null;
+  alias: Alphachain | string | undefined;
+  source: (Source | Join)[] | null;
   transforms: Transform[];
   shape: Shape | null;
 }
 
 export interface From {
   type: 'from';
-  source: Source | null;
+  alias: Alphachain | string | undefined;
+  source: (Source | Join)[] | null;
   transforms: Transform[];
   shape: Shape;
 }
@@ -170,11 +166,42 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     char(':'),
   ]).map((parts) => parts[0]);
 
-  const join: Parser<string | null, string, any> = sequenceOf([
-    possibly(regex(/^[?!]/)),
+  const possiblyNumber: Parser<number | null, string, any> = many(digit).map(
+    (parts) => (parts.length ? parseInt(parts.join('')) : null)
+  );
+  const range: Parser<Range, string, any> = sequenceOf([
+    char('['),
+    optionalWhitespace,
+    possiblyNumber,
+    many(
+      sequenceOf([
+        optionalWhitespace,
+        char(','),
+        optionalWhitespace,
+        possiblyNumber,
+      ]).map((parts) => parts[3])
+    ),
+    char(']'),
+  ]).map((parts) => [parts[2], ...parts[3]]);
+
+  const joinModifierChar: Parser<BaseOpChar, string, any> = regex(
+    /^[+\-*\/<>=~!@#%^&`?:]/
+  ) as Parser<any, string, any>;
+  const joinModifier: Parser<JoinModifier, string, any> = many1(
+    joinModifierChar
+  ).map((x) => x.join('') as JoinModifier);
+
+  const join: Parser<Join, string, any> = sequenceOf([
+    possibly(joinModifier),
+    optionalWhitespace,
+    possibly(range),
     optionalWhitespace,
     char('.'),
-  ]).map((parts) => parts[0]);
+  ]).map((parts) => ({
+    type: 'join',
+    modifier: parts[0] as JoinModifier | null,
+    range: parts[2],
+  }));
 
   const param: Parser<Param, string, any> = sequenceOf([char('$'), digits]).map(
     ([, index]) => ({
@@ -313,44 +340,35 @@ export default function buildParser(opResolver = (expr: any) => expr) {
       char(')'),
     ]).map((parts) => ({
       type: 'source',
-      alias: parts[2] || (parts[4].source as Source | undefined)?.alias,
+      alias: parts[2] || (parts[4].source?.[0] as Source | undefined)?.alias,
       value: parts[4],
-      joins: [],
     }))
   );
 
   // TODO: fix users.things unclear:
   // is it a property access or a join?? (ok to be contextual?)
-  const source: Parser<Source, string, any> = recursiveParser(() =>
+  const source: Parser<(Source | Join)[], string, any> = recursiveParser(() =>
     sequenceOf([
       choice([subSource, alphachain]),
       optionalWhitespace,
-      many(fullJoin),
-    ]).map((parts) =>
-      parts[0].type === 'source'
-        ? {
-            ...parts[0],
-            joins: parts[0].joins.concat(parts[2]),
-          }
-        : {
-            type: 'source',
-            value: parts[0],
-            alias: parts[0],
-            joins: parts[2],
-          }
-    )
+      many(fullJoin).map((parts) =>
+        parts.reduce((acc, part) => acc.concat(part), [])
+      ),
+    ]).map((parts) => {
+      const initialSource: Source =
+        parts[0].type === 'source'
+          ? parts[0]
+          : { type: 'source', value: parts[0], alias: parts[0] };
+      return [initialSource, ...parts[2]];
+    })
   );
 
-  const fullJoin: Parser<Join, string, any> = sequenceOf([
+  const fullJoin: Parser<(Join | Source)[], string, any> = sequenceOf([
     join,
     optionalWhitespace,
     source,
     optionalWhitespace,
-  ]).map((parts) => ({
-    type: 'join',
-    modifier: modifierMap[parts[0] || ''],
-    to: parts[2],
-  }));
+  ]).map((parts) => [parts[0], ...parts[2]]);
 
   const fullFrom: Parser<FullFrom, string, any> = recursiveParser(() =>
     sequenceOf([
@@ -361,6 +379,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     ])
   ).map((parts) => ({
     type: 'from',
+    alias: parts[0]?.length && parts[0][0].type === 'source' ? parts[0][0].alias : undefined,
     source: parts[0],
     transforms: parts[2],
     shape: parts[3],
@@ -374,6 +393,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
       shape,
     ]).map((parts) => ({
       type: 'from',
+      alias: parts[0]?.length && parts[0][0].type === 'source' ? parts[0][0].alias : undefined,
       source: parts[0],
       transforms: parts[2],
       shape: parts[3],

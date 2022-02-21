@@ -6,17 +6,19 @@
   "type": "module",
   "dependencies": {
     "arql-contextualiser": "file:../contextualiser",
-    "arql-models": "file:../models",
     "arql-op-resolver": "file:../op_resolver",
     "arql-operations": "file:../operations",
     "arql-parser": "file:../parser",
-    "arql-sources": "file:../sources",
+    "sql-ts": "^6.1.0",
     "typescript": "^4.5.5"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "rimraf": "^3.0.2",
+    "rollup": "^2.67.0"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "try": "tsc && node dist/examples.js"
+    "try": "rimraf dist && tsc && node dist/examples.js"
   },
   "author": "",
   "license": "ISC"

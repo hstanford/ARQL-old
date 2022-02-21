@@ -14,15 +14,6 @@ npm i
 npm i ../parser
 npm i ../operations
 npm run build
-cd ../sources
-npm i
-npm i ../contextualiser
-npm run build
-cd ../models
-npm i
-npm i ../contextualiser
-npm i ../sources
-npm run build
 cd ../delegator
 npm i
 npm i ../contextualiser
@@ -31,4 +22,8 @@ cd ../test
 rm -r node_modules
 rm package-lock.json
 npm i
+npm i ../contextualiser
+npm i ../operations
+npm i ../op_resolver
+npm run try
 cd ..

@@ -1,8 +1,8 @@
-import { postgresql } from 'arql-sources';
+import Pg from './postgresql.js';
 import type { DataModel } from 'arql-contextualiser';
 
-const mainDb = postgresql();
-const secondaryDb = postgresql();
+const mainDb = new Pg();
+const secondaryDb = new Pg();
 
 function selfReference(model: DataModel) {
   for (const field of model.fields) {

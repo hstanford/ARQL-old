@@ -3,9 +3,8 @@
 keyword     =   ALPHA *(ALPHA / DIGIT)
 alphachain  =   keyword LWSP *("." LWSP keyword LWSP)
 alias       =   keyword ":"
-join        =   ["?" / "!"] LWSP "."
 param       =   "$" 1*DIGIT
-opchar      =   "+" /
+baseopchar  =   "+" /
                 "-" / 
                 "*" / 
                 "/" / 
@@ -19,11 +18,13 @@ opchar      =   "+" /
                 "%" /
                 "^" /
                 "&" /
-                "|" /
                 "`" /
                 "?" /
                 ":"
+opchar      =   baseopchar / "|"
 op          =   1*(opchar)
+range       =   "[" LWSP *DIGIT *(LWSP "," LWSP *DIGIT) "]"
+join        =   1*(baseopchar)[range] LWSP "."
 
 exprnoop    =   ("(" LWSP expr LWSP ")") /
                 param /

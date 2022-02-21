@@ -1,23 +1,21 @@
 import buildParser from 'arql-parser';
 import opResolver from 'arql-op-resolver';
 import contextualise, { TransformDef } from 'arql-contextualiser';
-import models from 'arql-models';
 import { getOperatorLookup } from 'arql-operations';
+import models from './models.js';
 
 const transforms: TransformDef[] = [
   {
-    type: 'transformdef',
     name: 'filter',
     modifiers: [],
     nArgs: 1,
   },
   {
-    type: 'transformdef',
     name: 'sort',
     modifiers: ['desc', 'asc', 'nullsFirst', 'nullsLast'],
     nArgs: '1+',
   },
-];
+].map((o) => ({ ...o, type: 'transformdef' }));
 
 const EXPR = Symbol.for('EXPR');
 
