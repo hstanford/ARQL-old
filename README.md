@@ -68,24 +68,13 @@ would obtain data that looks like:
 
 A collection of objects, which often contain fields from multiple base objects. A model is the most basic type of source.
 
-### join
-
-An operation that forms a new source from multiple other sources. Inner joins are expressed using `.`, left joins using `?.`, and anti joins using `!.` e.g.:
-
-```
-users
-  .accounts
-  ?.emails
-  !.phoneNumbers
-```
-
-Sources in joins can be aliased like `(u: users).(a: accounts)`, and the aliases can be used to prefix fields to reference relationships or fields in the shape or other join sections.
-
-If "users" has an "emails" relationship which specifies join conditions under the hood (assumedly in the models layer), you could form a join using `(u: users).(em: u.emails)`, whereas `(u: users).(em: emails)` would be a join to all emails. You could manually specify a join condition like: `(u: users).(em: emails | filter(em.userId = u.id))`.
-
 ### transform
 
-A function that forms a new source from another source. The sources are applied with a unix-style pipe symbol `|`
+A function that forms a new source from another source. The sources are applied with a unix-style pipe symbol `|`.
+
+Sources can be aliased like `u: users`, and the aliases can be used to prefix fields to reference relationships or fields in other sections.
+
+If "users" has an "emails" relationship which specifies join conditions under the hood (assumedly in the models layer), you could form a join using `(u: users, em: u.emails) | join()`, whereas `(u: users, em: emails) | join()` would be a join to all emails. You could manually specify a join condition like: `(u: users, em: emails) | join(em.userId = u.id)`.
 
 ### expression
 
@@ -128,7 +117,7 @@ params: []
 Get the name of the first 10 users:
 
 ```
-query: '(users | order(id) | limit($1)) { name }',
+query: 'users | order(id) | limit($1) { name }',
 params: [10]
 ```
 
@@ -172,19 +161,22 @@ params: ['TEST']
 query: '
   (
     (
-      (c: conversations)
-      .(cp: c.participants | filter(cp.conversationRoleId = $1))
-      .(usr: c.participants | filter(!cp.conversationRoleId))
-      ?.(cm: c.messages)
+      (
+        c: conversations,
+        cp: c.participants | filter(cp.conversationRoleId = $1),
+        usr: c.participants | filter(!cp.conversationRoleId),
+      ) | join(),
+      cm: c.messages,
     )
+      | join.left()
       | unique(c.id)
       | order.desc.nullsLast(cm.createdAt)
     {
       c.id,
-      read: !cm.createdAt ? true : !cp.lastReadAt ? false : cp.lastReadAt >= cm.createdAt,
+      read: !cm.createdAt ? 1=1 : !cp.lastReadAt ? 1!=1 : cp.lastReadAt >= cm.createdAt,
       cm.content,
       cm.createdAt,
-      usr.userId
+      usr.userId,
     }
   )
     | filter(id = $2)
@@ -195,8 +187,8 @@ query: '
     id,
     userId,
     read,
-    content
+    content,
   }
 ',
-params: [1, 5, 20, 0]
-```
+params: [1, 5, 20, 0],
+
