@@ -6,6 +6,7 @@
   "type": "module",
   "dependencies": {
     "arql-contextualiser": "file:../contextualiser",
+    "arql-delegator": "file:../delegator",
     "arql-op-resolver": "file:../op_resolver",
     "arql-operations": "file:../operations",
     "arql-parser": "file:../parser",

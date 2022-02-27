@@ -4,7 +4,7 @@ keyword     =   ALPHA *(ALPHA / DIGIT)
 alphachain  =   keyword LWSP *("." LWSP keyword LWSP)
 alias       =   keyword ":"
 param       =   "$" 1*DIGIT
-baseopchar  =   "+" /
+opchar      =   "+" /
                 "-" / 
                 "*" / 
                 "/" / 
@@ -20,41 +20,34 @@ baseopchar  =   "+" /
                 "&" /
                 "`" /
                 "?" /
-                ":"
-opchar      =   baseopchar / "|"
+                ":" /
+                "|"
 op          =   1*(opchar)
-range       =   "[" LWSP *DIGIT *(LWSP "," LWSP *DIGIT) "]"
-join        =   1*(baseopchar)[range] LWSP "."
 
 exprnoop    =   ("(" LWSP expr LWSP ")") /
                 param /
-                alphachain
+                alphachain /
+                source
 exprunary   =   (
                   (op exprunary) /
                   (exprnoop ["(" LWSP exprlist LWSP ")"])
                 ) LWSP *(op LWSP)
 exprop      =   LWSP 1*exprunary
-expr        =   exprOp / exprnoop
-exprlist    =   [*(expr LWSP "," LWSP) expr LWSP [","]]
-transform   =   "|" LWSP alphachain LWSP ["(" LWSP exprlist LWSP ")"] LWSP
+expr        =   exprop / exprnoop
+exprlist    =   [expr LWSP *("," LWSP expr LWSP) [","]]
+trarg       =   expr / shape / source
+trargs      =   [trarg LWSP *("," LWSP trarg LWSP) [","]]
+transform   =   alphachain LWSP ["(" LWSP exprlist LWSP ")"]
+transforms  =   *("|" LWSP transform LWSP )
 
-source      =   (
-                  ("(" LWSP fullfrom LWSP ")") /
-                  alphachain
-                ) LWSP *(join LWSP source LWSP)
-fullfrom    =   [source] LWSP *transform [shape]
-from        =   [source] LWSP *transform shape
-to          =   (
-                  ("(" LWSP [alias] LWSP alphachain LWSP ")") /
-                  alphachain
-                ) LWSP *transform [shape]
+source      =   [alias] LWSP (sourcelist | alphachain) LWSP transforms [shape]
+sourcelist  =   "(" LWSP *(source LWSP "," LWSP) source LWSP [","] LWSP ")"
+dest        =   [alias] LWSP keyword LWSP transforms [shape]
 
-field       =   [alias] LWSP (from / expr)
+field       =   [alias] LWSP (source / expr)
 fieldlist   =   *(field LWSP "," LWSP) field LWSP [","]
 shape       =   "{" LWSP fieldlist LWSP "}"
 
-delete      =   ("->" / "-x") LWSP to
-modify      =   from LWSP "-" ("+" / ">") LWSP to
-select      =   from
+modifier    =   "-" (">" / "+" / "x")
 
-query       =   LWSP (del / modify / select) LWSP
+query       =   LWSP [source] LWSP [modifier LWSP dest] LWSP

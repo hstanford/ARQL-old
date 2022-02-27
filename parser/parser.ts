@@ -10,11 +10,10 @@ import {
   recursiveParser,
   regex,
   sequenceOf,
-  str,
   Parser,
 } from 'arcsecond';
 
-type BaseOpChar =
+type OpChar =
   | '+'
   | '-'
   | '*'
@@ -31,21 +30,9 @@ type BaseOpChar =
   | '&'
   | '`'
   | '?'
-  | ':';
-type OpChar = BaseOpChar | '|';
+  | ':'
+  | '|';
 
-export type JoinModifier =
-  | BaseOpChar
-  | `${BaseOpChar}${BaseOpChar}`
-  | `${BaseOpChar}${BaseOpChar}${BaseOpChar}`;
-
-export type Range = (number | null)[];
-
-export interface Join {
-  type: 'join';
-  modifier: JoinModifier | null;
-  range: Range | null;
-}
 export interface Alphachain {
   type: 'alphachain';
   root: string;
@@ -82,29 +69,15 @@ interface FunctionCall {
 export interface Transform {
   type: 'transform';
   description: Alphachain;
-  args: Expr[];
+  args: (Expr | Shape | Source)[];
 }
 
 export interface Source {
   type: 'source';
-  alias: Alphachain | string | undefined;
-  value: Alphachain | FullFrom;
-}
-
-export interface FullFrom {
-  type: 'from';
-  alias: Alphachain | string | undefined;
-  source: (Source | Join)[] | null;
+  alias: string | undefined;
+  value: Alphachain | Source[];
   transforms: Transform[];
   shape: Shape | null;
-}
-
-export interface From {
-  type: 'from';
-  alias: Alphachain | string | undefined;
-  source: (Source | Join)[] | null;
-  transforms: Transform[];
-  shape: Shape;
 }
 
 export interface Model {
@@ -113,17 +86,18 @@ export interface Model {
   value: Alphachain;
 }
 
-export interface To {
-  type: 'to';
-  source: Model;
+export interface Dest {
+  type: 'dest';
+  alias: string | null;
   transforms: Transform[];
   shape: Shape | null;
+  value: string;
 }
 
 export interface Field {
   type: 'field';
   alias: string | null;
-  value: From | Expr;
+  value: Source | Expr;
 }
 
 export interface Shape {
@@ -133,12 +107,12 @@ export interface Shape {
 
 export interface Query {
   type: 'query';
-  from: From | null;
-  modifier: Modifier | null;
-  to: To | null;
+  source: Source | null;
+  modifier: Modifier | undefined;
+  dest: Dest | undefined;
 }
 
-type Modifier = '->' | '-+' | '-x';
+export type Modifier = '->' | '-+' | '-x';
 
 export default function buildParser(opResolver = (expr: any) => expr) {
   const keyword: Parser<string, string, any> = regex(/^[a-zA-Z][a-zA-Z0-9]*/);
@@ -166,43 +140,6 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     char(':'),
   ]).map((parts) => parts[0]);
 
-  const possiblyNumber: Parser<number | null, string, any> = many(digit).map(
-    (parts) => (parts.length ? parseInt(parts.join('')) : null)
-  );
-  const range: Parser<Range, string, any> = sequenceOf([
-    char('['),
-    optionalWhitespace,
-    possiblyNumber,
-    many(
-      sequenceOf([
-        optionalWhitespace,
-        char(','),
-        optionalWhitespace,
-        possiblyNumber,
-      ]).map((parts) => parts[3])
-    ),
-    char(']'),
-  ]).map((parts) => [parts[2], ...parts[3]]);
-
-  const joinModifierChar: Parser<BaseOpChar, string, any> = regex(
-    /^[+\-*\/<>=~!@#%^&`?:]/
-  ) as Parser<any, string, any>;
-  const joinModifier: Parser<JoinModifier, string, any> = many1(
-    joinModifierChar
-  ).map((x) => x.join('') as JoinModifier);
-
-  const join: Parser<Join, string, any> = sequenceOf([
-    possibly(joinModifier),
-    optionalWhitespace,
-    possibly(range),
-    optionalWhitespace,
-    char('.'),
-  ]).map((parts) => ({
-    type: 'join',
-    modifier: parts[0] as JoinModifier | null,
-    range: parts[2],
-  }));
-
   const param: Parser<Param, string, any> = sequenceOf([char('$'), digits]).map(
     ([, index]) => ({
       type: 'param',
@@ -218,21 +155,24 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     symbol: x.join(''),
   }));
 
-  const exprNoOp: Parser<SubExpr, string, any> = recursiveParser(
-    function (): any {
-      return choice([
-        sequenceOf([
-          char('('),
-          optionalWhitespace,
-          expr,
-          optionalWhitespace,
-          char(')'),
-        ]).map((parts) => parts[2]),
-        param,
-        alphachain,
-      ]);
-    }
-  );
+  const modifier: Parser<Modifier, string, any> = sequenceOf([
+    char('-'),
+    choice([char('>'), char('+'), char('x')]),
+  ]).map((parts) => parts.join('') as Modifier);
+
+  const exprNoOp: Parser<SubExpr, string, any> = recursiveParser(function () {
+    return choice([
+      sequenceOf([
+        char('('),
+        optionalWhitespace,
+        expr,
+        optionalWhitespace,
+        char(')'),
+      ]).map((parts) => parts[2]),
+      param,
+      alphachain,
+    ]);
+  });
 
   const funOrExpr: Parser<SubExpr | FunctionCall> = recursiveParser(() =>
     sequenceOf([
@@ -299,155 +239,126 @@ export default function buildParser(opResolver = (expr: any) => expr) {
         sequenceOf([
           char(','),
           optionalWhitespace,
-          possibly(expr), // "possibly" to allow for trailing commas
+          expr,
           optionalWhitespace,
         ]).map((parts) => parts[2])
       ),
-    ]).map(
-      (parts) => [parts[0], ...parts[2]].filter((p) => p !== null) as Expr[]
-    )
+      possibly(char(',')),
+    ]).map((parts) => [parts[0], ...parts[2]].filter((p) => p !== null))
+  );
+
+  const transformArg: Parser<Expr | Shape | Source> = recursiveParser(() =>
+    choice([expr, shape, source])
+  );
+
+  const transformArgs: Parser<(Expr | Shape | Source)[] | null> = possibly(
+    sequenceOf([
+      transformArg,
+      optionalWhitespace,
+      many(
+        sequenceOf([
+          char(','),
+          optionalWhitespace,
+          transformArg,
+          optionalWhitespace,
+        ]).map((parts) => parts[2])
+      ),
+      possibly(char(',')),
+    ]).map((parts) => [parts[0], ...parts[2]].filter((p) => p !== null))
   );
 
   const transform: Parser<Transform, string, any> = sequenceOf([
-    char('|'),
-    optionalWhitespace,
     alphachain,
     optionalWhitespace,
     possibly(
       sequenceOf([
         char('('),
         optionalWhitespace,
-        exprlist,
+        transformArgs,
         optionalWhitespace,
         char(')'),
       ]).map((parts) => parts[2])
     ),
-    optionalWhitespace,
   ]).map((parts) => ({
     type: 'transform',
-    description: parts[2],
-    args: parts[4] || [],
+    description: parts[0],
+    args: parts[2] || [],
   }));
 
-  const subSource: Parser<Source, string, any> = recursiveParser(() =>
+  const transforms: Parser<Transform[], string, any> = many(
     sequenceOf([
-      char('('),
+      char('|'),
       optionalWhitespace,
+      transform,
+      optionalWhitespace,
+    ]).map((parts) => parts[2])
+  );
+
+  const source: Parser<Source, string, any> = recursiveParser(() =>
+    sequenceOf([
       possibly(alias),
       optionalWhitespace,
-      fullFrom,
+      choice([sourcelist, alphachain]),
       optionalWhitespace,
-      char(')'),
+      transforms,
+      possibly(shape),
     ]).map((parts) => ({
       type: 'source',
-      alias: parts[2] || (parts[4].source?.[0] as Source | undefined)?.alias,
-      value: parts[4],
+      alias:
+        parts[0] ||
+        (typeof parts[2] === 'string' && parts[2]) ||
+        (!Array.isArray(parts[2]) &&
+          parts[2].type === 'alphachain' &&
+          parts[2].root) ||
+        undefined,
+      value: parts[2],
+      transforms: parts[4],
+      shape: parts[5],
     }))
   );
 
-  // TODO: fix users.things unclear:
-  // is it a property access or a join?? (ok to be contextual?)
-  const source: Parser<(Source | Join)[], string, any> = recursiveParser(() =>
-    sequenceOf([
-      choice([subSource, alphachain]),
-      optionalWhitespace,
-      many(fullJoin).map((parts) =>
-        parts.reduce((acc, part) => acc.concat(part), [])
-      ),
-    ]).map((parts) => {
-      const initialSource: Source =
-        parts[0].type === 'source'
-          ? parts[0]
-          : { type: 'source', value: parts[0], alias: parts[0] };
-      return [initialSource, ...parts[2]];
-    })
-  );
-
-  const fullJoin: Parser<(Join | Source)[], string, any> = sequenceOf([
-    join,
+  const sourcelist: Parser<Source[], string, any> = sequenceOf([
+    char('('),
     optionalWhitespace,
     source,
     optionalWhitespace,
-  ]).map((parts) => [parts[0], ...parts[2]]);
+    many(
+      sequenceOf([
+        char(','),
+        optionalWhitespace,
+        source,
+        optionalWhitespace,
+      ]).map((parts) => parts[2])
+    ),
+    possibly(char(',')),
+    optionalWhitespace,
+    char(')'),
+  ]).map((parts) => [parts[2]].concat(parts[4]));
 
-  const fullFrom: Parser<FullFrom, string, any> = recursiveParser(() =>
+  const dest: Parser<Dest, string, any> = recursiveParser(() =>
     sequenceOf([
-      possibly(source),
-      optionalWhitespace,
-      many(transform),
-      possibly(shape),
-    ])
-  ).map((parts) => ({
-    type: 'from',
-    alias: parts[0]?.length && parts[0][0].type === 'source' ? parts[0][0].alias : undefined,
-    source: parts[0],
-    transforms: parts[2],
-    shape: parts[3],
-  }));
-
-  const from: Parser<From, string, any> = recursiveParser(() =>
-    sequenceOf([
-      possibly(source),
-      optionalWhitespace,
-      many(transform),
-      shape,
-    ]).map((parts) => ({
-      type: 'from',
-      alias: parts[0]?.length && parts[0][0].type === 'source' ? parts[0][0].alias : undefined,
-      source: parts[0],
-      transforms: parts[2],
-      shape: parts[3],
-    }))
-  );
-
-  const model: Parser<Model, string, any> = choice([
-    sequenceOf([
-      char('('),
-      optionalWhitespace,
       possibly(alias),
       optionalWhitespace,
-      alphachain,
+      keyword,
       optionalWhitespace,
-      char(')'),
-    ]).map((parts) => ({
-      type: 'model',
-      alias: parts[2],
-      value: parts[4],
-    })),
-    sequenceOf([
-      optionalWhitespace,
-      possibly(alias),
-      optionalWhitespace,
-      alphachain,
-      optionalWhitespace,
-    ]).map((parts) => ({
-      type: 'model',
-      alias: parts[1],
-      value: parts[3],
-    })),
-  ]);
-
-  const to: Parser<To, string, any> = recursiveParser(() =>
-    sequenceOf([
-      model,
-      optionalWhitespace,
-      many(transform),
+      transforms,
       possibly(shape),
     ]).map((parts) => ({
-      type: 'to',
-      source: parts[0],
-      transforms: parts[2],
-      shape: parts[3],
+      type: 'dest',
+      alias: parts[0] || parts[2],
+      value: parts[2],
+      transforms: parts[4],
+      shape: parts[5],
     }))
   );
 
   const field: Parser<Field, string, any> = sequenceOf([
     possibly(alias),
     optionalWhitespace,
-    choice([from, expr]),
+    choice([source, expr]),
   ]).map((parts) => ({
     type: 'field',
-    alias: parts[0],
+    alias: parts[0] || (parts[2].type === 'source' && parts[2].alias) || null,
     value: parts[2],
   }));
 
@@ -471,52 +382,60 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     fields: parts[2],
   }));
 
-  const select: Parser<Query, string, any> = from.map((value) => ({
-    type: 'query',
-    from: value,
-    modifier: null,
-    to: null,
-  }));
-
-  const modifier = choice([str('-+'), str('->'), str('-x')]) as Parser<
-    Modifier,
-    string,
-    any
-  >;
-
-  const modify: Parser<Query, string, any> = sequenceOf([
-    from,
-    optionalWhitespace,
-    modifier,
-    optionalWhitespace,
-    to,
-  ]).map((parts) => ({
-    type: 'query',
-    from: parts[0],
-    modifier: parts[2],
-    to: parts[4],
-  }));
-
-  const del: Parser<Query, string, any> = sequenceOf([
-    str('->') as Parser<Modifier, string, any>,
-    optionalWhitespace,
-    to,
-  ]).map((parts) => ({
-    type: 'query',
-    from: null,
-    modifier: parts[0],
-    to: parts[2],
-  }));
-
   const query: Parser<Query, string, any> = sequenceOf([
     optionalWhitespace,
-    choice([del, modify, select]),
+    possibly(source),
     optionalWhitespace,
-  ]).map((parts) => parts[1]);
+    possibly(
+      sequenceOf([modifier, optionalWhitespace, dest]).map((parts) => ({
+        modifier: parts[0],
+        dest: parts[2],
+      }))
+    ),
+    optionalWhitespace,
+  ]).map((parts) => ({
+    type: 'query',
+    source: parts[1],
+    modifier: parts[3]?.modifier,
+    dest: parts[3]?.dest,
+  }));
 
-  return function run(str: string) {
-    const out = query.run(str);
+  const parsers = {
+    keyword,
+    dotSequence,
+    alphachain,
+    alias,
+    param,
+    opchar,
+    modifier,
+    exprNoOp,
+    funOrExpr,
+    exprUnary,
+    exprOp,
+    expr,
+    exprlist,
+    transformArg,
+    transformArgs,
+    transform,
+    transforms,
+    source,
+    sourcelist,
+    dest,
+    field,
+    fieldList,
+    shape,
+    query,
+  };
+
+  function run(str: string, parserName: keyof typeof parsers = 'query') {
+    const out= parsers[parserName].run(str);
     if (out.isError === true) throw new Error(out.error);
     else return out.result;
   };
+
+  run.query = function (str: string) {
+    return run(str) as Query;
+  }
+
+  return run;
 }

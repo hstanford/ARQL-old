@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "",
   "main": "dist/index.js",
-  "exports": "./dist/index.js",
+  "exports": "./dist/delegator.js",
   "types": "dist/delegator.d.ts",
   "type": "module",
   "scripts": {
