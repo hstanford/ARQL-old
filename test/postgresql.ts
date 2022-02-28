@@ -1,5 +1,5 @@
 import { Sql, TableWithColumns } from 'sql-ts';
-import type { DataModel } from 'arql-contextualiser';
+import type { ContextualisedQuery, ContextualisedSource, DataModel } from 'arql-contextualiser';
 import { DataSource } from 'arql-contextualiser';
 const sql = new Sql('postgres');
 
@@ -34,11 +34,17 @@ export default class Pg extends DataSource<TableWithColumns<{ [key: string]: any
   }
 
   resolveField(modelName: string, fieldName: string, ...parts: any[]): any {
-    if (parts.length) console.log('Not yet supported');
+    if (parts.length) throw new Error('Not yet supported');
     // TODO: error handling
     const model = this.models.get(modelName);
     let field: any;
     if (model && fieldName in model) field = model[fieldName] as any;
     return model && model[fieldName];
+  }
+
+  async resolve(ast: ContextualisedQuery | ContextualisedSource) {
+    if ((ast as any).name === 'o')
+      return [{id: 1, userId: 1, name: 'foo', stuff: new Date()}];
+    return [{ id: 1, name: 'hello' }];
   }
 }

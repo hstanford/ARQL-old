@@ -18,6 +18,11 @@ cd ../delegator
 npm i
 npm i ../contextualiser
 npm run build
+cd ../native_resolver
+npm i
+npm i ../contextualiser
+npm i ../delegator
+npm run build
 cd ../test
 rm -r node_modules
 rm package-lock.json
@@ -25,5 +30,5 @@ npm i
 npm i ../contextualiser
 npm i ../operations
 npm i ../op_resolver
-npm run try
+npm i ../delegator
 cd ..

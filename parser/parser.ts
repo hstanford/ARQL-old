@@ -54,7 +54,7 @@ export type ExprUnary = SubExpr | FunctionCall | Op;
 
 type SubExpr = Expr | Param | Alphachain;
 
-interface ExprTree {
+export interface ExprTree {
   type: 'exprtree';
   op: string;
   args: ExprUnary[];

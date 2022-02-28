@@ -36,6 +36,10 @@ export abstract class DataSource<ModelType, FieldType> {
     throw new Error('Not implemented');
   }
 
+  async resolve(subquery: ContextualisedQuery | ContextualisedSource): Promise<any> {
+
+  }
+
   implementsOp(opName: string) {
     return this.operators.has(opName);
   }
@@ -122,6 +126,7 @@ export interface ContextualisedTransform {
 
 export interface ContextualisedExpr {
   type: 'exprtree';
+  op: string;
   name?: Alphachain | string;
   fields?: undefined;
   args: (ContextualisedExpr | ContextualisedField)[];
@@ -233,6 +238,8 @@ export class Contextualiser {
 
       contextualisedSource.value = model;
       contextualisedSource.subModels = [model];
+      if (model.fields)
+        contextualisedSource.fields = model.fields; // need contextualising?
       // TODO: fix this hack by passing required fields back down
       contextualisedSource.sources =
         model?.fields?.[0] && model.fields[0].type === 'datafield'
@@ -258,6 +265,7 @@ export class Contextualiser {
         : contextualisedSource.name?.root;
     if (key) context.aliases.set(key, contextualisedSource);
 
+
     let out = contextualisedSource;
     if (source.transforms.length) {
       for (const transform of source.transforms) {
@@ -276,6 +284,11 @@ export class Contextualiser {
               : out.sources.concat([Unresolveable]),
         };
       }
+    }
+
+    for (let field of out.fields) {
+      if (field.type === 'datafield')
+        context.aliases.set(field.name, field);
     }
 
     if (source.shape) {
@@ -333,6 +346,8 @@ export class Contextualiser {
       model = this.models.get(alphachain.root);
     }
 
+    let prevModel: any = model;
+
     if (model?.type === 'source') {
       model = model?.subModels?.[0];
     }
@@ -347,6 +362,8 @@ export class Contextualiser {
         throw new Error(
           `Failed to find model ${JSON.stringify(alphachain)} at part "${part}"`
         );
+      model = { ...model, from: prevModel };
+      prevModel = model;
       if (model.type === 'exprtree' || model.type === 'param')
         throw new Error('Exprtrees and params cannot be used as models');
     }
@@ -373,7 +390,7 @@ export class Contextualiser {
       ),
       args: transform.args.map(
         (arg): ContextualisedField | ContextualisedField[] => {
-          if (arg.type === 'exprtree') return this.getExpression(arg, model);
+          if (arg.type === 'exprtree') return this.getExpression(arg, model, context);
           if (arg.type === 'source') return this.handleSource(arg, context);
           if (arg.type === 'shape') return this.getShape(arg, model, context);
           throw new Error('Unrecognised arg type');
@@ -404,7 +421,7 @@ export class Contextualiser {
     if (field.value?.type === 'source') {
       contextualisedField = this.handleSource(field.value, context);
     } else {
-      contextualisedField = this.getExpression(field.value, model);
+      contextualisedField = this.getExpression(field.value, model, context);
     }
 
     contextualisedField.name = field.alias || contextualisedField.name;
@@ -413,7 +430,8 @@ export class Contextualiser {
 
   getExpression(
     expr: ExprUnary,
-    model: ContextualisedSource
+    model: ContextualisedSource,
+    context: ContextualiserState,
   ): ContextualisedField | ContextualisedExpr {
     if (expr.type === 'alphachain') {
       const parts = [expr.root].concat(expr.parts);
@@ -421,15 +439,19 @@ export class Contextualiser {
       let mod: ContextualisedField = model;
       while (parts.length) {
         const part = parts.shift();
+        if (!part) continue;
         mod = field;
         if (!field.fields) {
           throw new Error(
             `Unable to find nested field ${part} on ${field.name}`
           );
         }
-        const subField: ContextualisedField | undefined = field.fields.find(
+        let subField: ContextualisedField | undefined = field.fields.find(
           (f) => f.name === part
         );
+        if (!subField) {
+          subField = context.aliases.get(part);
+        }
         if (subField) {
           if (subField.type === 'datafield' && field.type === 'source')
             subField.from = field;
@@ -439,7 +461,7 @@ export class Contextualiser {
       return field;
     }
     if (expr.type === 'exprtree') {
-      const args = expr.args.map((arg) => this.getExpression(arg, model));
+      const args = expr.args.map((arg) => this.getExpression(arg, model, context));
       return {
         ...expr,
         args,

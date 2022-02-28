@@ -10,6 +10,7 @@
     "arql-op-resolver": "file:../op_resolver",
     "arql-operations": "file:../operations",
     "arql-parser": "file:../parser",
+    "arql-resolver-native": "file:../resolver_native",
     "sql-ts": "^6.1.0",
     "typescript": "^4.5.5"
   },

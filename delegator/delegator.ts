@@ -23,19 +23,19 @@ export interface DelegatedQueryResult {
   alias?: string;
 }
 
-type DelegatedField =
+export type DelegatedField =
   | DataField
   | DataModel
   | ContextualisedSource
   | ContextualisedExpr
   | ContextualisedParam
   | DelegatedQueryResult;
-interface ResolutionTree {
+export interface ResolutionTree {
   tree: DelegatedQuery | DelegatedQueryResult;
   queries: (ContextualisedQuery | ContextualisedSource)[];
 }
 
-interface DelegatedSource
+export interface DelegatedSource
   extends Modify<
     ContextualisedSource,
     {
@@ -62,7 +62,7 @@ interface DelegatedSource
     }
   > {}
 
-interface DelegatedQuery
+export interface DelegatedQuery
   extends Modify<
     ContextualisedQuery,
     {
@@ -86,6 +86,7 @@ function findSplit(
     return {
       type: 'delegatedQueryResult',
       index: queries.length - 1,
+      alias: typeof ast.name === 'string' ? ast.name : undefined,
     };
   }
 
