@@ -45,7 +45,7 @@ export interface DelegatedSource
         | DataModel
         | DataField
       )[];
-      value?:
+      value:
         | DelegatedSource
         | DelegatedQueryResult
         | ContextualisedSource

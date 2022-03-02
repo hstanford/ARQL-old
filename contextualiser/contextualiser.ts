@@ -28,7 +28,7 @@ export abstract class DataSource<ModelType, FieldType> {
 
   add(def: DataModel) {}
 
-  resolveField(
+  getField(
     modelName: string,
     fieldName: string,
     ...parts: string[]
@@ -36,7 +36,7 @@ export abstract class DataSource<ModelType, FieldType> {
     throw new Error('Not implemented');
   }
 
-  async resolve(subquery: ContextualisedQuery | ContextualisedSource): Promise<any> {
+  async resolve(subquery: ContextualisedQuery | ContextualisedSource, params: any[]): Promise<any> {
 
   }
 
