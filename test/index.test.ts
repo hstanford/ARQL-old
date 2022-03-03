@@ -2,71 +2,31 @@ import mocha from 'mocha';
 const { describe, it } = mocha;
 import { expect } from 'chai';
 
-import buildParser, { Query, ExprTree } from 'arql-parser';
+import buildParser from 'arql-parser';
 import opResolver from 'arql-op-resolver';
-import contextualise, {
-  ContextualisedExpr,
-  ContextualisedQuery,
-  TransformDef,
-} from 'arql-contextualiser';
+import contextualise from 'arql-contextualiser';
 import { getOperatorLookup } from 'arql-operations';
-import models from './models.js';
 import delegator from 'arql-delegator';
-//import Resolver from 'arql-resolver-native';
 import Collector from 'arql-collector';
 
-const transforms: TransformDef[] = [
-  {
-    name: 'filter',
-    modifiers: [],
-    nArgs: 1,
-  },
-  {
-    name: 'sort',
-    modifiers: ['desc', 'asc', 'nullsFirst', 'nullsLast'],
-    nArgs: '1+',
-  },
-  {
-    name: 'join',
-    modifiers: [],
-    nArgs: 1,
-  },
-].map((o) => ({ ...o, type: 'transformdef' }));
+import models from './models.js';
+import { generic, native as nativeConfigurer } from './configuration.js';
 
-const EXPR = Symbol.for('EXPR');
-
-const operators = [
-  {
-    name: 'negation',
-    pattern: ['!', EXPR],
-  },
-  {
-    name: '+',
-    pattern: [EXPR, '+', EXPR],
-  },
-  {
-    name: 'equality',
-    pattern: [EXPR, '=', EXPR],
-  },
-  {
-    name: 'ternary',
-    pattern: [EXPR, '?', EXPR, ':', EXPR],
-  },
-];
-
+const { transforms, operators } = generic();
 const opMap = getOperatorLookup(operators);
 
 // declare this once for multiple parsings
 const resolve = opResolver(opMap);
 
-const run = buildParser(resolve);
+const parser = buildParser(resolve);
 
 const collector = new Collector();
+nativeConfigurer(collector);
 
 describe('can retrieve a join and a reshaping', () => {
   it('Basic name from users', async () => {
     console.time('b');
-    let ast = run.query('users {name}');
+    let ast = parser.query('users {name}');
     const contextualised = contextualise(ast, models, transforms);
     const delegated = delegator(contextualised);
     const data = await collector.run(delegated, []);
@@ -77,7 +37,7 @@ describe('can retrieve a join and a reshaping', () => {
 
   it('Basic aliased name from users', async () => {
     console.time('c');
-    let ast = run.query('users {foo: name}');
+    let ast = parser.query('users {foo: name}');
     const contextualised = contextualise(ast, models, transforms);
     const delegated = delegator(contextualised);
     const data = await collector.run(delegated, []);
@@ -88,7 +48,7 @@ describe('can retrieve a join and a reshaping', () => {
 
   it('Join and reshaping', async () => {
     console.time('a');
-    let ast = run.query(`
+    let ast = parser.query(`
     (
       u: users,
       o: orders,
@@ -107,7 +67,7 @@ describe('can retrieve a join and a reshaping', () => {
 
   it('Basic filtering', async () => {
     console.time('d');
-    let ast = run.query(`
+    let ast = parser.query(`
       elephants | filter(age = $1)
     `);
     const contextualised = contextualise(ast, models, transforms);
@@ -116,5 +76,18 @@ describe('can retrieve a join and a reshaping', () => {
     console.timeEnd('d');
 
     expect(data).to.deep.equal([{ id: 2, age: 39 }]);
+  });
+
+  it('Basic reshaping with no aliasing', async () => {
+    console.time('d');
+    let ast = parser.query(`
+      elephants { elephantAge: age }
+    `);
+    const contextualised = contextualise(ast, models, transforms);
+    const delegated = delegator(contextualised);
+    const data = await collector.run(delegated, [39]);
+    console.timeEnd('d');
+
+    expect(data).to.deep.equal([{ elephantAge: 42 }, { elephantAge: 39 }]);
   });
 });

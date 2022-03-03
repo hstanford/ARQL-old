@@ -7,6 +7,7 @@ import {
   ContextualisedSource,
   DataField,
   DataModel,
+  DataSourceOpts,
 } from 'arql-contextualiser';
 import {
   DelegatedField,
@@ -21,8 +22,8 @@ import Native from 'arql-resolver-native';
 type Transform = (modifiers: string[], ...args: any[]) => Promise<any>;
 
 class Resolver extends Native {
-  constructor() {
-    super([]);
+  constructor(opts?: DataSourceOpts) {
+    super([], opts);
   }
   async run(ast: ResolutionTree, params: any[]) {
     const results = await Promise.all(

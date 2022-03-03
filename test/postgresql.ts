@@ -17,11 +17,6 @@ export default class Pg extends DataSource<TableWithColumns<{ [key: string]: any
       ['filter', () => {}],
       ['sort', () => {}],
     ]);
-    this.combinations = new Map([
-      [null, () => {}],
-      ['?', () => {}],
-      ['!', () => {}],
-    ]);
   }
 
   add(def: DataModel) {

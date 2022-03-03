@@ -5,84 +5,20 @@ import type {
   ContextualisedExpr,
   ContextualisedField,
   DataField,
+  DataSourceOpts,
 } from 'arql-contextualiser';
 import { DataSource } from 'arql-contextualiser';
 
 export default class Native extends DataSource<any, any> {
   transforms: Map<any, any> = new Map();
   data: any;
-  constructor(data: any) {
+  constructor(data: any, opts?: DataSourceOpts) {
     super();
     this.data = data;
-    this.operators = new Map([
-      ['addition', (a, b) => a + b],
-      ['subtraction', (a, b) => a - b],
-      ['negation', (a) => !a],
-      ['equality', (a, b) => a === b],
-      ['ternary', (a, b, c) => (a ? b : c)],
-    ]);
-    this.transforms = new Map([
-      [
-        'join',
-        async (
-          modifiers: string[],
-          values: Map<any, any>,
-          condition: ContextualisedExpr,
-          params: any[],
-        ) => {
-          const vals: any[] = [];
-          const out: Map<any, any> = new Map([[0, vals]]);
-          let i = 0;
-          for (const [alias, model] of values.entries()) {
-            if (i++ > 0) break;
-            for (const [otheralias, othermodel] of values.entries()) {
-              if (alias === otheralias) continue;
-              for (const row of model) {
-                const matching = othermodel.filter((r: any) => {
-                  return this.resolveExpr(
-                    condition,
-                    new Map([
-                      [alias, row],
-                      [otheralias, r],
-                    ]),
-                    params,
-                  );
-                });
-                for (let m of matching) {
-                  vals.push({ ...m, ...row, [alias]: row, [otheralias]: m });
-                }
-              }
-            }
-          }
-          return out;
-        },
-      ],
-      [
-        'filter',
-        async (
-          modifiers: string[],
-          values: Map<any, any>,
-          condition: ContextualisedExpr,
-          params: any[],
-        ) => {
-          return new Map(
-            [...values.entries()].map(([k, v]) => {
-              return [
-                k,
-                v.filter((r: any) =>
-                  this.resolveExpr(condition, new Map([[k, r]]), params)
-                ),
-              ];
-            })
-          );
-        },
-      ],
-    ]);
-    this.combinations = new Map([
-      [null, () => {}],
-      ['?', () => {}],
-      ['!', () => {}],
-    ]);
+    if (opts) {
+      this.operators = opts.operators;
+      this.transforms = opts.transforms;
+    }
   }
 
   add(def: DataModel) {
@@ -98,6 +34,7 @@ export default class Native extends DataSource<any, any> {
       } else if (arg.type === 'param') {
         return params[arg.index - 1];
       } else throw new Error('Not implemented');
+      // TODO: handle DataModel and ContextualisedSource
     });
     const opFn = this.operators.get(expr.op);
     if (!opFn) throw new Error(`Couldn't find operator ${expr.op}`);
@@ -173,7 +110,7 @@ export default class Native extends DataSource<any, any> {
         source.transform.modifier,
         values,
         ...source.transform.args,
-        params,
+        params
       );
     }
     let value = [...values.entries()][0]?.[1];
@@ -229,19 +166,21 @@ export default class Native extends DataSource<any, any> {
         : '?';
 
       let data = item;
+      // handle potential field overlap by grabbing data from
+      // aliased fields
       if (
         !Array.isArray(field.value) &&
         field.value.type === 'datafield' &&
-        typeof field.value.from?.name === 'string'
+        typeof field.value.from?.name === 'string' &&
+        field.value.from.name in data
       ) {
         data = data[field.value.from?.name];
       }
       return [key, await this.resolveSources(field, data, results, params)];
-    }
-    else if (field.type === 'param') {
+    } else if (field.type === 'param') {
       return [field.name || '', params[field.index]];
     }
-    // ... handle more field types
+    // ... TODO handle more field types
     else {
       throw new Error(`Not yet implemented: ${field.type}`);
     }

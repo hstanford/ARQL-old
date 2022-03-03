@@ -18,13 +18,16 @@ import type {
 
 type operatorOp = (...args: any[]) => any;
 type transformFn = (...args: any[]) => any;
-type combinationFn = (...args: any[]) => any;
+
+export interface DataSourceOpts {
+  operators: Map<string, (...args: any[]) => any>,
+  transforms: Map<string, (...args: any[]) => any>
+}
 
 export abstract class DataSource<ModelType, FieldType> {
   models: Map<string, ModelType> = new Map();
   operators: Map<string, operatorOp> = new Map();
   transforms: Map<string, transformFn> = new Map();
-  combinations: Map<string | null, combinationFn> = new Map();
 
   add(def: DataModel) {}
 
