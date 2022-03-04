@@ -70,8 +70,11 @@ class Resolver extends Native {
   }
 
   async resolveField(field: DelegatedField, item: any, results: any[], params: any[]) {
-    // TODO: handle delegatedQueryResults
-    return super.resolveField(field as ContextualisedField, item, results, params);
+    if (field.type === 'delegatedQueryResult') {
+      return [field.alias || '', results[field.index]] as [string, any];
+    } else {
+      return super.resolveField(field, item, results, params);
+    }
   }
 }
 

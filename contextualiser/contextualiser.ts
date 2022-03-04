@@ -393,10 +393,10 @@ export class Contextualiser {
       ),
       args: transform.args.map(
         (arg): ContextualisedField | ContextualisedField[] => {
-          if (arg.type === 'exprtree') return this.getExpression(arg, model, context);
+          if (arg.type === 'exprtree' || arg.type === 'alphachain') return this.getExpression(arg, model, context);
           if (arg.type === 'source') return this.handleSource(arg, context);
           if (arg.type === 'shape') return this.getShape(arg, model, context);
-          throw new Error('Unrecognised arg type');
+          throw new Error(`Unrecognised arg type`);
         }
       ),
       sources: [],

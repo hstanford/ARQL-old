@@ -1,4 +1,8 @@
-import type { ContextualisedExpr, TransformDef } from 'arql-contextualiser';
+import type {
+  ContextualisedExpr,
+  TransformDef,
+  DataField,
+} from 'arql-contextualiser';
 
 import type Native from 'arql-resolver-native';
 
@@ -10,14 +14,22 @@ export function native(source: Native) {
     ['equality', (a, b) => a === b],
     ['ternary', (a, b, c) => (a ? b : c)],
   ]);
-  source.transforms = new Map([
+  source.transforms = new Map<
+    string,
+    (
+      modifiers: string[],
+      params: any[],
+      values: Map<any, any>,
+      ...args: any[]
+    ) => Promise<Map<any, any>>
+  >([
     [
       'join',
       async (
         modifiers: string[],
+        params: any[],
         values: Map<any, any>,
-        condition: ContextualisedExpr,
-        params: any[]
+        condition: ContextualisedExpr
       ) => {
         const vals: any[] = [];
         const out: Map<any, any> = new Map([[0, vals]]);
@@ -50,9 +62,9 @@ export function native(source: Native) {
       'filter',
       async (
         modifiers: string[],
+        params: any[],
         values: Map<any, any>,
-        condition: ContextualisedExpr,
-        params: any[]
+        condition: ContextualisedExpr
       ) => {
         return new Map(
           [...values.entries()].map(([k, v]) => {
@@ -64,6 +76,36 @@ export function native(source: Native) {
             ];
           })
         );
+      },
+    ],
+    [
+      'sort',
+      async (
+        modifiers: string[],
+        params: any[],
+        values: Map<any, any[]>,
+        ...fields: DataField[]
+      ) => {
+        const data = [...values.entries()][0][1];
+        const compareFn = (v1: any, v2: any) => {
+          let isGreater = 0;
+          for (let field of fields) {
+            isGreater =
+              isGreater ||
+              (v1[field.name] > v2[field.name]
+                ? 1
+                : v1[field.name] < v2[field.name]
+                ? -1
+                : 0);
+          }
+          return modifiers.includes('desc') ? -isGreater : isGreater;
+        };
+        return new Map([
+          [
+            0,
+            data.sort(compareFn),
+          ]
+        ]);
       },
     ],
   ]);

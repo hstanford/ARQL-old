@@ -12,6 +12,7 @@ import { DataSource } from 'arql-contextualiser';
 export default class Native extends DataSource<any, any> {
   transforms: Map<any, any> = new Map();
   data: any;
+  params: any[] = [];
   constructor(data: any, opts?: DataSourceOpts) {
     super();
     this.data = data;
@@ -108,9 +109,9 @@ export default class Native extends DataSource<any, any> {
       }
       values = await transform(
         source.transform.modifier,
+        params,
         values,
         ...source.transform.args,
-        params
       );
     }
     let value = [...values.entries()][0]?.[1];

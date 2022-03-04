@@ -77,7 +77,17 @@ function findSplit(
 ): DelegatedSource | DelegatedQueryResult {
   // if the ast only has one data source, add that
   if (ast.type === 'datamodel') {
-    throw new Error('Cannot delegate data model on its own');
+    queries.push({
+      type: 'source',
+      value: ast,
+      fields: [],
+      sources: [ast.fields[0]?.source].filter((i) => !!i),
+    });
+    return {
+      type: 'delegatedQueryResult',
+      index: queries.length - 1,
+      alias: ast.name,
+    };
   } else if (ast.type === 'datafield') {
     throw new Error('Cannot Delegate data field on its own');
   }
@@ -106,7 +116,11 @@ function findSplit(
             field.sources.some((source) => inShapeNotInSource.includes(source))
           ) {
             queries.push(field);
-            return { type: 'delegatedQueryResult', index: queries.length - 1 };
+            return {
+              type: 'delegatedQueryResult',
+              index: queries.length - 1,
+              alias: typeof field.name === 'string' ? field.name : undefined,
+            };
           }
           return field;
         } else if (field.type === 'exprtree') {

@@ -25,29 +25,29 @@ nativeConfigurer(collector);
 
 describe('can retrieve a join and a reshaping', () => {
   it('Basic name from users', async () => {
-    console.time('b');
+    console.time('a');
     let ast = parser.query('users {name}');
     const contextualised = contextualise(ast, models, transforms);
     const delegated = delegator(contextualised);
     const data = await collector.run(delegated, []);
-    console.timeEnd('b');
+    console.timeEnd('a');
 
     expect(data).to.deep.equal([{ name: 'hello' }]);
   });
 
   it('Basic aliased name from users', async () => {
-    console.time('c');
+    console.time('b');
     let ast = parser.query('users {foo: name}');
     const contextualised = contextualise(ast, models, transforms);
     const delegated = delegator(contextualised);
     const data = await collector.run(delegated, []);
-    console.timeEnd('c');
+    console.timeEnd('b');
 
     expect(data).to.deep.equal([{ foo: 'hello' }]);
   });
 
   it('Join and reshaping', async () => {
-    console.time('a');
+    console.time('c');
     let ast = parser.query(`
     (
       u: users,
@@ -60,7 +60,7 @@ describe('can retrieve a join and a reshaping', () => {
     const contextualised = contextualise(ast, models, transforms);
     const delegated = delegator(contextualised);
     const data = await collector.run(delegated, []);
-    console.timeEnd('a');
+    console.timeEnd('c');
 
     expect(data).to.deep.equal([{ username: 'hello', ordername: 'foo' }]);
   });
@@ -79,15 +79,59 @@ describe('can retrieve a join and a reshaping', () => {
   });
 
   it('Basic reshaping with no aliasing', async () => {
-    console.time('d');
+    console.time('e');
     let ast = parser.query(`
       elephants { elephantAge: age }
     `);
     const contextualised = contextualise(ast, models, transforms);
     const delegated = delegator(contextualised);
     const data = await collector.run(delegated, [39]);
-    console.timeEnd('d');
+    console.timeEnd('e');
 
     expect(data).to.deep.equal([{ elephantAge: 42 }, { elephantAge: 39 }]);
+  });
+
+  it('Basic sort with modifier', async () => {
+    console.time('f');
+    let ast = parser.query(`
+      elephants | sort.desc(age) { age }
+    `);
+    const contextualised = contextualise(ast, models, transforms);
+    const delegated = delegator(contextualised);
+    const data = await collector.run(delegated, []);
+    console.timeEnd('f');
+
+    expect(data).to.deep.equal([{ age: 42 }, { age: 39 }]);
+  });
+
+  it('Basic sort with opposite modifier', async () => {
+    console.time('g');
+    let ast = parser.query(`
+      elephants | sort.asc(age) { age }
+    `);
+    const contextualised = contextualise(ast, models, transforms);
+    const delegated = delegator(contextualised);
+    const data = await collector.run(delegated, []);
+    console.timeEnd('g');
+
+    expect(data).to.deep.equal([{ age: 39 }, { age: 42 }]);
+  });
+
+  it('Join in shape', async () => {
+    console.time('h');
+    let ast = parser.query(`
+      u: users {
+        id,
+        orders | filter(u.id = orders.userId) {
+          name
+        }
+      }
+    `);
+    const contextualised = contextualise(ast, models, transforms);
+    const delegated = delegator(contextualised);
+    const data = await collector.run(delegated, []);
+    console.timeEnd('h');
+
+    expect(data).to.deep.equal([{ id: 1, orders: [{name: 'foo'}] }]);
   });
 });
