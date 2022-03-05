@@ -1,7 +1,7 @@
 {
-  "name": "arql",
+  "name": "arql-monorepo",
   "version": "1.0.0",
-  "description": "Abstract Relational Query Language",
+  "description": "Abstract Relational Query Language - Monorepo",
   "main": "index.js",
   "directories": {
     "test": "test"
@@ -11,7 +11,9 @@
   },
   "devDependencies": {},
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "cd ./main && npm run test && cd ../test && npm run test && cd ..",
+    "install": "cd ./main && npm i && npm run build && cd ../test && npm i && cd ..",
+    "rebuild": "cd ./main && npm run build && cd ../test && npm i ../main && cd .."
   },
   "repository": {
     "type": "git",

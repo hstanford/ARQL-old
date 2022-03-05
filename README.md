@@ -2,6 +2,23 @@
 
 Abstract Relational Query Language
 
+## Development
+
+To install dependencies and build ARQL:
+```
+npm run install
+```
+
+To run the tests:
+```
+npm run test
+```
+
+To reinstall arql to the test dir after changes:
+```
+npm run rebuild
+```
+
 ## Why not [existing solution]
 
 REST is too prescriptive of what data is returned, most other http query languages rely too much on query string filtering which is awkward. GraphQL forces a switch to a graphical worldview of your domain data while you may want to consider data access across models to be relational. Additionally, graphql is very prescriptive with its application-driven resolvers and lack of native support for database-level join operations.
