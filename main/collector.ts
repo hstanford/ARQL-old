@@ -3,25 +3,24 @@
 // 2. feed the ast through the native resolver, replacing the delegated queries with data
 //    also support in-memory data access for fields whose source is the native resolver
 import {
-  ContextualisedField,
   ContextualisedSource,
   DataField,
   DataModel,
   DataSourceOpts,
-} from 'arql-contextualiser';
+} from './types.js';
 import {
   DelegatedField,
   DelegatedQuery,
   DelegatedSource,
   DelegatedQueryResult,
   ResolutionTree,
-} from 'arql-delegator';
+} from './delegator';
 
-import Native from 'arql-resolver-native';
+import Native from './native';
 
 type Transform = (modifiers: string[], ...args: any[]) => Promise<any>;
 
-class Resolver extends Native {
+export default class Collector extends Native {
   constructor(opts?: DataSourceOpts) {
     super([], opts);
   }
@@ -77,5 +76,3 @@ class Resolver extends Native {
     }
   }
 }
-
-export default Resolver;

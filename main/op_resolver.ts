@@ -1,5 +1,4 @@
-import { RankedOperator } from 'arql-operations';
-import type { ExprUnary } from 'arql-parser';
+import type { ExprUnary, RankedOperator } from './types.js';
 
 function indexOfSymbol(arr: ExprUnary[], symbol: string) {
   for (let i = 0; i < arr.length; i++) {
@@ -20,7 +19,6 @@ function match(expr: ExprUnary[], op: RankedOperator) {
   const initExprOffset = indexOfSymbol(expr, initial);
   const pOffset = initExprOffset - initPatternOffset;
   if (pOffset < 0 || pOffset + op.pattern.length > expr.length) {
-    console.error(pOffset, op.pattern, expr, initial, initExprOffset);
     throw new Error(`Operator "${initial}" does not match`);
   }
 

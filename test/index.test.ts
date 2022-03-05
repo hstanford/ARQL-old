@@ -2,12 +2,14 @@ import mocha from 'mocha';
 const { describe, it } = mocha;
 import { expect } from 'chai';
 
-import buildParser from 'arql-parser';
-import opResolver from 'arql-op-resolver';
-import contextualise from 'arql-contextualiser';
-import { getOperatorLookup } from 'arql-operations';
-import delegator from 'arql-delegator';
-import Collector from 'arql-collector';
+import { 
+  buildParser,
+  opResolver,
+  contextualise,
+  getOperatorLookup,
+  delegator,
+  Collector,
+} from 'arql';
 
 import models from './models.js';
 import { generic, native as nativeConfigurer } from './configuration.js';

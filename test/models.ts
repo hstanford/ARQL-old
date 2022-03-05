@@ -1,5 +1,4 @@
-import Native from 'arql-resolver-native';
-import type { DataModel } from 'arql-contextualiser';
+import { Native, DataModel } from 'arql';
 import { native as nativeConfigurer } from './configuration.js';
 
 const mainDb = new Native({

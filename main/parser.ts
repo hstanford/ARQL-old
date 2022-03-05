@@ -13,106 +13,24 @@ import {
   Parser,
 } from 'arcsecond';
 
-type OpChar =
-  | '+'
-  | '-'
-  | '*'
-  | '/'
-  | '<'
-  | '>'
-  | '='
-  | '~'
-  | '!'
-  | '@'
-  | '#'
-  | '%'
-  | '^'
-  | '&'
-  | '`'
-  | '?'
-  | ':'
-  | '|';
-
-export interface Alphachain {
-  type: 'alphachain';
-  root: string;
-  parts: string[];
-}
-
-export interface Param {
-  type: 'param';
-  index: number;
-}
-
-export interface Op {
-  type: 'op';
-  symbol: string;
-}
-
-export type Expr = ExprTree | Param | Alphachain;
-export type ExprUnary = SubExpr | FunctionCall | Op;
-
-type SubExpr = Expr | Param | Alphachain;
-
-export interface ExprTree {
-  type: 'exprtree';
-  op: string;
-  args: ExprUnary[];
-}
-
-interface FunctionCall {
-  type: 'function';
-  expr: Expr;
-  args: Expr[];
-}
-
-export interface Transform {
-  type: 'transform';
-  description: Alphachain;
-  args: (Expr | Shape | Source)[];
-}
-
-export interface Source {
-  type: 'source';
-  alias: string | undefined;
-  value: Alphachain | Source[];
-  transforms: Transform[];
-  shape: Shape | null;
-}
-
-export interface Model {
-  type: 'model';
-  alias: string | null;
-  value: Alphachain;
-}
-
-export interface Dest {
-  type: 'dest';
-  alias: string | null;
-  transforms: Transform[];
-  shape: Shape | null;
-  value: string;
-}
-
-export interface Field {
-  type: 'field';
-  alias: string | null;
-  value: Source | Expr;
-}
-
-export interface Shape {
-  type: 'shape';
-  fields: Field[];
-}
-
-export interface Query {
-  type: 'query';
-  source: Source | null;
-  modifier: Modifier | undefined;
-  dest: Dest | undefined;
-}
-
-export type Modifier = '->' | '-+' | '-x';
+import type {
+  Alphachain,
+  Param,
+  OpChar,
+  Op,
+  Modifier,
+  SubExpr,
+  FunctionCall,
+  ExprUnary,
+  Expr,
+  ExprTree,
+  Shape,
+  Source,
+  Transform,
+  Dest,
+  Field,
+  Query
+} from './types.js';
 
 export default function buildParser(opResolver = (expr: any) => expr) {
   const keyword: Parser<string, string, any> = regex(/^[a-zA-Z][a-zA-Z0-9]*/);

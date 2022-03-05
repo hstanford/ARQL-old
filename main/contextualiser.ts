@@ -5,167 +5,29 @@
 
 import type {
   Alphachain,
+  ContextualisedExpr,
+  ContextualisedField,
+  ContextualisedParam,
+  ContextualisedQuery,
+  ContextualisedSource,
+  ContextualisedTransform,
+  ContextualiserState,
+  DataField,
+  DataModel,
+  DataSource,
   Dest,
+  ExprUnary,
   Field,
-  Model,
-  Modifier,
   Query,
-  Transform,
   Shape,
   Source,
-  ExprUnary,
-} from 'arql-parser';
+  Transform,
+  TransformDef,
+} from './types.js';
 
-type operatorOp = (...args: any[]) => any;
-type transformFn = (...args: any[]) => any;
+import { Unresolveable, combine } from './sources.js';
 
-export interface DataSourceOpts {
-  operators: Map<string, (...args: any[]) => any>,
-  transforms: Map<string, (...args: any[]) => any>
-}
-
-export abstract class DataSource<ModelType, FieldType> {
-  models: Map<string, ModelType> = new Map();
-  operators: Map<string, operatorOp> = new Map();
-  transforms: Map<string, transformFn> = new Map();
-
-  add(def: DataModel) {}
-
-  getField(
-    modelName: string,
-    fieldName: string,
-    ...parts: string[]
-  ): ModelType | FieldType {
-    throw new Error('Not implemented');
-  }
-
-  async resolve(subquery: ContextualisedQuery | ContextualisedSource, params: any[]): Promise<any> {
-
-  }
-
-  implementsOp(opName: string) {
-    return this.operators.has(opName);
-  }
-
-  implementsTransform(transform: ContextualisedTransform) {
-    return this.transforms.has(transform.name); // TODO: make it check modifiers and args
-  }
-}
-
-export class UnresolveableSource extends DataSource<any, any> {}
-
-export type dataType = 'string' | 'number' | 'boolean' | 'json';
-export type ContextualisedField =
-  | DataField
-  | DataModel
-  | ContextualisedSource
-  | ContextualisedExpr
-  | ContextualisedParam;
-
-export interface DataField {
-  type: 'datafield';
-  name: string;
-  datatype: dataType;
-  fields?: DataField[];
-  source: DataSource<any, any>;
-  model?: DataModel;
-  from?: ContextualisedSource;
-}
-
-export interface ContextualisedParam {
-  index: number;
-  type: 'param';
-  name?: string | undefined;
-  fields?: undefined;
-}
-
-export interface DataModel {
-  type: 'datamodel';
-  name: string;
-  fields: DataField[];
-}
-
-export interface TransformDef {
-  type: 'transformdef';
-  name: string;
-  modifiers?: string[];
-  nArgs: string | number;
-}
-
-export interface ContextualiserState {
-  aliases: Map<string, ContextualisedSource | DataModel | DataField>;
-}
-
-export interface ContextualisedQuery {
-  type: 'query';
-  source?: ContextualisedSource;
-  dest?: ContextualisedSource;
-  modifier?: Modifier;
-  sources: DataSource<any, any>[];
-}
-
-export interface ContextualisedSource {
-  type: 'source';
-  value:
-    | (DataModel | ContextualisedSource | DataField)[]
-    | DataModel
-    | ContextualisedSource
-    | DataField;
-  fields: ContextualisedField[];
-  name?: Alphachain | string;
-  subModels?: (DataModel | ContextualisedSource | DataField)[];
-  shape?: ContextualisedField[];
-  sources: DataSource<any, any>[];
-  transform?: ContextualisedTransform;
-}
-
-export interface ContextualisedTransform {
-  type: 'transform';
-  name: string;
-  modifier: string[];
-  args: (ContextualisedField | ContextualisedExpr | ContextualisedField[])[];
-  sources: DataSource<any, any>[];
-}
-
-export interface ContextualisedExpr {
-  type: 'exprtree';
-  op: string;
-  name?: Alphachain | string;
-  fields?: undefined;
-  args: (ContextualisedExpr | ContextualisedField)[];
-  sources: DataSource<any, any>[];
-}
-
-function uniq<T>(arr: T[]) {
-  return arr.filter(
-    (field, idx, self) => idx === self.findIndex((f2) => f2 === field)
-  );
-}
-
-function uniqBy<T>(arr: T[], key: keyof T) {
-  return arr.filter(
-    (field, idx, self) => idx === self.findIndex((f2) => f2[key] === field[key])
-  );
-}
-
-export function combineSources(fields: ContextualisedField[]) {
-  return fields.reduce((acc, m) => {
-    let sources: DataSource<any, any>[] = [];
-    if (m.type === 'datafield') {
-      sources = [m.source];
-    } else if (m.type === 'datamodel') {
-      sources = uniq(m.fields.map((f) => f.source));
-    } else if (m.type === 'param') {
-      sources = [];
-    } else {
-      sources = m.sources;
-    }
-    return acc.concat(sources);
-  }, [] as DataSource<any, any>[]);
-}
-
-// singleton for uniqueness detection
-export const Unresolveable = new UnresolveableSource();
+import { uniq, uniqBy } from './util.js';
 
 export class Contextualiser {
   models: Map<string, DataModel>;
@@ -221,7 +83,7 @@ export class Contextualiser {
       'name'
     );
     contSource.name = (sources[0] || contSource.subModels?.[0])?.name;
-    contSource.sources = uniq(combineSources(contSource.subModels));
+    contSource.sources = uniq(combine(contSource.subModels));
   }
 
   handleSource(source: Source, context: ContextualiserState) {
@@ -241,8 +103,7 @@ export class Contextualiser {
 
       contextualisedSource.value = model;
       contextualisedSource.subModels = [model];
-      if (model.fields)
-        contextualisedSource.fields = model.fields; // need contextualising?
+      if (model.fields) contextualisedSource.fields = model.fields; // need contextualising?
       // TODO: fix this hack by passing required fields back down
       contextualisedSource.sources =
         model?.fields?.[0] && model.fields[0].type === 'datafield'
@@ -268,7 +129,6 @@ export class Contextualiser {
         : contextualisedSource.name?.root;
     if (key) context.aliases.set(key, contextualisedSource);
 
-
     let out = contextualisedSource;
     if (source.transforms.length) {
       for (const transform of source.transforms) {
@@ -290,8 +150,7 @@ export class Contextualiser {
     }
 
     for (let field of out.fields) {
-      if (field.type === 'datafield')
-        context.aliases.set(field.name, field);
+      if (field.type === 'datafield') context.aliases.set(field.name, field);
     }
 
     if (source.shape) {
@@ -299,7 +158,7 @@ export class Contextualiser {
     } else {
       out.shape = out.fields;
     }
-    out.sources = uniq(out.sources.concat(combineSources(out.shape)));
+    out.sources = uniq(out.sources.concat(combine(out.shape)));
 
     return out;
   }
@@ -335,7 +194,7 @@ export class Contextualiser {
     }
     if (dest.shape) {
       out.shape = this.getShape(dest.shape, out, context);
-      out.sources = uniq(out.sources.concat(combineSources(out.shape)));
+      out.sources = uniq(out.sources.concat(combine(out.shape)));
     }
     return contextualisedDest;
   }
@@ -393,7 +252,8 @@ export class Contextualiser {
       ),
       args: transform.args.map(
         (arg): ContextualisedField | ContextualisedField[] => {
-          if (arg.type === 'exprtree' || arg.type === 'alphachain') return this.getExpression(arg, model, context);
+          if (arg.type === 'exprtree' || arg.type === 'alphachain')
+            return this.getExpression(arg, model, context);
           if (arg.type === 'source') return this.handleSource(arg, context);
           if (arg.type === 'shape') return this.getShape(arg, model, context);
           throw new Error(`Unrecognised arg type`);
@@ -434,7 +294,7 @@ export class Contextualiser {
   getExpression(
     expr: ExprUnary,
     model: ContextualisedSource,
-    context: ContextualiserState,
+    context: ContextualiserState
   ): ContextualisedField | ContextualisedExpr {
     if (expr.type === 'alphachain') {
       const parts = [expr.root].concat(expr.parts);
@@ -464,11 +324,13 @@ export class Contextualiser {
       return field;
     }
     if (expr.type === 'exprtree') {
-      const args = expr.args.map((arg) => this.getExpression(arg, model, context));
+      const args = expr.args.map((arg) =>
+        this.getExpression(arg, model, context)
+      );
       return {
         ...expr,
         args,
-        sources: combineSources(args),
+        sources: combine(args),
       };
     }
     if (expr.type === 'param') {

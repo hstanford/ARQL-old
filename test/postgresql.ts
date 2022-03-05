@@ -1,6 +1,6 @@
 import { Sql, TableWithColumns } from 'sql-ts';
-import type { ContextualisedQuery, ContextualisedSource, DataModel } from 'arql-contextualiser';
-import { DataSource } from 'arql-contextualiser';
+import type { ContextualisedQuery, ContextualisedSource, DataModel } from 'arql';
+import { DataSource } from 'arql';
 const sql = new Sql('postgres');
 
 export default class Pg extends DataSource<TableWithColumns<{ [key: string]: any }>, any> {

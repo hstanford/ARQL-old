@@ -2,9 +2,8 @@ import type {
   ContextualisedExpr,
   TransformDef,
   DataField,
-} from 'arql-contextualiser';
-
-import type Native from 'arql-resolver-native';
+  Native,
+} from 'arql';
 
 export function native(source: Native) {
   source.operators = new Map([

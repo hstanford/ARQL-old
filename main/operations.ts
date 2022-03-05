@@ -1,3 +1,4 @@
+import type { Operator, RankedOperator } from './types.js';
 export const EXPR = Symbol('EXPR');
 
 // operators must be +-*/<>=~!@£#%^&|`?:
@@ -18,15 +19,6 @@ const baseOperators = [
   },
 ];
 */
-
-export interface Operator {
-  name: string;
-  pattern: (symbol | string)[];
-}
-
-export interface RankedOperator extends Operator {
-  rank: number;
-}
 
 export function getOperatorLookup(
   operators: Operator[]

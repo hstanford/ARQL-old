@@ -6,11 +6,14 @@ import type {
   ContextualisedField,
   DataField,
   DataSourceOpts,
-} from 'arql-contextualiser';
-import { DataSource } from 'arql-contextualiser';
+  operatorOp,
+  transformFn,
+} from './types';
+import { DataSource } from './types';
 
 export default class Native extends DataSource<any, any> {
-  transforms: Map<any, any> = new Map();
+  transforms: Map<string, transformFn> = new Map();
+  operators: Map<string, operatorOp> = new Map();
   data: any;
   params: any[] = [];
   constructor(data: any, opts?: DataSourceOpts) {

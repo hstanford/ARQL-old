@@ -5,10 +5,9 @@ import type {
   ContextualisedSource,
   DataModel,
   DataField,
-  ContextualisedField,
-} from 'arql-contextualiser';
+} from './types.js';
 
-import { combineSources, Unresolveable } from 'arql-contextualiser';
+import { combine } from './sources.js';
 
 function uniq<T>(arr: T[]) {
   return arr.filter(
@@ -103,8 +102,8 @@ function findSplit(
   let shape: DelegatedField[] | undefined = ast.shape;
   // if shape has data sources that "sources" is missing, split off
   if (ast.shape) {
-    const sourceDataSources = uniq(combineSources(ast.subModels || []));
-    const shapeDataSources = uniq(combineSources(ast.shape || []));
+    const sourceDataSources = uniq(combine(ast.subModels || []));
+    const shapeDataSources = uniq(combine(ast.shape || []));
     const inShapeNotInSource = shapeDataSources.filter(
       (source) => !sourceDataSources.includes(source)
     );
