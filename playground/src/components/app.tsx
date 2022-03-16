@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Button, Grid, TextField } from '@mui/material';
 
-import { 
+import {
   buildParser,
   opResolver,
   contextualise,
@@ -24,11 +24,11 @@ const parser = buildParser(resolve);
 const collector = new Collector();
 nativeConfigurer(collector);
 
-export default function App () {
+export default function App() {
   const [content, setContent] = React.useState('');
   const [results, setResults] = React.useState('');
-  const [param, setParam] = React.useState('');
-  const [params, setParams] = React.useState([]);
+  const [param, setParam] = React.useState<any>('');
+  const [params, setParams] = React.useState<any[]>([]);
   const [error, setError] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>();
   const textFieldRef = React.useRef<HTMLInputElement>();
@@ -41,8 +41,7 @@ export default function App () {
         const delegated = delegator(contextualised);
         const data = await collector.run(delegated, params);
         setResults(JSON.stringify(data, null, 2));
-        if (error)
-          setError(false);
+        if (error) setError(false);
       } catch (e) {
         if (content) {
           setResults(e);
@@ -69,9 +68,13 @@ export default function App () {
           height: '100%',
         }}
       >
-        <Grid container spacing={2} sx={{height: '50%', overflow: 'hidden', padding: '8px'}}>
-          <Grid item xs={9} sx={{height: '100%'}}>
-            <Box sx={{height: '100%', overflow: 'scroll'}}>
+        <Grid
+          container
+          spacing={2}
+          sx={{ height: '50%', overflow: 'hidden', padding: '8px' }}
+        >
+          <Grid item xs={9} sx={{ height: '100%' }}>
+            <Box sx={{ height: '100%', overflow: 'scroll' }}>
               <TextField
                 multiline
                 fullWidth
@@ -80,7 +83,8 @@ export default function App () {
                 onKeyDown={function (e) {
                   if (e.key === 'Tab') {
                     e.preventDefault();
-                    const pos: number = inputRef.current?.selectionStart || content.length;
+                    const pos: number =
+                      inputRef.current?.selectionStart || content.length;
                     const split = [content.slice(0, pos), content.slice(pos)];
                     setContent(split.join('  '));
                     setTimeout(() => {
@@ -100,42 +104,56 @@ export default function App () {
                 inputProps={{
                   ref: inputRef,
                   sx: {
-                    fontFamily: 'PT Mono'
-                  }
+                    fontFamily: 'PT Mono',
+                  },
                 }}
               />
             </Box>
           </Grid>
           <Grid item xs={3}>
-            <Box>
-              PARAMS
-            </Box>
+            <Box>PARAMS</Box>
             {params.map((p, i) => {
               return (
-                <Box sx={{display: 'flex', marginBottom: '4px'}}>
-                  <TextField size="small" key={i} disabled value={p}/>
+                <Box sx={{ display: 'flex', marginBottom: '4px' }}>
+                  <TextField size="small" key={i} disabled value={p} />
                   <Button
-                    sx={{marginLeft: '4px'}}
-                    variant='outlined'
-                    onClick={() => setParams(params.slice(0, i).concat(params.slice(i + 1)))}
-                  >X</Button>
+                    sx={{ marginLeft: '4px' }}
+                    variant="outlined"
+                    onClick={() =>
+                      setParams(params.slice(0, i).concat(params.slice(i + 1)))
+                    }
+                  >
+                    X
+                  </Button>
                 </Box>
               );
             })}
-            <Box sx={{display: 'flex', marginBottom: '4px'}}>
-              <TextField size="small" value={param} onChange={(e) => setParam(e.target.value)}/>
+            <Box sx={{ display: 'flex', marginBottom: '4px' }}>
+              <TextField
+                size="small"
+                value={param}
+                onChange={(e) =>
+                  setParam(
+                    isNaN(e.target.value as any)
+                      ? e.target.value
+                      : parseFloat(e.target.value)
+                  )
+                }
+              />
               <Button
-                sx={{marginLeft: '4px'}}
-                variant='outlined'
+                sx={{ marginLeft: '4px' }}
+                variant="outlined"
                 onClick={() => {
                   setParams(params.concat([param]));
                   setParam('');
                 }}
-              >Add</Button>
+              >
+                Add
+              </Button>
             </Box>
           </Grid>
         </Grid>
-        <Box sx={{height: '50%', overflow: 'scroll', padding: '8px'}}>
+        <Box sx={{ height: '50%', overflow: 'scroll', padding: '8px' }}>
           <TextField
             ref={textFieldRef}
             multiline
@@ -152,8 +170,8 @@ export default function App () {
             }}
             inputProps={{
               sx: {
-                fontFamily: 'PT Mono'
-              }
+                fontFamily: 'PT Mono',
+              },
             }}
           />
         </Box>

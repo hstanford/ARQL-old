@@ -11,6 +11,8 @@ import {
   regex,
   sequenceOf,
   Parser,
+  lookAhead,
+  sepBy,
 } from 'arcsecond';
 
 import type {
@@ -29,7 +31,7 @@ import type {
   Transform,
   Dest,
   Field,
-  Query
+  Query,
 } from './types.js';
 
 export default function buildParser(opResolver = (expr: any) => expr) {
@@ -89,6 +91,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
       ]).map((parts) => parts[2]),
       param,
       alphachain,
+      source, // TODO: this will get messed up by alphachain: fix
     ]);
   });
 
@@ -115,38 +118,48 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     )
   );
 
-  const exprUnary: Parser<ExprUnary[], string, any> = recursiveParser(() =>
-    choice([
-      sequenceOf([
-        op,
-        optionalWhitespace,
-        exprUnary,
-        optionalWhitespace,
-        many(sequenceOf([op, optionalWhitespace]).map((parts) => parts[0])),
-      ]).map((parts) => [parts[0], ...parts[2], ...parts[4]]),
-      sequenceOf([
-        optionalWhitespace,
-        funOrExpr,
-        optionalWhitespace,
-        many(sequenceOf([op, optionalWhitespace]).map((parts) => parts[0])),
-      ]).map((parts) => [parts[1], ...parts[3]]),
-    ])
-  );
+  const exprUnary: Parser<ExprUnary | ExprUnary[], string, any> =
+    recursiveParser(() =>
+      choice([
+        sequenceOf([
+          op,
+          optionalWhitespace,
+          exprUnary,
+          optionalWhitespace,
+          many(sequenceOf([op, optionalWhitespace]).map((parts) => parts[0])),
+        ]).map((parts) => [
+          parts[0],
+          ...(Array.isArray(parts[2]) ? parts[2] : [parts[2]]),
+          ...parts[4],
+        ]),
+        sequenceOf([
+          optionalWhitespace,
+          funOrExpr,
+          optionalWhitespace,
+          many(sequenceOf([op, optionalWhitespace]).map((parts) => parts[0])),
+        ]).map((parts) => {
+          const fullSeq = [parts[1], ...parts[3]];
+          return fullSeq.length === 1 ? fullSeq[0] : fullSeq;
+        }),
+      ])
+    );
 
   const exprOp: Parser<ExprTree, string, any> = sequenceOf([
     optionalWhitespace,
     many1(exprUnary),
-  ]).map((parts) =>
-    opResolver(
-      parts[1].reduce((acc, item) => {
-        acc.push(...item);
+  ]).map((parts) => {
+    if (parts[1].length === 1) return parts[1][0];
+    return opResolver(
+      parts[1].reduce((acc: ExprUnary[], item) => {
+        const allItems: ExprUnary[] = Array.isArray(item) ? item : [item];
+        acc.push(...allItems);
         return acc;
       }, [])
-    )
-  );
+    );
+  });
 
   const expr: Parser<Expr, string, any> = recursiveParser(() =>
-    choice([exprOp, exprNoOp])
+    choice([sourceWithTransforms, sourceWithShape, exprOp, exprNoOp])
   );
 
   const exprlist: Parser<Expr[] | null, string, any> = possibly(
@@ -203,7 +216,16 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     args: parts[2] || [],
   }));
 
-  const transforms: Parser<Transform[], string, any> = many(
+  const possiblyTransforms: Parser<Transform[], string, any> = many(
+    sequenceOf([
+      char('|'),
+      optionalWhitespace,
+      transform,
+      optionalWhitespace,
+    ]).map((parts) => parts[2])
+  );
+
+  const transforms: Parser<Transform[], string, any> = many1(
     sequenceOf([
       char('|'),
       optionalWhitespace,
@@ -218,8 +240,54 @@ export default function buildParser(opResolver = (expr: any) => expr) {
       optionalWhitespace,
       choice([sourcelist, alphachain]),
       optionalWhitespace,
+      possiblyTransforms,
+      possibly(shape),
+    ]).map((parts) => ({
+      type: 'source',
+      alias:
+        parts[0] ||
+        (typeof parts[2] === 'string' && parts[2]) ||
+        (!Array.isArray(parts[2]) &&
+          parts[2].type === 'alphachain' &&
+          parts[2].root) ||
+        undefined,
+      value: parts[2],
+      transforms: parts[4],
+      shape: parts[5],
+    }))
+  );
+
+  const sourceWithTransforms: Parser<Source, string, any> = recursiveParser(() => 
+    sequenceOf([
+      possibly(alias),
+      optionalWhitespace,
+      choice([sourcelist, alphachain]),
+      optionalWhitespace,
       transforms,
       possibly(shape),
+    ]).map((parts) => ({
+      type: 'source',
+      alias:
+        parts[0] ||
+        (typeof parts[2] === 'string' && parts[2]) ||
+        (!Array.isArray(parts[2]) &&
+          parts[2].type === 'alphachain' &&
+          parts[2].root) ||
+        undefined,
+      value: parts[2],
+      transforms: parts[4],
+      shape: parts[5],
+    }))
+  );
+
+  const sourceWithShape: Parser<Source, string, any> = recursiveParser(() => 
+    sequenceOf([
+      possibly(alias),
+      optionalWhitespace,
+      choice([sourcelist, alphachain]),
+      optionalWhitespace,
+      possiblyTransforms,
+      shape,
     ]).map((parts) => ({
       type: 'source',
       alias:
@@ -259,7 +327,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
       optionalWhitespace,
       keyword,
       optionalWhitespace,
-      transforms,
+      possiblyTransforms,
       possibly(shape),
     ]).map((parts) => ({
       type: 'dest',
@@ -273,21 +341,24 @@ export default function buildParser(opResolver = (expr: any) => expr) {
   const field: Parser<Field, string, any> = sequenceOf([
     possibly(alias),
     optionalWhitespace,
-    choice([source, expr]),
+    expr,
   ]).map((parts) => ({
     type: 'field',
-    alias: parts[0] || (parts[2].type === 'source' && parts[2].alias) || null,
+    alias:
+      parts[0] ||
+      (parts[2].type === 'source' && parts[2].alias) ||
+      (parts[2].type === 'alphachain' && parts[2].root) || // root or last part?
+      null,
     value: parts[2],
   }));
 
-  const fieldList: Parser<Field[], string, any> = many(
-    sequenceOf([
-      field,
-      optionalWhitespace,
-      possibly(char(',')),
-      optionalWhitespace,
-    ]).map((parts) => parts[0])
-  );
+  const fieldList: Parser<Field[], string, any> = sequenceOf([
+    optionalWhitespace,
+    sepBy(sequenceOf([optionalWhitespace, char(','), optionalWhitespace]))(
+      possibly(field)
+    ),
+    optionalWhitespace,
+  ]).map((parts) => parts[1].filter((i) => !!i) as Field[]);
 
   const shape: Parser<Shape, string, any> = sequenceOf([
     char('{'),
@@ -346,14 +417,14 @@ export default function buildParser(opResolver = (expr: any) => expr) {
   };
 
   function run(str: string, parserName: keyof typeof parsers = 'query') {
-    const out= parsers[parserName].run(str);
+    const out = parsers[parserName].run(str);
     if (out.isError === true) throw new Error(out.error);
     else return out.result;
-  };
+  }
 
   run.query = function (str: string) {
     return run(str) as Query;
-  }
+  };
 
   return run;
 }

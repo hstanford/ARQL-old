@@ -5,6 +5,12 @@ import type {
   ContextualisedSource,
   DataModel,
   DataField,
+  Modify,
+  DelegatedQueryResult,
+  DelegatedField,
+  ResolutionTree,
+  DelegatedSource,
+  DelegatedQuery,
 } from './types.js';
 
 import { combine } from './sources.js';
@@ -14,61 +20,6 @@ function uniq<T>(arr: T[]) {
     (field, idx, self) => idx === self.findIndex((f2) => f2 === field)
   );
 }
-
-type Modify<T, R> = Omit<T, keyof R> & R;
-export interface DelegatedQueryResult {
-  type: 'delegatedQueryResult';
-  index: number;
-  alias?: string;
-}
-
-export type DelegatedField =
-  | DataField
-  | DataModel
-  | ContextualisedSource
-  | ContextualisedExpr
-  | ContextualisedParam
-  | DelegatedQueryResult;
-export interface ResolutionTree {
-  tree: DelegatedQuery | DelegatedQueryResult;
-  queries: (ContextualisedQuery | ContextualisedSource)[];
-}
-
-export interface DelegatedSource
-  extends Modify<
-    ContextualisedSource,
-    {
-      subModels?: (
-        | DelegatedSource
-        | ContextualisedSource
-        | DataModel
-        | DataField
-      )[];
-      value:
-        | DelegatedSource
-        | DelegatedQueryResult
-        | ContextualisedSource
-        | DataModel
-        | DataField
-        | (
-            | DelegatedSource
-            | DelegatedQueryResult
-            | ContextualisedSource
-            | DataModel
-            | DataField
-          )[];
-      shape?: DelegatedField[];
-    }
-  > {}
-
-export interface DelegatedQuery
-  extends Modify<
-    ContextualisedQuery,
-    {
-      source?: DelegatedSource | DelegatedQueryResult;
-      dest?: DelegatedSource | DelegatedQueryResult;
-    }
-  > {}
 
 function findSplit(
   ast: DataModel | ContextualisedSource | DataField,
@@ -173,14 +124,13 @@ function findSplit(
 }
 
 export default function delegator(ast: ContextualisedQuery): ResolutionTree {
-  let tree;
+  let tree: DelegatedQuery | DelegatedQueryResult | undefined;
   const queries: (ContextualisedQuery | ContextualisedSource)[] = [];
   if (ast.sources.length === 1) {
-    const queryResult: DelegatedQueryResult = {
+    tree = {
       type: 'delegatedQueryResult',
       index: 0,
-    };
-    tree = queryResult;
+    } as DelegatedQueryResult;
     queries.push(ast);
   } else if (ast.sources.length > 1) {
     // TODO: can this not mutate ast?
@@ -188,12 +138,12 @@ export default function delegator(ast: ContextualisedQuery): ResolutionTree {
       tree = {
         ...(tree || ast),
         source: findSplit(ast.source, queries),
-      };
+      } as DelegatedQuery;
     if (ast.dest && ast.type === 'query')
       tree = {
         ...(tree || ast),
         dest: findSplit(ast.dest, queries),
-      };
+      } as DelegatedQuery;
   }
   if (!tree) throw new Error('Unable to delegate query with no sources');
 

@@ -7,14 +7,12 @@ import {
   DataField,
   DataModel,
   DataSourceOpts,
-} from './types.js';
-import {
   DelegatedField,
   DelegatedQuery,
   DelegatedSource,
   DelegatedQueryResult,
   ResolutionTree,
-} from './delegator';
+} from './types.js';
 
 import Native from './native';
 

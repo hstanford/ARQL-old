@@ -12,6 +12,7 @@ export function native(source: Native) {
     ['negation', (a) => !a],
     ['equality', (a, b) => a === b],
     ['ternary', (a, b, c) => (a ? b : c)],
+    ['+', (a, b) => a + b]
   ]);
   source.transforms = new Map<
     string,

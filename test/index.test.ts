@@ -2,13 +2,14 @@ import mocha from 'mocha';
 const { describe, it } = mocha;
 import { expect } from 'chai';
 
-import { 
+import {
   buildParser,
   opResolver,
   contextualise,
   getOperatorLookup,
   delegator,
   Collector,
+  ResolutionTree,
 } from 'arql';
 
 import models from './models.js';
@@ -134,6 +135,60 @@ describe('can retrieve a join and a reshaping', () => {
     const data = await collector.run(delegated, []);
     console.timeEnd('h');
 
-    expect(data).to.deep.equal([{ id: 1, orders: [{name: 'foo'}] }]);
+    expect(data).to.deep.equal([{ id: 1, orders: [{ name: 'foo' }] }]);
+  });
+
+  it('param in shape', async () => {
+    console.time('i');
+    let ast = parser.query(`
+      users {id: $1}
+    `);
+    const contextualised = contextualise(ast, models, transforms);
+    const delegated = delegator(contextualised);
+    const data = await collector.run(delegated, ['hi']);
+    console.timeEnd('i');
+
+    expect(data).to.deep.equal([{ id: 'hi' }]);
+  });
+
+  it('expr in shape', async () => {
+    console.time('i');
+    let ast = parser.query(`
+      users {id: id + $1,}
+    `);
+    const contextualised = contextualise(ast, models, transforms);
+    const delegated = delegator(contextualised);
+    const data = await collector.run(delegated, [1]);
+    console.timeEnd('i');
+
+    expect(data).to.deep.equal([{ id: 2 }]);
+  });
+
+  it('model in shape', async () => {
+    console.time('i');
+    let ast = parser.query(`
+      users {elephants}
+    `);
+    const contextualised = contextualise(ast, models, transforms);
+    const delegated = delegator(contextualised);
+    const data = await collector.run(delegated, [1]);
+    console.timeEnd('i');
+
+    expect(data[0].elephants).to.deep.contain({id: 2, age: 39});
+    expect(data[0].elephants).to.deep.contain({id: 1, age: 42});
+  });
+
+  it.skip('filtered model in shape', async () => {
+    console.time('i');
+    let ast = parser.query(`
+      users {elephants | filter(elephants.id = users.id)}
+    `);
+    const contextualised = contextualise(ast, models, transforms);
+    const delegated = delegator(contextualised);
+    const data = await collector.run(delegated, [1]);
+    console.timeEnd('i');
+
+    expect(data[0].elephants).to.deep.contain({id: 2, age: 39});
+    expect(data[0].elephants).to.deep.contain({id: 1, age: 42});
   });
 });

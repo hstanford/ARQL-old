@@ -114,7 +114,7 @@ export default class Native extends DataSource<any, any> {
         source.transform.modifier,
         params,
         values,
-        ...source.transform.args,
+        ...source.transform.args
       );
     }
     let value = [...values.entries()][0]?.[1];
@@ -159,15 +159,30 @@ export default class Native extends DataSource<any, any> {
     params: any[]
   ): Promise<[string, any]> {
     if (field.type === 'datafield') {
-      return [field.name, item[field.name]];
+      let path = [field.name];
+      if (field.from) {
+        if (typeof field.from.name === 'string') {
+          path = [field.from.name, field.name];
+        } else if (field.from.name) {
+          path = [field.from.name.root, ...field.from.name.parts, field.name];
+        }
+      }
+      let value = item;
+      for (let key of path) {
+        if (key in value)
+          value = value[key];
+      }
+      return [field.alias || field.name, value];
     } else if (field.type === 'source') {
-      const key = field.name
-        ? typeof field.name === 'string'
-          ? field.name
-          : field.name.parts.length
-          ? field.name.parts[field.name.parts.length - 1]
-          : field.name.root
-        : '?';
+      const key =
+        field.alias ||
+        (field.name
+          ? typeof field.name === 'string'
+            ? field.name
+            : field.name.parts.length
+            ? field.name.parts[field.name.parts.length - 1]
+            : field.name.root
+          : '?');
 
       let data = item;
       // handle potential field overlap by grabbing data from
@@ -182,7 +197,17 @@ export default class Native extends DataSource<any, any> {
       }
       return [key, await this.resolveSources(field, data, results, params)];
     } else if (field.type === 'param') {
-      return [field.name || '', params[field.index]];
+      return [field.alias || field.name || '', params[field.index - 1]];
+    } else if (field.type === 'exprtree') {
+      const op = this.operators.get(field.op);
+      if (!op)
+        throw new Error(`Operator not implemented: ${field.op}`);
+      let args = [];
+      for (const arg of field.args) {
+        const [, resolved] = await this.resolveField(arg, item, results, params);
+        args.push(resolved);
+      }
+      return [field.alias || '', op(...args)];
     }
     // ... TODO handle more field types
     else {

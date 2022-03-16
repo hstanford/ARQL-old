@@ -36,7 +36,7 @@ export interface Op {
   symbol: string;
 }
 
-export type Expr = ExprTree | Param | Alphachain;
+export type Expr = ExprTree | Param | Alphachain | Source;
 export type ExprUnary = SubExpr | FunctionCall | Op;
 
 export type SubExpr = Expr | Param | Alphachain;
@@ -155,6 +155,7 @@ export interface DataField {
   source: DataSource<any, any>;
   model?: DataModel;
   from?: ContextualisedSource;
+  alias?: string;
 }
 
 export interface ContextualisedParam {
@@ -162,11 +163,13 @@ export interface ContextualisedParam {
   type: 'param';
   name?: string | undefined;
   fields?: undefined;
+  alias?: string;
 }
 
 export interface DataModel {
   type: 'datamodel';
   name: string;
+  alias?: string;
   fields: DataField[];
 }
 
@@ -202,6 +205,7 @@ export interface ContextualisedSource {
   shape?: ContextualisedField[];
   sources: DataSource<any, any>[];
   transform?: ContextualisedTransform;
+  alias?: string;
 }
 
 export interface ContextualisedTransform {
@@ -219,6 +223,7 @@ export interface ContextualisedExpr {
   fields?: undefined;
   args: (ContextualisedExpr | ContextualisedField)[];
   sources: DataSource<any, any>[];
+  alias?: string;
 }
 
 // operators
@@ -231,3 +236,61 @@ export interface Operator {
 export interface RankedOperator extends Operator {
   rank: number;
 }
+
+// delegator
+
+export type Modify<T, R> = Omit<T, keyof R> & R;
+export interface DelegatedQueryResult {
+  type: 'delegatedQueryResult';
+  index: number;
+  alias?: string;
+}
+
+export type DelegatedField =
+  | DataField
+  | DataModel
+  | ContextualisedSource
+  | ContextualisedExpr
+  | ContextualisedParam
+  | DelegatedQueryResult;
+
+export interface ResolutionTree {
+  tree: DelegatedQuery | DelegatedQueryResult;
+  queries: (ContextualisedQuery | ContextualisedSource)[];
+}
+
+export interface DelegatedSource
+  extends Modify<
+    ContextualisedSource,
+    {
+      subModels?: (
+        | DelegatedSource
+        | ContextualisedSource
+        | DataModel
+        | DataField
+      )[];
+      value:
+        | DelegatedSource
+        | DelegatedQueryResult
+        | ContextualisedSource
+        | DataModel
+        | DataField
+        | (
+            | DelegatedSource
+            | DelegatedQueryResult
+            | ContextualisedSource
+            | DataModel
+            | DataField
+          )[];
+      shape?: DelegatedField[];
+    }
+  > {}
+
+export interface DelegatedQuery
+  extends Modify<
+    ContextualisedQuery,
+    {
+      source?: DelegatedSource | DelegatedQueryResult;
+      dest?: DelegatedSource | DelegatedQueryResult;
+    }
+  > {}

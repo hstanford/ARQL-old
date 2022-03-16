@@ -111,11 +111,7 @@ test('exprNoOp matches a param, an alphachain, or a parenthesised expression', (
     parts: ['name'],
   });
   out = run('($1)', 'exprNoOp');
-  expect(out).toEqual({
-    type: 'exprtree',
-    op: '',
-    args: [{ type: 'param', index: 1 }],
-  });
+  expect(out).toEqual({ type: 'param', index: 1 });
 });
 
 test('funOrExpr matches a function or an expression', () => {
@@ -129,14 +125,8 @@ test('funOrExpr matches a function or an expression', () => {
     },
     args: [
       {
-        type: 'exprtree',
-        op: '',
-        args: [
-          {
-            type: 'param',
-            index: 1,
-          },
-        ],
+        type: 'param',
+        index: 1,
       },
     ],
   });
@@ -223,21 +213,17 @@ test('exprUnary matches prefix and postfix operators', () => {
 
 test('exprOp matches unary, binary and ternary expressions', () => {
   let out = run('!foo', 'exprOp');
-  expect(out).toEqual({
-    type: 'exprtree',
-    op: '',
-    args: [
-      {
-        type: 'op',
-        symbol: '!',
-      },
-      {
-        type: 'alphachain',
-        root: 'foo',
-        parts: [],
-      },
-    ],
-  });
+  expect(out).toEqual([
+    {
+      type: 'op',
+      symbol: '!',
+    },
+    {
+      type: 'alphachain',
+      root: 'foo',
+      parts: [],
+    },
+  ]);
 
   out = run('foo + bar.baz', 'exprOp');
   expect(out).toEqual({
@@ -300,27 +286,15 @@ test('exprOp matches unary, binary and ternary expressions', () => {
 test('expr should handle nested and non-nested expressions, and also plain params and alphachains', () => {
   let out = run('foo', 'expr');
   expect(out).toEqual({
-    type: 'exprtree',
-    op: '',
-    args: [
-      {
-        type: 'alphachain',
-        root: 'foo',
-        parts: [],
-      },
-    ],
+    type: 'alphachain',
+    root: 'foo',
+    parts: [],
   });
 
   out = run('$1', 'expr');
   expect(out).toEqual({
-    type: 'exprtree',
-    op: '',
-    args: [
-      {
-        type: 'param',
-        index: 1,
-      },
-    ],
+    type: 'param',
+    index: 1,
   });
 
   out = run('(foo.bar === $1) && !baz', 'expr');
@@ -368,25 +342,13 @@ test('exprlist should match a comma-separated series of expressions', () => {
   let out = run('$1, foo.bar, baz + $2', 'exprlist');
   expect(out).toEqual([
     {
-      type: 'exprtree',
-      op: '',
-      args: [
-        {
-          type: 'param',
-          index: 1,
-        },
-      ],
+      type: 'param',
+      index: 1,
     },
     {
-      type: 'exprtree',
-      op: '',
-      args: [
-        {
-          type: 'alphachain',
-          root: 'foo',
-          parts: ['bar'],
-        },
-      ],
+      type: 'alphachain',
+      root: 'foo',
+      parts: ['bar'],
     },
     {
       type: 'exprtree',
@@ -418,14 +380,8 @@ test('exprlist should return null for an empty string', () => {
 test('transformarg should accept an expression, a shape, or a source', () => {
   let out = run('$1', 'transformArg');
   expect(out).toEqual({
-    type: 'exprtree',
-    op: '',
-    args: [
-      {
-        type: 'param',
-        index: 1,
-      },
-    ],
+    type: 'param',
+    index: 1,
   });
 
   out = run('{id: $2}', 'transformArg');
@@ -436,14 +392,8 @@ test('transformarg should accept an expression, a shape, or a source', () => {
         type: 'field',
         alias: 'id',
         value: {
-          type: 'exprtree',
-          op: '',
-          args: [
-            {
-              type: 'param',
-              index: 2,
-            },
-          ],
+          type: 'param',
+          index: 2,
         },
       },
     ],
@@ -456,14 +406,8 @@ test('transformargs should accept a series of transform args separated by commas
   let out = run('$3 , {id: $2},foo', 'transformArgs');
   expect(out).toEqual([
     {
-      type: 'exprtree',
-      op: '',
-      args: [
-        {
-          type: 'param',
-          index: 3,
-        },
-      ],
+      type: 'param',
+      index: 3,
     },
     {
       type: 'shape',
@@ -472,28 +416,16 @@ test('transformargs should accept a series of transform args separated by commas
           type: 'field',
           alias: 'id',
           value: {
-            type: 'exprtree',
-            op: '',
-            args: [
-              {
-                type: 'param',
-                index: 2,
-              },
-            ],
+            type: 'param',
+            index: 2,
           },
         },
       ],
     },
     {
-      type: 'exprtree',
-      op: '',
-      args: [
-        {
-          type: 'alphachain',
-          root: 'foo',
-          parts: [],
-        },
-      ],
+      type: 'alphachain',
+      root: 'foo',
+      parts: [],
     },
   ]);
 });
@@ -516,14 +448,8 @@ test('transform should match an alphachain followed by parenthesised transformAr
     },
     args: [
       {
-        type: 'exprtree',
-        op: '',
-        args: [
-          {
-            type: 'param',
-            index: 3,
-          },
-        ],
+        type: 'param',
+        index: 3,
       },
       {
         type: 'shape',
@@ -532,28 +458,16 @@ test('transform should match an alphachain followed by parenthesised transformAr
             type: 'field',
             alias: 'id',
             value: {
-              type: 'exprtree',
-              op: '',
-              args: [
-                {
-                  type: 'param',
-                  index: 2,
-                },
-              ],
+              type: 'param',
+              index: 2,
             },
           },
         ],
       },
       {
-        type: 'exprtree',
-        op: '',
-        args: [
-          {
-            type: 'alphachain',
-            root: 'foo',
-            parts: [],
-          },
-        ],
+        type: 'alphachain',
+        root: 'foo',
+        parts: [],
       },
     ],
   });
@@ -578,14 +492,8 @@ test('transforms should match a series of transforms separated by "|"', () => {
       },
       args: [
         {
-          type: 'exprtree',
-          op: '',
-          args: [
-            {
-              type: 'param',
-              index: 3,
-            },
-          ],
+          type: 'param',
+          index: 3,
         },
         {
           type: 'shape',
@@ -594,28 +502,16 @@ test('transforms should match a series of transforms separated by "|"', () => {
               type: 'field',
               alias: 'id',
               value: {
-                type: 'exprtree',
-                op: '',
-                args: [
-                  {
-                    type: 'param',
-                    index: 2,
-                  },
-                ],
+                type: 'param',
+                index: 2,
               },
             },
           ],
         },
         {
-          type: 'exprtree',
-          op: '',
-          args: [
-            {
-              type: 'alphachain',
-              root: 'foo',
-              parts: [],
-            },
-          ],
+          type: 'alphachain',
+          root: 'foo',
+          parts: [],
         },
       ],
     },
@@ -679,15 +575,9 @@ test('source should consist of "[base source or model] [transforms] [shape]"', (
           type: 'field',
           alias: 'name',
           value: {
-            type: 'source',
-            alias: 'name',
-            value: {
-              type: 'alphachain',
-              root: 'name',
-              parts: [],
-            },
-            transforms: [],
-            shape: null,
+            type: 'alphachain',
+            root: 'name',
+            parts: [],
           },
         },
       ],
@@ -753,15 +643,9 @@ test('dest should match a simple model, transform, and shape', () => {
           type: 'field',
           alias: 'name',
           value: {
-            type: 'source',
-            alias: 'name',
-            value: {
-              parts: [],
-              root: 'name',
-              type: 'alphachain',
-            },
-            transforms: [],
-            shape: null,
+            parts: [],
+            root: 'name',
+            type: 'alphachain',
           },
         },
       ],
@@ -778,15 +662,9 @@ test('shape should match a simple field in curly braces', () => {
         type: 'field',
         alias: 'name',
         value: {
-          type: 'source',
-          alias: 'name',
-          shape: null,
-          transforms: [],
-          value: {
-            type: 'alphachain',
-            root: 'name',
-            parts: [],
-          },
+          type: 'alphachain',
+          root: 'name',
+          parts: [],
         },
       },
     ],
@@ -874,30 +752,18 @@ test('complex query', () => {
             type: 'field',
             alias: 'username',
             value: {
-              type: 'source',
-              alias: 'u',
-              value: {
-                type: 'alphachain',
-                root: 'u',
-                parts: ['name'],
-              },
-              transforms: [],
-              shape: null,
+              type: 'alphachain',
+              root: 'u',
+              parts: ['name'],
             },
           },
           {
             type: 'field',
             alias: 'ordername',
             value: {
-              type: 'source',
-              alias: 'o',
-              value: {
-                type: 'alphachain',
-                root: 'o',
-                parts: ['name'],
-              },
-              transforms: [],
-              shape: null,
+              type: 'alphachain',
+              root: 'o',
+              parts: ['name'],
             },
           },
         ],

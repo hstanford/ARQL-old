@@ -98,6 +98,7 @@ export class Contextualiser {
         this.handleSource(s, context)
       );
       this.aggregateSources(contextualisedSource);
+      const thing = contextualisedSource.value?.[1];
     } else if (source.value?.type === 'alphachain') {
       const model = this.getModel(source.value, context);
 
@@ -287,7 +288,10 @@ export class Contextualiser {
       contextualisedField = this.getExpression(field.value, model, context);
     }
 
-    contextualisedField.name = field.alias || contextualisedField.name;
+    if (field.alias) {
+      contextualisedField = { ...contextualisedField, alias: field.alias };
+    }
+
     return contextualisedField;
   }
 
@@ -314,6 +318,16 @@ export class Contextualiser {
         );
         if (!subField) {
           subField = context.aliases.get(part);
+        }
+        if (!subField) {
+          // think it must be a model
+          return this.handleSource({
+            type: 'source',
+            alias: expr.root, // probably should handle parts
+            value: expr,
+            transforms: [],
+            shape: null,
+          }, context);
         }
         if (subField) {
           if (subField.type === 'datafield' && field.type === 'source')

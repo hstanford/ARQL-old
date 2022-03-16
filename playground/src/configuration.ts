@@ -7,9 +7,9 @@ import type {
 
 export function native(source: Native) {
   source.operators = new Map([
-    ['addition', (a, b) => a + b],
-    ['subtraction', (a, b) => a - b],
-    ['negation', (a) => !a],
+    ['+', (a, b) => a + b],
+    ['-', (a, b) => a - b],
+    ['!', (a) => !a],
     ['equality', (a, b) => a == b],
     ['ternary', (a, b, c) => (a ? b : c)],
   ]);
@@ -67,6 +67,7 @@ export function native(source: Native) {
       ) => {
         return new Map(
           [...values.entries()].map(([k, v]) => {
+            console.log(k, v);
             return [
               k,
               v.filter((r: any) =>
@@ -133,12 +134,16 @@ export function generic() {
 
   const operators = [
     {
-      name: 'negation',
+      name: '!',
       pattern: ['!', EXPR],
     },
     {
       name: '+',
       pattern: [EXPR, '+', EXPR],
+    },
+    {
+      name: '-',
+      pattern: [EXPR, '-', EXPR],
     },
     {
       name: 'equality',
