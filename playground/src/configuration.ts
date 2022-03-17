@@ -67,7 +67,6 @@ export function native(source: Native) {
       ) => {
         return new Map(
           [...values.entries()].map(([k, v]) => {
-            console.log(k, v);
             return [
               k,
               v.filter((r: any) =>

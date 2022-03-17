@@ -33,7 +33,11 @@ export default class Native extends DataSource<any, any> {
     const resolvedArgs: any[] = expr.args.map((arg) => {
       if (arg.type === 'exprtree') return this.resolveExpr(arg, values, params);
       else if (arg.type === 'datafield') {
-        const row = values.get(arg.from?.name) || [...values.values()][0];
+        // TODO: make this more robust
+        let row = values.get(arg.from?.name) || [...values.values()][0];
+        if (typeof arg.from?.name === 'string' && arg.from.name in row) {
+          row = row[arg.from.name];
+        }
         return row?.[arg.name];
       } else if (arg.type === 'param') {
         return params[arg.index - 1];
@@ -77,6 +81,15 @@ export default class Native extends DataSource<any, any> {
       valueMap.set(i++, data[source.name]);
     } else if (source.type === 'datamodel') {
       valueMap.set(source.name, this.data[source.name]);
+    }
+    // apply source as accessible values
+    for (const [k, v] of valueMap.entries()) {
+      for (let item of v) {
+        item[k] = item;
+        // TODO: do this better
+        const merged = Object.assign({}, data, item);
+        Object.assign(item, merged);
+      }
     }
     return i;
   }
@@ -143,7 +156,7 @@ export default class Native extends DataSource<any, any> {
           field,
           item,
           results,
-          params
+          params,
         );
         shaped[key] = resolved;
       }
@@ -156,7 +169,7 @@ export default class Native extends DataSource<any, any> {
     field: ContextualisedField,
     item: any,
     results: any[],
-    params: any[]
+    params: any[],
   ): Promise<[string, any]> {
     if (field.type === 'datafield') {
       let path = [field.name];
@@ -195,7 +208,7 @@ export default class Native extends DataSource<any, any> {
       ) {
         data = data[field.value.from?.name];
       }
-      return [key, await this.resolveSources(field, data, results, params)];
+      return [key, await this.resolveSources(field, {...item, ...data}, results, params)];
     } else if (field.type === 'param') {
       return [field.alias || field.name || '', params[field.index - 1]];
     } else if (field.type === 'exprtree') {

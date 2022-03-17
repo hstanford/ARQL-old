@@ -152,43 +152,43 @@ describe('can retrieve a join and a reshaping', () => {
   });
 
   it('expr in shape', async () => {
-    console.time('i');
+    console.time('j');
     let ast = parser.query(`
       users {id: id + $1,}
     `);
     const contextualised = contextualise(ast, models, transforms);
     const delegated = delegator(contextualised);
     const data = await collector.run(delegated, [1]);
-    console.timeEnd('i');
+    console.timeEnd('j');
 
     expect(data).to.deep.equal([{ id: 2 }]);
   });
 
   it('model in shape', async () => {
-    console.time('i');
+    console.time('k');
     let ast = parser.query(`
       users {elephants}
     `);
     const contextualised = contextualise(ast, models, transforms);
     const delegated = delegator(contextualised);
     const data = await collector.run(delegated, [1]);
-    console.timeEnd('i');
+    console.timeEnd('k');
 
     expect(data[0].elephants).to.deep.contain({id: 2, age: 39});
     expect(data[0].elephants).to.deep.contain({id: 1, age: 42});
   });
 
-  it.skip('filtered model in shape', async () => {
-    console.time('i');
+  it('filtered model in shape conforms to filter', async () => {
+    console.time('l');
     let ast = parser.query(`
       users {elephants | filter(elephants.id = users.id)}
     `);
     const contextualised = contextualise(ast, models, transforms);
     const delegated = delegator(contextualised);
     const data = await collector.run(delegated, [1]);
-    console.timeEnd('i');
+    console.timeEnd('l');
 
-    expect(data[0].elephants).to.deep.contain({id: 2, age: 39});
+    expect(data[0].elephants).to.have.length(1);
     expect(data[0].elephants).to.deep.contain({id: 1, age: 42});
   });
 });
