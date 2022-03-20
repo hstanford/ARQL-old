@@ -10,8 +10,10 @@ import {
   Collector,
 } from 'arql';
 
-import models from '../models';
+import dataInstance from '../models';
 import { generic, native as nativeConfigurer } from '../configuration';
+
+import Model from './models';
 
 const { transforms, operators } = generic();
 const opMap = getOperatorLookup(operators);
@@ -37,7 +39,11 @@ export default function App() {
     (async () => {
       try {
         let ast = parser.query(content);
-        const contextualised = contextualise(ast, models, transforms);
+        const contextualised = contextualise(
+          ast,
+          dataInstance.models,
+          transforms
+        );
         const delegated = delegator(contextualised);
         const data = await collector.run(delegated, params);
         setResults(JSON.stringify(data, null, 2));
@@ -56,7 +62,11 @@ export default function App() {
   return (
     <Grid container sx={{ height: '100vh' }}>
       <Grid item xs={6}>
-        <Box>MODELS</Box>
+        <Box>DATA</Box>
+        <Model
+          onChange={() => setParams([...params]) /*hack to refresh*/}
+          dataInstance={dataInstance}
+        />
       </Grid>
       <Grid
         item

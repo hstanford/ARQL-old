@@ -172,12 +172,12 @@ export default class Native extends DataSource<any, any> {
     params: any[],
   ): Promise<[string, any]> {
     if (field.type === 'datafield') {
-      let path = [field.name];
+      let path: string[] = [];
       if (field.from) {
         if (typeof field.from.name === 'string') {
-          path = [field.from.name, field.name];
+          path = [field.from.name];
         } else if (field.from.name) {
-          path = [field.from.name.root, ...field.from.name.parts, field.name];
+          path = [field.from.name.root, ...field.from.name.parts];
         }
       }
       let value = item;
@@ -185,7 +185,7 @@ export default class Native extends DataSource<any, any> {
         if (key in value)
           value = value[key];
       }
-      return [field.alias || field.name, value];
+      return [field.alias || field.name, value[field.name]];
     } else if (field.type === 'source') {
       const key =
         field.alias ||
