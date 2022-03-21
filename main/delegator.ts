@@ -145,7 +145,9 @@ export default function delegator(ast: ContextualisedQuery): ResolutionTree {
         dest: findSplit(ast.dest, queries),
       } as DelegatedQuery;
   }
-  if (!tree) throw new Error('Unable to delegate query with no sources');
+  if (!tree) {
+    tree = ast;
+  };
 
   return {
     tree,

@@ -174,8 +174,8 @@ describe('can retrieve a join and a reshaping', () => {
     const data = await collector.run(delegated, [1]);
     console.timeEnd('k');
 
-    expect(data[0].elephants).to.deep.contain({id: 2, age: 39});
-    expect(data[0].elephants).to.deep.contain({id: 1, age: 42});
+    expect(data[0].elephants).to.deep.contain({ id: 2, age: 39 });
+    expect(data[0].elephants).to.deep.contain({ id: 1, age: 42 });
   });
 
   it('filtered model in shape conforms to filter', async () => {
@@ -189,6 +189,36 @@ describe('can retrieve a join and a reshaping', () => {
     console.timeEnd('l');
 
     expect(data[0].elephants).to.have.length(1);
-    expect(data[0].elephants).to.deep.contain({id: 1, age: 42});
+    expect(data[0].elephants).to.deep.contain({ id: 1, age: 42 });
+  });
+
+  it('handles static data', async () => {
+    console.time('m');
+    let ast = parser.query(`
+      {
+        id: $1
+      }
+    `);
+    const contextualised = contextualise(ast, models, transforms);
+    const delegated = delegator(contextualised);
+    const data = await collector.run(delegated, [1]);
+    console.timeEnd('m');
+
+    expect(data).to.deep.equal({ id: 1 });
+  });
+
+  it('handles static data inside a shape', async () => {
+    console.time('n');
+    let ast = parser.query(`
+      {
+        stuff: { name: $1 }
+      }
+    `);
+    const contextualised = contextualise(ast, models, transforms);
+    const delegated = delegator(contextualised);
+    const data = await collector.run(delegated, [1]);
+    console.timeEnd('n');
+
+    expect(data).to.deep.equal({ stuff: { name: 1 } });
   });
 });

@@ -62,7 +62,7 @@ export interface Transform {
 export interface Source {
   type: 'source';
   alias: string | undefined;
-  value: Alphachain | Source[];
+  value: Alphachain | Source[] | null;
   transforms: Transform[];
   shape: Shape | null;
 }

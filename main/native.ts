@@ -100,21 +100,23 @@ export default class Native extends DataSource<any, any> {
     results: any[],
     params: any[]
   ): Promise<any> {
-    let arraySource = Array.isArray(source.value)
-      ? source.value
-      : [source.value];
     let values = new Map();
-    let i = 0;
-    for (const sourceValue of arraySource) {
-      if (!sourceValue) continue;
-      i = await this.resolveSource(
-        sourceValue,
-        data,
-        values,
-        i,
-        results,
-        params
-      );
+    if (source.value && (!Array.isArray(source.value) || source.value.length)) {
+      let arraySource = Array.isArray(source.value)
+        ? source.value
+        : [source.value];
+      let i = 0;
+      for (const sourceValue of arraySource) {
+        if (!sourceValue) continue;
+        i = await this.resolveSource(
+          sourceValue,
+          data,
+          values,
+          i,
+          results,
+          params
+        );
+      }
     }
     if (source.transform) {
       const transform = this.transforms.get(source.transform.name);
@@ -131,13 +133,20 @@ export default class Native extends DataSource<any, any> {
       );
     }
     let value = [...values.entries()][0]?.[1];
-    if (values.size === 1 && source.shape?.length && value) {
+    if (values.size <= 1 && source.shape?.length) {
+      let takeFirst = false;
+      if (!value) {
+        value = [{}];
+        takeFirst = true;
+      }
       if (typeof value !== 'object') {
         throw new Error(
           `Unsupported type "${typeof value}" for shape manipulation`
         );
       }
       value = await this.resolveShape(source.shape, value, results, params);
+      if (takeFirst)
+        value = value[0];
     }
     return values.size > 1 ? values : value;
   }

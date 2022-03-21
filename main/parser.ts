@@ -284,7 +284,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     sequenceOf([
       possibly(alias),
       optionalWhitespace,
-      choice([sourcelist, alphachain]),
+      possibly(choice([sourcelist, alphachain])),
       optionalWhitespace,
       possiblyTransforms,
       shape,
@@ -294,7 +294,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
         parts[0] ||
         (typeof parts[2] === 'string' && parts[2]) ||
         (!Array.isArray(parts[2]) &&
-          parts[2].type === 'alphachain' &&
+          parts[2]?.type === 'alphachain' &&
           parts[2].root) ||
         undefined,
       value: parts[2],
@@ -373,7 +373,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
 
   const query: Parser<Query, string, any> = sequenceOf([
     optionalWhitespace,
-    possibly(source),
+    possibly(choice([source, sourceWithShape])),
     optionalWhitespace,
     possibly(
       sequenceOf([modifier, optionalWhitespace, dest]).map((parts) => ({
@@ -408,6 +408,8 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     transform,
     transforms,
     source,
+    sourceWithTransforms,
+    sourceWithShape,
     sourcelist,
     dest,
     field,

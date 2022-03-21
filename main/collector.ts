@@ -47,6 +47,7 @@ export default class Collector extends Native {
         return results[query.source.index];
       }
     } else {
+      console.log(query, results, params);
       throw new Error('Not yet implemented');
     }
   }
