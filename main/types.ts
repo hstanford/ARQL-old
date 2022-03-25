@@ -250,6 +250,7 @@ export type DelegatedField =
   | DataField
   | DataModel
   | ContextualisedSource
+  | DelegatedSource
   | ContextualisedExpr
   | ContextualisedParam
   | DelegatedQueryResult;

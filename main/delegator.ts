@@ -63,7 +63,7 @@ function findSplit(
       shape = ast.shape.map((field) => {
         if (field.type === 'source') {
           if (
-            field.sources.some((source) => inShapeNotInSource.includes(source))
+            field.sources.every((source) => inShapeNotInSource.includes(source))
           ) {
             queries.push(field);
             return {
@@ -71,6 +71,24 @@ function findSplit(
               index: queries.length - 1,
               alias: typeof field.name === 'string' ? field.name : undefined,
             };
+          }
+          if (
+            field.sources.some((source) => inShapeNotInSource.includes(source))
+          ) {
+            // TODO: this may need some very fancy logic
+            if (Array.isArray(field.value) && field.value[0].type === 'source' && field.value?.length === 1) {
+              queries.push(field.value[0]);
+              return {
+                ...field,
+                value: [{
+                  type: 'delegatedQueryResult',
+                  index: queries.length - 1,
+                  alias: typeof field.value[0].name === 'string' ? field.value[0].name : undefined,
+                }],
+              }
+            } else {
+              throw new Error('Mixed source shapes currently have minimal support');
+            }
           }
           return field;
         } else if (field.type === 'exprtree') {

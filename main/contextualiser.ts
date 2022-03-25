@@ -142,10 +142,10 @@ export class Contextualiser {
           name: out.name,
           subModels: out.subModels,
           sources:
-            out.sources.length === 1 &&
+            uniq((out.sources.length === 1 &&
             out.sources[0].implementsTransform(outTransform)
               ? out.sources
-              : out.sources.concat([Unresolveable]),
+              : out.sources.concat([Unresolveable])).concat(outTransform.sources)),
         };
       }
     }
@@ -244,6 +244,16 @@ export class Contextualiser {
     if (!match)
       throw new Error(`Unrecognised transform ${transform.description.root}`);
 
+    const args = transform.args.map(
+      (arg): ContextualisedField | ContextualisedField[] => {
+        if (arg.type === 'exprtree' || arg.type === 'alphachain')
+          return this.getExpression(arg, model, context);
+        if (arg.type === 'source') return this.handleSource(arg, context);
+        if (arg.type === 'shape') return this.getShape(arg, model, context);
+        throw new Error(`Unrecognised arg type`);
+      }
+    );
+
     // TODO: handle shape modification e.g. groups
     return {
       type: 'transform',
@@ -251,16 +261,14 @@ export class Contextualiser {
       modifier: transform.description.parts.filter(
         (part) => match.modifiers && match.modifiers.indexOf(part) !== -1
       ),
-      args: transform.args.map(
-        (arg): ContextualisedField | ContextualisedField[] => {
-          if (arg.type === 'exprtree' || arg.type === 'alphachain')
-            return this.getExpression(arg, model, context);
-          if (arg.type === 'source') return this.handleSource(arg, context);
-          if (arg.type === 'shape') return this.getShape(arg, model, context);
-          throw new Error(`Unrecognised arg type`);
+      args,
+      sources: uniq(args.reduce((acc, arg) => {
+        // TODO: handle more arg types
+        if (!Array.isArray(arg) && arg.type === 'exprtree') {
+          return acc.concat(arg.sources);
         }
-      ),
-      sources: [],
+        return acc;
+      }, [] as DataSource<any, any>[])),
     };
   }
 

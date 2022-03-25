@@ -221,4 +221,31 @@ describe('can retrieve a join and a reshaping', () => {
 
     expect(data).to.deep.equal({ stuff: { name: 1 } });
   });
+
+  it('filtered model in shape conforms to filter when the models are from different sources (1)', async () => {
+    console.time('o');
+    let ast = parser.query(`
+      users {orders | filter(orders.userId = users.id)}
+    `);
+    const contextualised = contextualise(ast, models, transforms);
+    const delegated = delegator(contextualised);
+    const data = await collector.run(delegated, [1]);
+    console.timeEnd('o');
+
+    expect(data[0].orders).to.have.length(1);
+    expect(data[0].orders).to.deep.contain({ id: 1, userId: 1, name: 'foo' });
+  });
+
+  it('filtered model in shape conforms to filter when the models are from different sources (2)', async () => {
+    console.time('p');
+    let ast = parser.query(`
+      users {orders | filter(orders.userId = users.id + $1)}
+    `);
+    const contextualised = contextualise(ast, models, transforms);
+    const delegated = delegator(contextualised);
+    const data = await collector.run(delegated, [1]);
+    console.timeEnd('p');
+
+    expect(data[0].orders).to.have.length(0);
+  });
 });
