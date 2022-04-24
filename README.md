@@ -19,13 +19,23 @@ To reinstall arql to the test dir after changes:
 npm run rebuild
 ```
 
+## Motivation
+
+- When writing webapps, I want to be able to retrieve my data on both the client side and the server side in whatever format I need
+- I want the development time to add a new data model or field to be extremely low
+- I want the API I'm interfacing with to be clear and powerful
+
 ## Why not [existing solution]
 
-REST is too prescriptive of what data is returned, most other http query languages rely too much on query string filtering which is awkward. GraphQL forces a switch to a graphical worldview of your domain data while you may want to consider data access across models to be relational. Additionally, graphql is very prescriptive with its application-driven resolvers and lack of native support for database-level join operations.
+- REST doesn't support formatting of data, and you have to add endpoint boilerplate each time you add a new model
+- http query languages using query params are either not clear or not powerful
+- GraphQL forces a switch to a graphical worldview of your domain data while you may want to consider data access across models to be relational. This sacrifices clarity and puts cognitive load on the developer writing the resolvers, and also reduces its power: it doesn't natively support performant joins, and how to write queries that e.g. "fetch users that have orders created in May" while still maintaining full control over your output format is very unclear.
+
+REST and GraphQL have both done a lot right. But neither are perfect, and there are areas where there is room to improve on them both.
 
 ## What is ARQL?
 
-ARQL is a highly expressive but syntactically simple declarative query language intended to provide a uniform interface to a complex data layer,
+ARQL is a highly expressive but syntactically simple query language intended to provide a uniform interface to a complex data layer,
 decoupling the data or domain logic from business logic.
 
 The requirements on the interface language this creates are:
