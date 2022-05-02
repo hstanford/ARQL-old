@@ -110,14 +110,39 @@ export default class Native extends DataSource<any, any> {
     results: any[],
     params: any[]
   ): Promise<AnyObj[] | AnyObj> {
-    let resolved: AnyObj[] | undefined;
-    let firstResolved: AnyObj | undefined;
     const intermediate = await this.resolveIntermediate(
       source,
       data,
       results,
       params
     );
+    return await this.applyTransformsAndShape(
+      source,
+      intermediate,
+      results,
+      params
+    );
+  }
+
+  async applyTransformsAndShape(
+    source: DelegatedSource,
+    intermediate: Map<string, AnyObj[]> | AnyObj[] | AnyObj | undefined,
+    results: any[],
+    params: any[]
+  ): Promise<AnyObj[] | AnyObj> {
+    if (
+      intermediate &&
+      !(intermediate instanceof Map) &&
+      !Array.isArray(intermediate)
+    ) {
+      if (source.transform || source.shape)
+        console.warn(
+          'Shaping/transforming not supported for single object sources'
+        );
+      return intermediate;
+    }
+    let resolved: AnyObj[] | undefined;
+    let firstResolved: AnyObj | undefined;
 
     if (source.transform) {
       const transform = this.transforms.get(source.transform.name);
@@ -301,13 +326,13 @@ export default class Native extends DataSource<any, any> {
     }
   }
 
-  async resolveDest (
+  async resolveDest(
     dest: DelegatedSource,
     modifier: string | undefined,
     source: AnyObj | AnyObj[] | undefined,
     data: any,
     results: any[],
-    params: any[] 
+    params: any[]
   ): Promise<AnyObj | AnyObj[] | undefined> {
     if (modifier === '-+') {
       if (Array.isArray(dest.value) || dest.value.type !== 'datamodel') {
@@ -316,8 +341,50 @@ export default class Native extends DataSource<any, any> {
       if (source === undefined) {
         throw new Error('Cannot insert undefined');
       }
-      this.data[dest.value.name].push(...(Array.isArray(source) ? source : [source]));
-      return source;
+      this.data[dest.value.name].push(
+        ...(Array.isArray(source) ? source : [source])
+      );
+      return await this.applyTransformsAndShape(dest, source, results, params);
+    } else if (modifier === '-x') {
+      if (source !== undefined) {
+        throw new Error('Deletion based on source data is not supported yet');
+      }
+
+      const intermediate = await this.resolveIntermediate(
+        dest,
+        data,
+        results,
+        params
+      );
+
+      // apply transforms (e.g. a filter) but not shape to items requiring deletion
+      const tmpShape = dest.shape;
+      delete dest.shape;
+      let toDelete = await this.applyTransformsAndShape(
+        dest,
+        intermediate,
+        results,
+        params
+      );
+      if (typeof dest.name !== 'string') {
+        throw new Error('Unsupported destination model');
+      }
+      const arrToDelete = Array.isArray(toDelete) ? toDelete : [toDelete];
+      // TODO: do this comparison for hidden internal UUIDs for native
+      this.data[dest.name] = this.data[dest.name].filter(
+        (item: AnyObj) =>
+          !arrToDelete.find((other: AnyObj) => item.id === other.id)
+      );
+
+      // apply shape to data output
+      delete dest.transform;
+      dest.shape = tmpShape;
+      return await this.applyTransformsAndShape(
+        dest,
+        arrToDelete,
+        results,
+        params
+      );
     } else {
       throw new Error(`Modifier ${modifier} not supported yet`);
     }
@@ -342,11 +409,18 @@ export default class Native extends DataSource<any, any> {
         if (ast.dest.type === 'delegatedQueryResult') {
           throw new Error('Not implemented yet');
         }
-        dest = await this.resolveDest(ast.dest, ast.modifier, source, data, results, params);
+        dest = await this.resolveDest(
+          ast.dest,
+          ast.modifier,
+          source,
+          data,
+          results,
+          params
+        );
       }
       return dest || source || [];
     } else if (ast.type === 'source') {
-      return this.resolveSources(ast, data, results, params);
+      return await this.resolveSources(ast, data, results, params);
     } else throw new Error('Not implemented yet');
   }
 }

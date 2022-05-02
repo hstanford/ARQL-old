@@ -189,8 +189,20 @@ describe('data modification', () => {
 
     expect(data).to.deep.equal({id: 2, name: 'newUser'});
 
-    const data2 = await arql('users | filter(id = $1) {id, name}', [2]);
+    const data2 = await arql('users | filter(id = $1)', [2]);
 
     expect(data2).to.deep.equal([{id: 2, name: 'newUser'}]);
+  });
+
+  it('can perform a basic delete statement', async () => {
+    const data = await arql(`
+       -x users | filter(id = $1)
+    `, [2]);
+
+    expect(data).to.deep.equal([{id: 2, name: 'newUser'}]);
+
+    const data2 = await arql('users', []);
+
+    expect(data2).to.deep.equal([{id: 1, name: 'hello'}]);
   });
 });

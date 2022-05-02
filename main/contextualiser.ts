@@ -110,6 +110,9 @@ export class Contextualiser {
         this.handleSource(s, context)
       );
       this.aggregateSources(contextualisedSource);
+    } else if (source.value?.type === 'source') {
+      contextualisedSource.value = this.handleSource(source.value, context);
+      this.aggregateSources(contextualisedSource);
     } else if (source.value?.type === 'alphachain') {
       const model = this.getModel(source.value, context);
 
@@ -195,6 +198,8 @@ export class Contextualiser {
     );
 
     contextualisedDest.value = model;
+    contextualisedDest.fields = model.fields || [];
+    contextualisedDest.name = model.name;
 
     // TODO: fix this hack by passing required fields back down
     contextualisedDest.sources =
@@ -207,7 +212,7 @@ export class Contextualiser {
         out = {
           type: 'source',
           transform: this.getTransform(transform, out, context),
-          value: [out],
+          value: out,
           fields: out.fields,
           name: out.name,
           subModels: out.subModels,
@@ -218,8 +223,10 @@ export class Contextualiser {
     if (dest.shape) {
       out.shape = this.getShape(dest.shape, out, context);
       out.sources = uniq(out.sources.concat(combine(out.shape)));
+    } else {
+      out.shape = out.fields;
     }
-    return contextualisedDest;
+    return out;
   }
 
   getModel(alphachain: Alphachain, context: ContextualiserState) {
