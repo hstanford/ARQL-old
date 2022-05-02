@@ -131,7 +131,6 @@ export default function App() {
                   height: '100%',
                 }}
                 InputProps={{
-                  ref: inputRef,
                   sx: {
                     fontFamily: 'PT Mono',
                     height: '100%',
@@ -139,6 +138,9 @@ export default function App() {
                       height: '100% !important',
                     },
                   },
+                }}
+                inputProps={{
+                  ref: inputRef
                 }}
               />
             </Box>
