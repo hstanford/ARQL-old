@@ -385,6 +385,45 @@ export default class Native extends DataSource<any, any> {
         results,
         params
       );
+    } else if (modifier === '->') {
+      if (Array.isArray(source) || !source) {
+        throw new Error('Collection or absent sources are not yet supported for updates');
+      }
+      const intermediate = await this.resolveIntermediate(
+        dest,
+        data,
+        results,
+        params
+      );
+      const tmpShape = dest.shape;
+      delete dest.shape;
+      let toUpdate = await this.applyTransformsAndShape(
+        dest,
+        intermediate,
+        results,
+        params
+      );
+      if (typeof dest.name !== 'string') {
+        throw new Error('Unsupported destination model');
+      }
+      const arrToUpdate = Array.isArray(toUpdate) ? toUpdate : [toUpdate];
+      arrToUpdate.forEach((item: AnyObj) => Object.assign(item, source));
+      // TODO: do this comparison for hidden internal UUIDs for native
+      this.data[dest.name].forEach(
+        (item: AnyObj) => {
+          const matching = arrToUpdate.find((other: AnyObj) => item.id === other.id);
+          Object.assign(item, matching);
+        }
+      );
+      // apply shape to data output
+      delete dest.transform;
+      dest.shape = tmpShape;
+      return await this.applyTransformsAndShape(
+        dest,
+        arrToUpdate,
+        results,
+        params
+      );
     } else {
       throw new Error(`Modifier ${modifier} not supported yet`);
     }
