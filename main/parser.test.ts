@@ -402,7 +402,7 @@ test('transformarg should accept an expression, a shape, or a source', () => {
           },
         },
       ],
-    }
+    },
   });
 
   // TODO: source test
@@ -432,7 +432,7 @@ test('transformargs should accept a series of transform args separated by commas
             },
           },
         ],
-      }
+      },
     },
     {
       type: 'alphachain',
@@ -480,7 +480,7 @@ test('transform should match an alphachain followed by parenthesised transformAr
               },
             },
           ],
-        }
+        },
       },
       {
         type: 'alphachain',
@@ -530,7 +530,7 @@ test('transforms should match a series of transforms separated by "|"', () => {
                 },
               },
             ],
-          }
+          },
         },
         {
           type: 'alphachain',
@@ -817,6 +817,6 @@ test('sourceWithShape should match a simple field in curly braces', () => {
           },
         },
       ],
-    }
+    },
   });
 });

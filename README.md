@@ -5,16 +5,19 @@ Abstract Relational Query Language
 ## Development
 
 To install dependencies and build ARQL:
+
 ```
 npm run install
 ```
 
 To run the tests:
+
 ```
 npm run test
 ```
 
 To reinstall arql to the test dir after changes:
+
 ```
 npm run rebuild
 ```
@@ -219,3 +222,4 @@ query: '
 ',
 params: [1, 5, 20, 0],
 
+```

@@ -1,4 +1,5 @@
 import type {
+  AnyObj,
   ContextualisedQuery,
   ContextualisedSource,
   DataModel,
@@ -6,6 +7,10 @@ import type {
   ContextualisedField,
   DataField,
   DataSourceOpts,
+  DelegatedSource,
+  DelegatedField,
+  DelegatedQuery,
+  DelegatedQueryResult,
   operatorOp,
   transformFn,
 } from './types';
@@ -14,7 +19,7 @@ import { DataSource } from './types';
 export default class Native extends DataSource<any, any> {
   transforms: Map<string, transformFn> = new Map();
   operators: Map<string, operatorOp> = new Map();
-  data: any;
+  data: AnyObj;
   params: any[] = [];
   constructor(data: any, opts?: DataSourceOpts) {
     super();
@@ -35,7 +40,11 @@ export default class Native extends DataSource<any, any> {
       else if (arg.type === 'datafield') {
         // TODO: make this more robust
         let row = values.get(arg.from?.name) || [...values.values()][0];
-        if (typeof arg.from?.name === 'string' && arg.from.name in row) {
+        if (
+          typeof arg.from?.name === 'string' &&
+          typeof row === 'object' &&
+          arg.from.name in row
+        ) {
           row = row[arg.from.name];
         }
         return row?.[arg.name];
@@ -58,66 +67,58 @@ export default class Native extends DataSource<any, any> {
   }
 
   async resolveSource(
-    source: ContextualisedSource | DataModel | DataField,
-    data: any,
-    valueMap: Map<any, any>,
-    index: number,
+    source: DelegatedSource | DataModel | DataField | DelegatedQueryResult,
+    data: AnyObj,
     results: any[],
     params: any[]
-  ): Promise<number> {
-    let i = index;
+  ): Promise<[string, AnyObj[]]> {
     if (source.type === 'source') {
+      if (typeof source.name !== 'string')
+        throw new Error(
+          `No support for ${JSON.stringify(source.name)} as a source name yet`
+        );
       const subVals = await this.resolveSources(source, data, results, params);
-      if (subVals instanceof Map) {
-        for (let [key, value] of subVals.entries()) {
-          valueMap.set(typeof key === 'number' ? key + index : key, value);
-        }
-        i += [...subVals.keys()].filter((i) => typeof i === 'number').length;
-      } else {
-        valueMap.set(i++, subVals);
-      }
+      return [source.name, Array.isArray(subVals) ? subVals : [subVals]];
     } else if (source.type === 'datafield') {
       if (!data) throw new Error('Not yet implemented...');
-      valueMap.set(i++, data[source.name]);
+      return [source.name, data[source.name]];
     } else if (source.type === 'datamodel') {
-      valueMap.set(source.name, this.data[source.name]);
+      return [
+        source.name,
+        this.data[source.name].map((item: AnyObj) => {
+          const merged = { ...data, ...item };
+          merged[source.name] = merged;
+          return merged;
+        }),
+      ];
+    } else if (source.type === 'delegatedQueryResult') {
+      return [
+        source.alias || '',
+        results[source.index].map((item: AnyObj) => {
+          const merged = { ...data, ...item };
+          merged[source.alias || ''] = merged;
+          return merged;
+        }),
+      ];
     }
-    // apply source as accessible values
-    for (const [k, v] of valueMap.entries()) {
-      for (let item of v) {
-        item[k] = item;
-        // TODO: do this better
-        const merged = Object.assign({}, data, item);
-        Object.assign(item, merged);
-      }
-    }
-    return i;
+    throw new Error(`Unsupported source type ${(source as any)?.type}`);
   }
 
   async resolveSources(
-    source: ContextualisedSource,
+    source: DelegatedSource,
     data: any,
     results: any[],
     params: any[]
-  ): Promise<any> {
-    let values = new Map();
-    if (source.value && (!Array.isArray(source.value) || source.value.length)) {
-      let arraySource = Array.isArray(source.value)
-        ? source.value
-        : [source.value];
-      let i = 0;
-      for (const sourceValue of arraySource) {
-        if (!sourceValue) continue;
-        i = await this.resolveSource(
-          sourceValue,
-          data,
-          values,
-          i,
-          results,
-          params
-        );
-      }
-    }
+  ): Promise<AnyObj[] | AnyObj> {
+    let resolved: AnyObj[] | undefined;
+    let firstResolved: AnyObj | undefined;
+    const intermediate = await this.resolveIntermediate(
+      source,
+      data,
+      results,
+      params
+    );
+
     if (source.transform) {
       const transform = this.transforms.get(source.transform.name);
       if (!transform) {
@@ -125,47 +126,91 @@ export default class Native extends DataSource<any, any> {
           `Couldn't resolve transform "${source.transform.name}"`
         );
       }
-      values = await transform(
+      resolved = await transform(
         source.transform.modifier,
         params,
-        values,
+        intermediate,
         ...source.transform.args
       );
+    } else if (Array.isArray(intermediate)) {
+      resolved = intermediate;
     }
-    let value = [...values.entries()][0]?.[1];
-    if (values.size <= 1 && source.shape?.length) {
+
+    if (source.shape?.length) {
       let takeFirst = false;
-      if (!value) {
-        value = [{}];
+      // support selecting literal values in a shape
+      // without any data
+      if (!resolved) {
+        resolved = [{}];
         takeFirst = true;
       }
-      if (typeof value !== 'object') {
+      if (typeof resolved !== 'object') {
         throw new Error(
-          `Unsupported type "${typeof value}" for shape manipulation`
+          `Unsupported type "${typeof resolved}" for shape manipulation`
         );
       }
-      value = await this.resolveShape(source.shape, value, results, params);
-      if (takeFirst)
-        value = value[0];
+      resolved = await this.resolveShape(
+        source.shape,
+        resolved,
+        results,
+        params
+      );
+      if (takeFirst) firstResolved = resolved[0];
     }
-    return values.size > 1 ? values : value;
+    if (!resolved) {
+      throw new Error(`Couldn't resolve source`);
+    }
+    return firstResolved || resolved;
+  }
+
+  async resolveIntermediate(
+    source: DelegatedSource,
+    data: any,
+    results: any[],
+    params: any[]
+  ): Promise<Map<string, AnyObj[]> | AnyObj[] | undefined> {
+    // resolveSources should only ever produce an anyobj array
+    // there's an intermediate point that for value type ContextualisedSource[]
+    // you'll have a Map<string, AnyObj[]>, that will be passed into some kind of join
+    let intermediate: Map<string, AnyObj[]> | AnyObj[] | undefined;
+    if (Array.isArray(source.value)) {
+      // ContextualisedSourceArray, instanceof doesn't narrow here
+      intermediate = new Map<string, AnyObj[]>();
+      for (const sourceValue of source.value) {
+        const [key, value] = await this.resolveSource(
+          sourceValue,
+          data,
+          results,
+          params
+        );
+        intermediate.set(key, value);
+      }
+    } else if (source.value) {
+      [, intermediate] = await this.resolveSource(
+        source.value,
+        data,
+        results,
+        params
+      );
+    }
+    return intermediate;
   }
 
   async resolveShape(
-    shape: ContextualisedField[],
+    shape: DelegatedField[],
     source: any[],
     results: any[],
     params: any[]
   ) {
-    const out: { [key: string]: any }[] = [];
+    const out: AnyObj[] = [];
     for (let item of source) {
-      const shaped: { [key: string]: any } = {};
+      const shaped: AnyObj = {};
       for (let field of shape) {
         const [key, resolved] = await this.resolveField(
           field,
           item,
           results,
-          params,
+          params
         );
         shaped[key] = resolved;
       }
@@ -175,12 +220,14 @@ export default class Native extends DataSource<any, any> {
   }
 
   async resolveField(
-    field: ContextualisedField,
-    item: any,
+    field: DelegatedField,
+    item: AnyObj,
     results: any[],
-    params: any[],
+    params: any[]
   ): Promise<[string, any]> {
-    if (field.type === 'datafield') {
+    if (field.type === 'delegatedQueryResult') {
+      return [field.alias || '', results[field.index]] as [string, any];
+    } else if (field.type === 'datafield') {
       let path: string[] = [];
       if (field.from) {
         if (typeof field.from.name === 'string') {
@@ -191,11 +238,22 @@ export default class Native extends DataSource<any, any> {
       }
       let value = item;
       for (let key of path) {
-        if (key in value)
-          value = value[key];
+        if (key in value) value = value[key];
       }
       return [field.alias || field.name, value[field.name]];
     } else if (field.type === 'source') {
+      // TODO: review this section
+      let data;
+      if (
+        Array.isArray(field.value) &&
+        field.value.length &&
+        field.value[0].type === 'delegatedQueryResult'
+      ) {
+        data = results[field.value[0].index];
+      } else {
+        data = item;
+      }
+
       const key =
         field.alias ||
         (field.name
@@ -206,7 +264,6 @@ export default class Native extends DataSource<any, any> {
             : field.name.root
           : '?');
 
-      let data = item;
       // handle potential field overlap by grabbing data from
       // aliased fields
       if (
@@ -217,16 +274,23 @@ export default class Native extends DataSource<any, any> {
       ) {
         data = data[field.value.from?.name];
       }
-      return [key, await this.resolveSources(field, {...item, ...data}, results, params)];
+      return [
+        key,
+        await this.resolveSources(field, { ...item, ...data }, results, params),
+      ];
     } else if (field.type === 'param') {
       return [field.alias || field.name || '', params[field.index - 1]];
     } else if (field.type === 'exprtree') {
       const op = this.operators.get(field.op);
-      if (!op)
-        throw new Error(`Operator not implemented: ${field.op}`);
+      if (!op) throw new Error(`Operator not implemented: ${field.op}`);
       let args = [];
       for (const arg of field.args) {
-        const [, resolved] = await this.resolveField(arg, item, results, params);
+        const [, resolved] = await this.resolveField(
+          arg,
+          item,
+          results,
+          params
+        );
         args.push(resolved);
       }
       return [field.alias || '', op(...args)];
@@ -238,13 +302,17 @@ export default class Native extends DataSource<any, any> {
   }
 
   async resolve(
-    ast: ContextualisedQuery | ContextualisedSource,
+    ast: DelegatedQuery | DelegatedSource,
+    data: AnyObj[] | null,
+    results: AnyObj[][],
     params: any[]
   ) {
     if (ast.type === 'query' && ast.source) {
-      return this.resolveSources(ast.source, null, [], params);
+      if (ast.source.type === 'delegatedQueryResult')
+        return results[ast.source.index];
+      else return this.resolveSources(ast.source, data, results, params);
     } else if (ast.type === 'source') {
-      return this.resolveSources(ast, null, [], params);
+      return this.resolveSources(ast, data, results, params);
     } else throw new Error('Not implemented yet');
   }
 }

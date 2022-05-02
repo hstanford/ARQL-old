@@ -101,13 +101,13 @@ export default function Models({
       </Box>
       <Stack direction="row" spacing={1} sx={{ margin: '8px' }}>
         <TextField
-          sx={{flexGrow: 1}}
+          sx={{ flexGrow: 1 }}
           placeholder="Source Name"
           value={source}
           onChange={(e) => setSource(e.target.value)}
         />
         <Button
-          sx={{width: '150px'}}
+          sx={{ width: '150px' }}
           variant="contained"
           onClick={() => {
             data.addSource(source);
@@ -119,7 +119,7 @@ export default function Models({
       </Stack>
       <Stack direction="row" spacing={1} sx={{ margin: '8px' }}>
         <TextField
-          sx={{flexGrow: 1}}
+          sx={{ flexGrow: 1 }}
           placeholder="Model Name"
           value={model}
           onChange={(e) => setModel(e.target.value)}
@@ -140,7 +140,7 @@ export default function Models({
           </Select>
         </FormControl>
         <Button
-          sx={{width: '150px'}}
+          sx={{ width: '150px' }}
           variant="contained"
           onClick={() => {
             data.addModel(model, sourceForModel);
@@ -152,7 +152,7 @@ export default function Models({
       </Stack>
       <Stack direction="row" spacing={1} sx={{ margin: '8px' }}>
         <TextField
-          sx={{flexGrow: 1}}
+          sx={{ flexGrow: 1 }}
           placeholder="Field Name"
           value={field}
           onChange={(e) => setField(e.target.value)}
@@ -200,7 +200,7 @@ export default function Models({
           </Select>
         </FormControl>
         <Button
-          sx={{width: '150px'}}
+          sx={{ width: '150px' }}
           variant="contained"
           onClick={() => {
             data.addField(field, dataType, modelForField, sourceForField);

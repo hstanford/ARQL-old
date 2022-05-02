@@ -62,7 +62,7 @@ export interface Transform {
 export interface Source {
   type: 'source';
   alias: string | undefined;
-  value: Alphachain | Source[] | null;
+  value: Alphachain | Source[] | Source | null;
   transforms: Transform[];
   shape: Shape | null;
 }
@@ -101,14 +101,16 @@ export interface Query {
 
 export type Modifier = '->' | '-+' | '-x';
 
+export class MultiSource extends Map {}
+
 // contextualiser
 
 export type operatorOp = (...args: any[]) => any;
 export type transformFn = (...args: any[]) => any;
 
 export interface DataSourceOpts {
-  operators: Map<string, (...args: any[]) => any>,
-  transforms: Map<string, (...args: any[]) => any>
+  operators: Map<string, (...args: any[]) => any>;
+  transforms: Map<string, (...args: any[]) => any>;
 }
 
 export abstract class DataSource<ModelType, FieldType> {
@@ -126,8 +128,13 @@ export abstract class DataSource<ModelType, FieldType> {
     throw new Error('Not implemented');
   }
 
-  async resolve(subquery: ContextualisedQuery | ContextualisedSource, params: any[]): Promise<any> {
-
+  async resolve(
+    subquery: ContextualisedQuery | ContextualisedSource,
+    data: AnyObj[] | null,
+    results: AnyObj[][],
+    params: any[]
+  ): Promise<AnyObj[] | AnyObj> {
+    return [];
   }
 
   implementsOp(opName: string) {
@@ -192,16 +199,17 @@ export interface ContextualisedQuery {
   sources: DataSource<any, any>[];
 }
 
+export type ContextualisedSourceValue =
+  | DataField
+  | DataModel
+  | ContextualisedSource;
+
 export interface ContextualisedSource {
   type: 'source';
-  value:
-    | (DataModel | ContextualisedSource | DataField)[]
-    | DataModel
-    | ContextualisedSource
-    | DataField;
+  value: ContextualisedSourceValue[] | ContextualisedSourceValue;
   fields: ContextualisedField[];
   name?: Alphachain | string;
-  subModels?: (DataModel | ContextualisedSource | DataField)[];
+  subModels?: ContextualisedSourceValue[];
   shape?: ContextualisedField[];
   sources: DataSource<any, any>[];
   transform?: ContextualisedTransform;
@@ -295,3 +303,5 @@ export interface DelegatedQuery
       dest?: DelegatedSource | DelegatedQueryResult;
     }
   > {}
+
+export type AnyObj = { [key: string]: any };

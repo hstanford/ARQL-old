@@ -10,6 +10,7 @@ import type {
   ContextualisedParam,
   ContextualisedQuery,
   ContextualisedSource,
+  ContextualisedSourceValue,
   ContextualisedTransform,
   ContextualiserState,
   DataField,
@@ -61,29 +62,40 @@ export class Contextualiser {
   }
 
   aggregateSources(contSource: ContextualisedSource) {
-    const sources = contSource.value
-      ? Array.isArray(contSource.value)
-        ? contSource.value
-        : [contSource.value]
-      : [];
-    contSource.fields = uniqBy(
-      sources.reduce(
-        (acc, source) =>
-          acc.concat(source.type === 'source' ? source.fields : []),
-        [] as ContextualisedField[]
-      ) || [],
-      'name'
-    );
-    contSource.subModels = uniqBy(
-      sources.reduce(
-        (acc, source) =>
-          source?.type === 'source' ? acc.concat(source.subModels || []) : acc,
-        [] as (DataField | DataModel | ContextualisedSource)[]
-      ) || [],
-      'name'
-    );
-    contSource.name = (sources[0] || contSource.subModels?.[0])?.name;
-    contSource.sources = uniq(combine(contSource.subModels));
+    if (Array.isArray(contSource.value)) {
+      contSource.fields = uniqBy(
+        contSource.value.reduce(
+          (acc, source) =>
+            acc.concat(source.type === 'source' ? source.fields : []),
+          [] as ContextualisedField[]
+        ) || [],
+        'name'
+      );
+      contSource.subModels = uniqBy(
+        contSource.value.reduce(
+          (acc, source) =>
+            source?.type === 'source'
+              ? acc.concat(source.subModels || [])
+              : acc,
+          [] as ContextualisedSourceValue[]
+        ) || [],
+        'name'
+      );
+
+      contSource.name = (
+        contSource.value[0] || contSource.subModels?.[0]
+      )?.name;
+      contSource.sources = uniq(combine(contSource.subModels));
+    } else {
+      contSource.fields =
+        contSource.value.type === 'source' ? contSource.value.fields : [];
+      contSource.subModels =
+        contSource.value?.type === 'source'
+          ? contSource.value.subModels
+          : undefined;
+      contSource.name = (contSource.value || contSource.subModels?.[0])?.name;
+      contSource.sources = uniq(combine(contSource.subModels || []));
+    }
   }
 
   handleSource(source: Source, context: ContextualiserState) {
@@ -98,7 +110,6 @@ export class Contextualiser {
         this.handleSource(s, context)
       );
       this.aggregateSources(contextualisedSource);
-      const thing = contextualisedSource.value?.[1];
     } else if (source.value?.type === 'alphachain') {
       const model = this.getModel(source.value, context);
 
@@ -137,15 +148,17 @@ export class Contextualiser {
         out = {
           type: 'source',
           transform: outTransform,
-          value: [out],
+          value: Array.isArray(out.value) ? out.value : out,
           fields: out.fields,
           name: out.name,
           subModels: out.subModels,
-          sources:
-            uniq((out.sources.length === 1 &&
+          sources: uniq(
+            (out.sources.length === 1 &&
             out.sources[0].implementsTransform(outTransform)
               ? out.sources
-              : out.sources.concat([Unresolveable])).concat(outTransform.sources)),
+              : out.sources.concat([Unresolveable])
+            ).concat(outTransform.sources)
+          ),
         };
       }
     }
@@ -262,13 +275,15 @@ export class Contextualiser {
         (part) => match.modifiers && match.modifiers.indexOf(part) !== -1
       ),
       args,
-      sources: uniq(args.reduce((acc, arg) => {
-        // TODO: handle more arg types
-        if (!Array.isArray(arg) && arg.type === 'exprtree') {
-          return acc.concat(arg.sources);
-        }
-        return acc;
-      }, [] as DataSource<any, any>[])),
+      sources: uniq(
+        args.reduce((acc, arg) => {
+          // TODO: handle more arg types
+          if (!Array.isArray(arg) && arg.type === 'exprtree') {
+            return acc.concat(arg.sources);
+          }
+          return acc;
+        }, [] as DataSource<any, any>[])
+      ),
     };
   }
 
@@ -329,13 +344,16 @@ export class Contextualiser {
         }
         if (!subField) {
           // think it must be a model
-          return this.handleSource({
-            type: 'source',
-            alias: expr.root, // probably should handle parts
-            value: expr,
-            transforms: [],
-            shape: null,
-          }, context);
+          return this.handleSource(
+            {
+              type: 'source',
+              alias: expr.root, // probably should handle parts
+              value: expr,
+              transforms: [],
+              shape: null,
+            },
+            context
+          );
         }
         if (subField) {
           if (subField.type === 'datafield' && field.type === 'source')

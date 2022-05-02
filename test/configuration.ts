@@ -3,6 +3,7 @@ import type {
   TransformDef,
   DataField,
   Native,
+  AnyObj,
 } from 'arql';
 
 export function native(source: Native) {
@@ -12,27 +13,29 @@ export function native(source: Native) {
     ['negation', (a) => !a],
     ['equality', (a, b) => a === b],
     ['ternary', (a, b, c) => (a ? b : c)],
-    ['+', (a, b) => a + b]
+    ['+', (a, b) => a + b],
   ]);
   source.transforms = new Map<
     string,
     (
       modifiers: string[],
       params: any[],
-      values: Map<any, any>,
+      values: Map<any, any> | AnyObj[],
       ...args: any[]
-    ) => Promise<Map<any, any>>
+    ) => Promise<AnyObj[]>
   >([
     [
       'join',
       async (
         modifiers: string[],
         params: any[],
-        values: Map<any, any>,
+        values: Map<any, any> | AnyObj[],
         condition: ContextualisedExpr
-      ) => {
-        const vals: any[] = [];
-        const out: Map<any, any> = new Map([[0, vals]]);
+      ): Promise<AnyObj[]> => {
+        if (Array.isArray(values)) {
+          throw new Error('Unsupported input');
+        }
+        const vals: AnyObj[] = [];
         let i = 0;
         for (const [alias, model] of values.entries()) {
           if (i++ > 0) break;
@@ -55,7 +58,7 @@ export function native(source: Native) {
             }
           }
         }
-        return out;
+        return vals;
       },
     ],
     [
@@ -63,19 +66,16 @@ export function native(source: Native) {
       async (
         modifiers: string[],
         params: any[],
-        values: Map<any, any>,
+        values: Map<any, any> | AnyObj[],
         condition: ContextualisedExpr
       ) => {
-        return new Map(
-          [...values.entries()].map(([k, v]) => {
-            return [
-              k,
-              v.filter((r: any) =>
-                source.resolveExpr(condition, new Map([[k, r]]), params)
-              ),
-            ];
-          })
-        );
+        if (!Array.isArray(values)) {
+          throw new Error('Unsupported input');
+        }
+        return values.filter((r: AnyObj) => {
+          const cloned = new Map([[0, r]]);
+          return source.resolveExpr(condition, cloned, params);
+        });
       },
     ],
     [
@@ -83,10 +83,12 @@ export function native(source: Native) {
       async (
         modifiers: string[],
         params: any[],
-        values: Map<any, any[]>,
+        values: Map<any, any> | AnyObj[],
         ...fields: DataField[]
       ) => {
-        const data = [...values.entries()][0][1];
+        if (!Array.isArray(values)) {
+          throw new Error('Unsupported input');
+        }
         const compareFn = (v1: any, v2: any) => {
           let isGreater = 0;
           for (let field of fields) {
@@ -100,12 +102,7 @@ export function native(source: Native) {
           }
           return modifiers.includes('desc') ? -isGreater : isGreater;
         };
-        return new Map([
-          [
-            0,
-            data.sort(compareFn),
-          ]
-        ]);
+        return values.sort(compareFn);
       },
     ],
   ]);

@@ -76,18 +76,32 @@ function findSplit(
             field.sources.some((source) => inShapeNotInSource.includes(source))
           ) {
             // TODO: this may need some very fancy logic
-            if (Array.isArray(field.value) && field.value[0].type === 'source' && field.value?.length === 1) {
+            if (
+              Array.isArray(field.value) &&
+              field.value[0].type === 'source' &&
+              field.value?.length === 1
+            ) {
               queries.push(field.value[0]);
               return {
                 ...field,
-                value: [{
-                  type: 'delegatedQueryResult',
-                  index: queries.length - 1,
-                  alias: typeof field.value[0].name === 'string' ? field.value[0].name : undefined,
-                }],
-              }
+                value: [
+                  {
+                    type: 'delegatedQueryResult',
+                    index: queries.length - 1,
+                    alias:
+                      typeof field.value[0].name === 'string'
+                        ? field.value[0].name
+                        : undefined,
+                  },
+                ],
+              };
             } else {
-              throw new Error('Mixed source shapes currently have minimal support');
+              if (!Array.isArray(field.value)) {
+                return { ...field, value: findSplit(field.value, queries) };
+              }
+              throw new Error(
+                'Mixed source shapes currently have minimal support'
+              );
             }
           }
           return field;
@@ -165,7 +179,7 @@ export default function delegator(ast: ContextualisedQuery): ResolutionTree {
   }
   if (!tree) {
     tree = ast;
-  };
+  }
 
   return {
     tree,

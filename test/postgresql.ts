@@ -1,9 +1,16 @@
 import { Sql, TableWithColumns } from 'sql-ts';
-import type { ContextualisedQuery, ContextualisedSource, DataModel } from 'arql';
+import type {
+  ContextualisedQuery,
+  ContextualisedSource,
+  DataModel,
+} from 'arql';
 import { DataSource } from 'arql';
 const sql = new Sql('postgres');
 
-export default class Pg extends DataSource<TableWithColumns<{ [key: string]: any }>, any> {
+export default class Pg extends DataSource<
+  TableWithColumns<{ [key: string]: any }>,
+  any
+> {
   constructor() {
     super();
     this.operators = new Map([
@@ -39,7 +46,7 @@ export default class Pg extends DataSource<TableWithColumns<{ [key: string]: any
 
   async resolve(ast: ContextualisedQuery | ContextualisedSource) {
     if ((ast as any).name === 'o')
-      return [{id: 1, userId: 1, name: 'foo', stuff: new Date()}];
+      return [{ id: 1, userId: 1, name: 'foo', stuff: new Date() }];
     return [{ id: 1, name: 'hello' }];
   }
 }

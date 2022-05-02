@@ -4,9 +4,8 @@ export class Data {
   sources: Map<string, Native> = new Map();
   models: Map<string, DataModel> = new Map();
   onChange = () => {};
-  constructor (onChange?: () => any) {
-    if (onChange)
-      this.onChange = onChange;
+  constructor(onChange?: () => any) {
+    if (onChange) this.onChange = onChange;
   }
   addSource(name: string) {
     const newSource = new Native({});
@@ -60,7 +59,7 @@ export class Data {
   }
   removeField(name: string, modelName: string) {
     const model = this.models.get(modelName);
-    model.fields = model.fields.filter(field => field.name !== name);
+    model.fields = model.fields.filter((field) => field.name !== name);
     this.onChange();
   }
   addRecord(record: any, sourceName: string, modelName: string) {
@@ -91,12 +90,12 @@ data.addField('age', 'number', 'elephants', 'main');
 data.addField('id', 'number', 'orders', 'secondary');
 data.addField('userId', 'number', 'orders', 'secondary');
 data.addField('name', 'string', 'orders', 'secondary');
-data.addRecord({id: 1, name: 'hello'}, 'main', 'users');
-data.addRecord({id: 2, name: 'goodbye'}, 'main', 'users');
-data.addRecord({id: 1, age: 42}, 'main', 'elephants');
-data.addRecord({id: 2, name: 39}, 'main', 'elephants');
-data.addRecord({id: 1, userId: 1, name: 'foo'}, 'secondary', 'orders');
-data.addRecord({id: 2, userId: 1, name: 'blah'}, 'secondary', 'orders');
-data.addRecord({id: 3, userId: 2, name: 'other'}, 'secondary', 'orders');
+data.addRecord({ id: 1, name: 'hello' }, 'main', 'users');
+data.addRecord({ id: 2, name: 'goodbye' }, 'main', 'users');
+data.addRecord({ id: 1, age: 42 }, 'main', 'elephants');
+data.addRecord({ id: 2, name: 39 }, 'main', 'elephants');
+data.addRecord({ id: 1, userId: 1, name: 'foo' }, 'secondary', 'orders');
+data.addRecord({ id: 2, userId: 1, name: 'blah' }, 'secondary', 'orders');
+data.addRecord({ id: 3, userId: 2, name: 'other' }, 'secondary', 'orders');
 
 export default data;

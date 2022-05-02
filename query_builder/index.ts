@@ -83,14 +83,14 @@ export const orders: DataModel = {
 };
 
 const Users = {
-  id: users.fields.find(i => i.name === 'id'),
-  name: users.fields.find(i => i.name === 'name'),
+  id: users.fields.find((i) => i.name === 'id'),
+  name: users.fields.find((i) => i.name === 'name'),
 } as const;
 
 const Orders = {
-  id: orders.fields.find(i => i.name === 'id'),
-  userId: orders.fields.find(i => i.name === 'userId'),
-  name: orders.fields.find(i => i.name === 'name'),
+  id: orders.fields.find((i) => i.name === 'id'),
+  userId: orders.fields.find((i) => i.name === 'userId'),
+  name: orders.fields.find((i) => i.name === 'name'),
 } as const;
 
 selfReference(users);
@@ -101,7 +101,7 @@ class Field {
   name: string;
   datatype: string;
   model: string;
-  constructor (name: string, datatype: string, model: string) {
+  constructor(name: string, datatype: string, model: string) {
     this.name = name;
     this.datatype = datatype;
     this.model = model;
@@ -111,7 +111,7 @@ class Field {
     return `${this.model}.${this.name}`;
   }
 
-  equals (otherVal: any): ExprTree {
+  equals(otherVal: any): ExprTree {
     return new ExprTree({
       op: '=',
       args: [this, otherVal],
@@ -120,9 +120,9 @@ class Field {
 }
 
 type Model<T> = {
-  _type: 'model',
+  _type: 'model';
   _name: string;
-} & FieldMap<T>
+} & FieldMap<T>;
 
 interface Transform {
   name: string;
@@ -132,34 +132,39 @@ interface Transform {
 class ExprTree {
   op: string;
   args: (ExprTree | Field)[];
-  constructor ({op, args}: {op: string, args: any[]}) {
+  constructor({ op, args }: { op: string; args: any[] }) {
     this.op = op;
     this.args = args;
   }
 
   toQuery(): string {
-    return this.args.map(a => {
-      if (a?.toQuery) {
-        return a.toQuery();
-      } else {
-        return a;
-      }
-    }).join(` ${this.op} `);
-  };
+    return this.args
+      .map((a) => {
+        if (a?.toQuery) {
+          return a.toQuery();
+        } else {
+          return a;
+        }
+      })
+      .join(` ${this.op} `);
+  }
 }
 
-type FieldMap<T> = { [k in keyof T] : Field};
+type FieldMap<T> = { [k in keyof T]: Field };
 
 type Source<ModelType> = SourceClass<ModelType> & FieldMap<ModelType>;
 
 class SourceClass<ModelType> {
-  _type: "source" = 'source';
+  _type: 'source' = 'source';
   private _sources: (Model<ModelType> | Source<ModelType>)[];
   private _transforms: Transform[];
   private _shape?: Map<string, any>;
-  constructor (sources: (Model<ModelType> | Source<ModelType>)[] = [], transforms = [], shape = undefined) {
-    this._sources = sources,
-    this._transforms = transforms;
+  constructor(
+    sources: (Model<ModelType> | Source<ModelType>)[] = [],
+    transforms = [],
+    shape = undefined
+  ) {
+    (this._sources = sources), (this._transforms = transforms);
     this._shape = shape;
     if (sources.length === 1) {
       for (const key of Object.keys(sources[0])) {
@@ -169,14 +174,13 @@ class SourceClass<ModelType> {
     }
   }
 
-  transform (tr: Transform): Source<ModelType> {
+  transform(tr: Transform): Source<ModelType> {
     this._transforms.push(tr);
     return this as any;
   }
 
-  shape (s: any[] | { [key: string]: any }) {
-    if (!this._shape)
-      this._shape = new Map();
+  shape(s: any[] | { [key: string]: any }) {
+    if (!this._shape) this._shape = new Map();
     if (Array.isArray(s))
       for (let field of s) {
         this._shape?.set?.(field.name, field);
@@ -188,13 +192,12 @@ class SourceClass<ModelType> {
     return this;
   }
 
-  toQuery () {
+  toQuery() {
     let out = '';
-    const sources = this._sources.map(source => {
+    const sources = this._sources.map((source) => {
       if (source._type === 'model') {
         return source._name;
-      } else
-        return source.toQuery();
+      } else return source.toQuery();
     });
     if (sources.length > 1) {
       out += '(' + sources.join(', ') + ')';
@@ -203,32 +206,41 @@ class SourceClass<ModelType> {
     }
 
     for (const transform of this._transforms) {
-      out += ` | ${transform.name}(${transform.args.map(a => {
-        if (a?.toQuery) {
-          return a.toQuery();
-        } else {
-          return a;
-        }
-      }).join(',')})`;
+      out += ` | ${transform.name}(${transform.args
+        .map((a) => {
+          if (a?.toQuery) {
+            return a.toQuery();
+          } else {
+            return a;
+          }
+        })
+        .join(',')})`;
     }
 
     if (this._shape) {
-      out += ' {' + [...this._shape.entries()].map(([k, v]) => `${k}: ${
-        v.toQuery()
-      }`).join(', ') + '}';
+      out +=
+        ' {' +
+        [...this._shape.entries()]
+          .map(([k, v]) => `${k}: ${v.toQuery()}`)
+          .join(', ') +
+        '}';
     }
 
     return out;
   }
 }
 
-function transformModel<Signature> (model: DataModel): Source<Signature> {
-  const fieldObj: Model<Signature> = model.fields.reduce((acc, field) => {
-    return {...acc, [field.name]: new Field(field.name, field.datatype, model.name)};
-  }, {_type: 'model', _name: model.name} as Model<Signature>);
-  return new SourceClass<Signature>([
-    fieldObj,
-  ]) as any;
+function transformModel<Signature>(model: DataModel): Source<Signature> {
+  const fieldObj: Model<Signature> = model.fields.reduce(
+    (acc, field) => {
+      return {
+        ...acc,
+        [field.name]: new Field(field.name, field.datatype, model.name),
+      };
+    },
+    { _type: 'model', _name: model.name } as Model<Signature>
+  );
+  return new SourceClass<Signature>([fieldObj]) as any;
 }
 
 // TODO: type overrides
@@ -236,8 +248,8 @@ function multi<T, U>(...args: [Source<T>, Source<U>]): Source<{}> {
   return new SourceClass<{}>(args);
 }
 
-const u = transformModel<{id: number; name: string;}>(users);
-const o = transformModel<{id: number; userId: number; name: string;}>(orders);
+const u = transformModel<{ id: number; name: string }>(users);
+const o = transformModel<{ id: number; userId: number; name: string }>(orders);
 
 // extend Source with custom transform method
 interface SourceClass<ModelType> {
@@ -262,7 +274,7 @@ const out = multi(u, o)
   .filter(o.name.equals('foo'))
   .shape({
     userId: u.id,
-    orderId: o.id
+    orderId: o.id,
   })
   .toQuery();
 

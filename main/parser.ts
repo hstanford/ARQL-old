@@ -257,30 +257,31 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     }))
   );
 
-  const sourceWithTransforms: Parser<Source, string, any> = recursiveParser(() => 
-    sequenceOf([
-      possibly(alias),
-      optionalWhitespace,
-      choice([sourcelist, alphachain]),
-      optionalWhitespace,
-      transforms,
-      possibly(shape),
-    ]).map((parts) => ({
-      type: 'source',
-      alias:
-        parts[0] ||
-        (typeof parts[2] === 'string' && parts[2]) ||
-        (!Array.isArray(parts[2]) &&
-          parts[2].type === 'alphachain' &&
-          parts[2].root) ||
-        undefined,
-      value: parts[2],
-      transforms: parts[4],
-      shape: parts[5],
-    }))
+  const sourceWithTransforms: Parser<Source, string, any> = recursiveParser(
+    () =>
+      sequenceOf([
+        possibly(alias),
+        optionalWhitespace,
+        choice([sourcelist, alphachain]),
+        optionalWhitespace,
+        transforms,
+        possibly(shape),
+      ]).map((parts) => ({
+        type: 'source',
+        alias:
+          parts[0] ||
+          (typeof parts[2] === 'string' && parts[2]) ||
+          (!Array.isArray(parts[2]) &&
+            parts[2].type === 'alphachain' &&
+            parts[2].root) ||
+          undefined,
+        value: parts[2],
+        transforms: parts[4],
+        shape: parts[5],
+      }))
   );
 
-  const sourceWithShape: Parser<Source, string, any> = recursiveParser(() => 
+  const sourceWithShape: Parser<Source, string, any> = recursiveParser(() =>
     sequenceOf([
       possibly(alias),
       optionalWhitespace,
@@ -303,7 +304,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     }))
   );
 
-  const sourcelist: Parser<Source[], string, any> = sequenceOf([
+  const sourcelist: Parser<Source | Source[], string, any> = sequenceOf([
     char('('),
     optionalWhitespace,
     source,
@@ -319,7 +320,9 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     possibly(char(',')),
     optionalWhitespace,
     char(')'),
-  ]).map((parts) => [parts[2]].concat(parts[4]));
+  ]).map((parts) => {
+    return parts[4].length ? [parts[2]].concat(parts[4]) : parts[2];
+  });
 
   const dest: Parser<Dest, string, any> = recursiveParser(() =>
     sequenceOf([

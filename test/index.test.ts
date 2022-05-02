@@ -74,6 +74,7 @@ describe('can retrieve a join and a reshaping', () => {
       elephants | filter(age = $1)
     `);
     const contextualised = contextualise(ast, models, transforms);
+    console.log(contextualised);
     const delegated = delegator(contextualised);
     const data = await collector.run(delegated, [39]);
     console.timeEnd('d');
@@ -229,6 +230,7 @@ describe('can retrieve a join and a reshaping', () => {
     `);
     const contextualised = contextualise(ast, models, transforms);
     const delegated = delegator(contextualised);
+    //console.log(delegated.tree.type === 'query' && delegated.tree.source?.type === 'source' && delegated.tree.source.shape);
     const data = await collector.run(delegated, [1]);
     console.timeEnd('o');
 
