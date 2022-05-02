@@ -34,9 +34,10 @@ export default function App() {
   const [error, setError] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>();
   const textFieldRef = React.useRef<HTMLInputElement>();
+  const [needsManualRun, setNeedsManualRun] = React.useState(false);
 
-  React.useEffect(() => {
-    (async () => {
+  const run = React.useCallback(
+    async (auto: Boolean) => {
       try {
         let ast = parser.query(content);
         const contextualised = contextualise(
@@ -45,10 +46,17 @@ export default function App() {
           transforms
         );
         const delegated = delegator(contextualised);
-        if (delegated.tree.type === 'query' && delegated.tree.dest) {
-          // TODO: process data modification statements on a button click
+        if (
+          ((delegated.tree.type === 'query' && delegated.tree.dest)
+          || (delegated.queries.some((q: any) => q.type === 'query' && q.dest)))
+          && auto
+        ) {
+          setNeedsManualRun(true);
+          setResults('Please press "run" to execute modification queries');
+          setError(true);
           return;
         }
+        setNeedsManualRun(false);
         const data = await collector.run(delegated, params);
         setResults(JSON.stringify(data, null, 2));
         if (error) setError(false);
@@ -61,8 +69,14 @@ export default function App() {
           setError(false);
         }
       }
-    })();
-  }, [content, params]);
+    },
+    [content, error, params]
+  );
+
+  React.useEffect(() => {
+    run(true);
+  }, [run]);
+
   return (
     <Grid container sx={{ height: '100vh' }}>
       <Grid item xs={6}>
@@ -114,57 +128,86 @@ export default function App() {
                 sx={{
                   fontFamily: 'PT Mono',
                   overflow: 'scroll',
+                  height: '100%',
                 }}
-                inputProps={{
+                InputProps={{
                   ref: inputRef,
                   sx: {
                     fontFamily: 'PT Mono',
+                    height: '100%',
+                    '> textarea': {
+                      height: '100% !important',
+                    },
                   },
                 }}
               />
             </Box>
           </Grid>
-          <Grid item xs={3}>
+          <Grid
+            item
+            xs={3}
+            sx={{
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'stretch',
+              maxHeight: '100%',
+            }}
+          >
             <Box>PARAMS</Box>
-            {params.map((p, i) => {
-              return (
-                <Box sx={{ display: 'flex', marginBottom: '4px' }}>
-                  <TextField size="small" key={i} disabled value={p} />
-                  <Button
-                    sx={{ marginLeft: '4px' }}
-                    variant="outlined"
-                    onClick={() =>
-                      setParams(params.slice(0, i).concat(params.slice(i + 1)))
-                    }
-                  >
-                    X
-                  </Button>
-                </Box>
-              );
-            })}
-            <Box sx={{ display: 'flex', marginBottom: '4px' }}>
-              <TextField
-                size="small"
-                value={param}
-                onChange={(e) =>
-                  setParam(
-                    isNaN(e.target.value as any)
-                      ? e.target.value
-                      : parseFloat(e.target.value)
-                  )
-                }
-              />
-              <Button
-                sx={{ marginLeft: '4px' }}
-                variant="outlined"
-                onClick={() => {
-                  setParams(params.concat([param]));
-                  setParam('');
-                }}
-              >
-                Add
-              </Button>
+            <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+              {params.map((p, i) => {
+                return (
+                  <Box sx={{ display: 'flex', marginBottom: '4px' }}>
+                    <TextField size="small" key={i} disabled value={p} />
+                    <Button
+                      sx={{ marginLeft: '4px' }}
+                      variant="outlined"
+                      onClick={() =>
+                        setParams(
+                          params.slice(0, i).concat(params.slice(i + 1))
+                        )
+                      }
+                    >
+                      X
+                    </Button>
+                  </Box>
+                );
+              })}
+              <Box sx={{ display: 'flex', marginBottom: '4px' }}>
+                <TextField
+                  size="small"
+                  value={param}
+                  onChange={(e) =>
+                    setParam(
+                      isNaN(e.target.value as any)
+                        ? e.target.value
+                        : parseFloat(e.target.value)
+                    )
+                  }
+                />
+                <Button
+                  sx={{ marginLeft: '4px' }}
+                  variant="outlined"
+                  onClick={() => {
+                    setParams(params.concat([param]));
+                    setParam('');
+                  }}
+                >
+                  Add
+                </Button>
+              </Box>
             </Box>
+            <Button
+              sx={{ width: '100%' }}
+              variant="outlined"
+              onClick={() => {
+                run(false);
+              }}
+              disabled={!needsManualRun}
+            >
+              RUN
+            </Button>
           </Grid>
         </Grid>
         <Box sx={{ height: '50%', overflow: 'scroll', padding: '8px' }}>
