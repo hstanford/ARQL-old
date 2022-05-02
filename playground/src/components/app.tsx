@@ -45,6 +45,10 @@ export default function App() {
           transforms
         );
         const delegated = delegator(contextualised);
+        if (delegated.tree.type === 'query' && delegated.tree.dest) {
+          // TODO: process data modification statements on a button click
+          return;
+        }
         const data = await collector.run(delegated, params);
         setResults(JSON.stringify(data, null, 2));
         if (error) setError(false);

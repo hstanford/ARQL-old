@@ -301,16 +301,50 @@ export default class Native extends DataSource<any, any> {
     }
   }
 
+  async resolveDest (
+    dest: DelegatedSource,
+    modifier: string | undefined,
+    source: AnyObj | AnyObj[] | undefined,
+    data: any,
+    results: any[],
+    params: any[] 
+  ): Promise<AnyObj | AnyObj[] | undefined> {
+    if (modifier === '-+') {
+      if (Array.isArray(dest.value) || dest.value.type !== 'datamodel') {
+        throw new Error('Not supported');
+      }
+      if (source === undefined) {
+        throw new Error('Cannot insert undefined');
+      }
+      this.data[dest.value.name].push(...(Array.isArray(source) ? source : [source]));
+      return source;
+    } else {
+      throw new Error(`Modifier ${modifier} not supported yet`);
+    }
+  }
+
   async resolve(
     ast: DelegatedQuery | DelegatedSource,
     data: AnyObj[] | null,
     results: AnyObj[][],
     params: any[]
   ) {
-    if (ast.type === 'query' && ast.source) {
-      if (ast.source.type === 'delegatedQueryResult')
-        return results[ast.source.index];
-      else return this.resolveSources(ast.source, data, results, params);
+    if (ast.type === 'query') {
+      let source: AnyObj | AnyObj[] | undefined,
+        dest: AnyObj | AnyObj[] | undefined;
+      if (ast.source) {
+        if (ast.source.type === 'delegatedQueryResult')
+          source = results[ast.source.index];
+        else
+          source = await this.resolveSources(ast.source, data, results, params);
+      }
+      if (ast.dest) {
+        if (ast.dest.type === 'delegatedQueryResult') {
+          throw new Error('Not implemented yet');
+        }
+        dest = await this.resolveDest(ast.dest, ast.modifier, source, data, results, params);
+      }
+      return dest || source || [];
     } else if (ast.type === 'source') {
       return this.resolveSources(ast, data, results, params);
     } else throw new Error('Not implemented yet');

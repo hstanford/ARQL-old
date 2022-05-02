@@ -185,7 +185,7 @@ export class Contextualiser {
       sources: [],
     };
     let out = contextualisedDest;
-    contextualisedDest.value = this.getModel(
+    const model = this.getModel(
       {
         type: 'alphachain',
         root: dest.value,
@@ -193,6 +193,15 @@ export class Contextualiser {
       },
       context
     );
+
+    contextualisedDest.value = model;
+
+    // TODO: fix this hack by passing required fields back down
+    contextualisedDest.sources =
+    model?.fields?.[0] && model.fields[0].type === 'datafield'
+      ? [model.fields[0].source]
+      : [];
+
     if (dest.transforms.length) {
       for (const transform of dest.transforms) {
         out = {

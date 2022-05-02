@@ -26,32 +26,32 @@ const parser = buildParser(resolve);
 const collector = new Collector();
 nativeConfigurer(collector);
 
+async function arql (query: string, params: any[]) {
+  console.time(query);
+  let ast = parser.query(query);
+  const contextualised = contextualise(ast, models, transforms);
+  const delegated = delegator(contextualised);
+  const data = await collector.run(delegated, params);
+  console.timeEnd(query);
+
+  return data;
+}
+
 describe('can retrieve a join and a reshaping', () => {
   it('Basic name from users', async () => {
-    console.time('a');
-    let ast = parser.query('users {name}');
-    const contextualised = contextualise(ast, models, transforms);
-    const delegated = delegator(contextualised);
-    const data = await collector.run(delegated, []);
-    console.timeEnd('a');
+    const data = await arql('users {name}', []);
 
     expect(data).to.deep.equal([{ name: 'hello' }]);
   });
 
   it('Basic aliased name from users', async () => {
-    console.time('b');
-    let ast = parser.query('users {foo: name}');
-    const contextualised = contextualise(ast, models, transforms);
-    const delegated = delegator(contextualised);
-    const data = await collector.run(delegated, []);
-    console.timeEnd('b');
+    const data = await arql('users {foo: name}', []);
 
     expect(data).to.deep.equal([{ foo: 'hello' }]);
   });
 
   it('Join and reshaping', async () => {
-    console.time('c');
-    let ast = parser.query(`
+    const data = await arql(`
     (
       u: users,
       o: orders,
@@ -59,195 +59,138 @@ describe('can retrieve a join and a reshaping', () => {
       username: u.name,
       ordername: o.name,
     }
-    `);
-    const contextualised = contextualise(ast, models, transforms);
-    const delegated = delegator(contextualised);
-    const data = await collector.run(delegated, []);
-    console.timeEnd('c');
+    `, []);
 
     expect(data).to.deep.equal([{ username: 'hello', ordername: 'foo' }]);
   });
 
   it('Basic filtering', async () => {
-    console.time('d');
-    let ast = parser.query(`
+    const data = await arql(`
       elephants | filter(age = $1)
-    `);
-    const contextualised = contextualise(ast, models, transforms);
-    console.log(contextualised);
-    const delegated = delegator(contextualised);
-    const data = await collector.run(delegated, [39]);
-    console.timeEnd('d');
+    `, [39]);
 
     expect(data).to.deep.equal([{ id: 2, age: 39 }]);
   });
 
   it('Basic reshaping with no aliasing', async () => {
-    console.time('e');
-    let ast = parser.query(`
+    const data = await arql(`
       elephants { elephantAge: age }
-    `);
-    const contextualised = contextualise(ast, models, transforms);
-    const delegated = delegator(contextualised);
-    const data = await collector.run(delegated, [39]);
-    console.timeEnd('e');
+    `, [39]);
 
     expect(data).to.deep.equal([{ elephantAge: 42 }, { elephantAge: 39 }]);
   });
 
   it('Basic sort with modifier', async () => {
-    console.time('f');
-    let ast = parser.query(`
+    const data = await arql(`
       elephants | sort.desc(age) { age }
-    `);
-    const contextualised = contextualise(ast, models, transforms);
-    const delegated = delegator(contextualised);
-    const data = await collector.run(delegated, []);
-    console.timeEnd('f');
+    `, []);
 
     expect(data).to.deep.equal([{ age: 42 }, { age: 39 }]);
   });
 
   it('Basic sort with opposite modifier', async () => {
-    console.time('g');
-    let ast = parser.query(`
+    const data = await arql(`
       elephants | sort.asc(age) { age }
-    `);
-    const contextualised = contextualise(ast, models, transforms);
-    const delegated = delegator(contextualised);
-    const data = await collector.run(delegated, []);
-    console.timeEnd('g');
+    `, []);
 
     expect(data).to.deep.equal([{ age: 39 }, { age: 42 }]);
   });
 
   it('Join in shape', async () => {
-    console.time('h');
-    let ast = parser.query(`
+    const data = await arql(`
       u: users {
         id,
         orders | filter(u.id = orders.userId) {
           name
         }
       }
-    `);
-    const contextualised = contextualise(ast, models, transforms);
-    const delegated = delegator(contextualised);
-    const data = await collector.run(delegated, []);
-    console.timeEnd('h');
+    `, []);
 
     expect(data).to.deep.equal([{ id: 1, orders: [{ name: 'foo' }] }]);
   });
 
   it('param in shape', async () => {
-    console.time('i');
-    let ast = parser.query(`
+    const data = await arql(`
       users {id: $1}
-    `);
-    const contextualised = contextualise(ast, models, transforms);
-    const delegated = delegator(contextualised);
-    const data = await collector.run(delegated, ['hi']);
-    console.timeEnd('i');
+    `, ['hi']);
 
     expect(data).to.deep.equal([{ id: 'hi' }]);
   });
 
   it('expr in shape', async () => {
-    console.time('j');
-    let ast = parser.query(`
+    const data = await arql(`
       users {id: id + $1,}
-    `);
-    const contextualised = contextualise(ast, models, transforms);
-    const delegated = delegator(contextualised);
-    const data = await collector.run(delegated, [1]);
-    console.timeEnd('j');
+    `, [1]);
 
     expect(data).to.deep.equal([{ id: 2 }]);
   });
 
   it('model in shape', async () => {
-    console.time('k');
-    let ast = parser.query(`
+    const data = await arql(`
       users {elephants}
-    `);
-    const contextualised = contextualise(ast, models, transforms);
-    const delegated = delegator(contextualised);
-    const data = await collector.run(delegated, [1]);
-    console.timeEnd('k');
+    `, []);
 
     expect(data[0].elephants).to.deep.contain({ id: 2, age: 39 });
     expect(data[0].elephants).to.deep.contain({ id: 1, age: 42 });
   });
 
   it('filtered model in shape conforms to filter', async () => {
-    console.time('l');
-    let ast = parser.query(`
+    const data = await arql(`
       users {elephants | filter(elephants.id = users.id)}
-    `);
-    const contextualised = contextualise(ast, models, transforms);
-    const delegated = delegator(contextualised);
-    const data = await collector.run(delegated, [1]);
-    console.timeEnd('l');
+    `, []);
 
     expect(data[0].elephants).to.have.length(1);
     expect(data[0].elephants).to.deep.contain({ id: 1, age: 42 });
   });
 
   it('handles static data', async () => {
-    console.time('m');
-    let ast = parser.query(`
+    const data = await arql(`
       {
         id: $1
       }
-    `);
-    const contextualised = contextualise(ast, models, transforms);
-    const delegated = delegator(contextualised);
-    const data = await collector.run(delegated, [1]);
-    console.timeEnd('m');
+    `, [1]);
 
     expect(data).to.deep.equal({ id: 1 });
   });
 
   it('handles static data inside a shape', async () => {
-    console.time('n');
-    let ast = parser.query(`
+    const data = await arql(`
       {
         stuff: { name: $1 }
       }
-    `);
-    const contextualised = contextualise(ast, models, transforms);
-    const delegated = delegator(contextualised);
-    const data = await collector.run(delegated, [1]);
-    console.timeEnd('n');
+    `, [1]);
 
     expect(data).to.deep.equal({ stuff: { name: 1 } });
   });
 
   it('filtered model in shape conforms to filter when the models are from different sources (1)', async () => {
-    console.time('o');
-    let ast = parser.query(`
+    const data = await arql(`
       users {orders | filter(orders.userId = users.id)}
-    `);
-    const contextualised = contextualise(ast, models, transforms);
-    const delegated = delegator(contextualised);
-    //console.log(delegated.tree.type === 'query' && delegated.tree.source?.type === 'source' && delegated.tree.source.shape);
-    const data = await collector.run(delegated, [1]);
-    console.timeEnd('o');
+    `, []);
 
     expect(data[0].orders).to.have.length(1);
     expect(data[0].orders).to.deep.contain({ id: 1, userId: 1, name: 'foo' });
   });
 
   it('filtered model in shape conforms to filter when the models are from different sources (2)', async () => {
-    console.time('p');
-    let ast = parser.query(`
+    const data = await arql(`
       users {orders | filter(orders.userId = users.id + $1)}
-    `);
-    const contextualised = contextualise(ast, models, transforms);
-    const delegated = delegator(contextualised);
-    const data = await collector.run(delegated, [1]);
-    console.timeEnd('p');
+    `, [1]);
 
     expect(data[0].orders).to.have.length(0);
+  });
+});
+
+describe('data modification', () => {
+  it('can perform a basic insert statement', async () => {
+    const data = await arql(`
+      {id: $1, name: $2} -+ users
+    `, [2, 'newUser']);
+
+    expect(data).to.deep.equal({id: 2, name: 'newUser'});
+
+    const data2 = await arql('users | filter(id = $1) {id, name}', [2]);
+
+    expect(data2).to.deep.equal([{id: 2, name: 'newUser'}]);
   });
 });

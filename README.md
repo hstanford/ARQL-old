@@ -59,15 +59,12 @@ Additionally, several other desirable features have been identified:
 
 ### object
 
-An object is a collection of values corresponding to particular fields
-
-### base object
-
-A base object is the equivalent of a row in a relational database or an entity in a graphical database: an object that represents a tangible thing
+An object is a key-value representation of data: e.g. {id: 1, name: 'hello'}.
+A base object is an object that is persisted somewhere (the equivalent of a row in a relational database or an entity in a graphical database).
 
 ### model
 
-A model is a collection of homogeneous base objects
+A model is a collection of homogeneous base objects.
 
 ### shape
 
@@ -96,7 +93,7 @@ would obtain data that looks like:
 
 ### source
 
-A collection of objects, which often contain fields from multiple base objects. A model is the most basic type of source.
+A collection of objects. A model is the most basic type of source.
 
 ### transform
 
@@ -112,7 +109,8 @@ A logical combination of fields and/or static values used for filtering sources 
 
 ### query
 
-An instruction or set of instructions composed of sources and shapes. Data modification is indicated by `->`, data addition is indicated by `-+`.
+An instruction or set of instructions composed of sources and shapes. Data modification is indicated by `->`, data addition is indicated by `-+`, and data deletion is indicated by `-x`.
+These are all meant to look like arrows indicating data from the left flowing to the right.
 
 The most complicated query is composed like:
 
@@ -183,43 +181,4 @@ Insert a user with name "TEST"
 ```
 query: '{name: $1} -+ users',
 params: ['TEST']
-```
-
-### A more complex real-world example
-
-```
-query: '
-  (
-    (
-      (
-        c: conversations,
-        cp: c.participants | filter(cp.conversationRoleId = $1),
-        usr: c.participants | filter(!cp.conversationRoleId),
-      ) | join(),
-      cm: c.messages,
-    )
-      | join.left()
-      | unique(c.id)
-      | order.desc.nullsLast(cm.createdAt)
-    {
-      c.id,
-      read: !cm.createdAt ? 1=1 : !cp.lastReadAt ? 1!=1 : cp.lastReadAt >= cm.createdAt,
-      cm.content,
-      cm.createdAt,
-      usr.userId,
-    }
-  )
-    | filter(id = $2)
-    | order.desc.nullsLast(createdAt)
-    | limit($3)
-    | offset($4)
-  {
-    id,
-    userId,
-    read,
-    content,
-  }
-',
-params: [1, 5, 20, 0],
-
 ```
