@@ -151,7 +151,7 @@ export class Contextualiser {
         out = {
           type: 'source',
           transform: outTransform,
-          value: Array.isArray(out.value) ? out.value : out,
+          value: (Array.isArray(out.value) && !out.transform) ? out.value : out,
           fields: out.fields,
           name: out.name,
           subModels: out.subModels,
