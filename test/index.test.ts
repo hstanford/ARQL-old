@@ -1,3 +1,4 @@
+// @ts-nocheck
 import mocha from 'mocha';
 const { describe, it } = mocha;
 import { expect } from 'chai';
@@ -305,6 +306,16 @@ describe('can retrieve a join and a reshaping', () => {
         name: 'bar',
       }
     ]);
+  });
+
+  it('does nice inner shape selects', async () => {
+    const data = await arql(`users {
+      user: {
+        name: users.name
+      }
+    }`, []);
+
+    expect(data).to.deep.equal([{user: {name: 'hello'}}]);
   });
 });
 

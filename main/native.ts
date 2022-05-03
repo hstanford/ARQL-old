@@ -118,7 +118,7 @@ export default class Native extends DataSource<any, any> {
     );
     return await this.applyTransformsAndShape(
       source,
-      intermediate,
+      intermediate || data,
       results,
       params
     );
@@ -130,16 +130,9 @@ export default class Native extends DataSource<any, any> {
     results: any[],
     params: any[]
   ): Promise<AnyObj[] | AnyObj> {
-    if (
-      intermediate &&
-      !(intermediate instanceof Map) &&
-      !Array.isArray(intermediate)
-    ) {
-      if (source.transform || source.shape)
-        console.warn(
-          'Shaping/transforming not supported for single object sources'
-        );
-      return intermediate;
+    let single = intermediate && !(intermediate instanceof Map) && !Array.isArray(intermediate);
+    if (single) {
+      intermediate = [intermediate];
     }
     let resolved: AnyObj[] | AnyObj | undefined;
 
@@ -176,7 +169,7 @@ export default class Native extends DataSource<any, any> {
     if (!resolved) {
       throw new Error(`Couldn't resolve source`);
     }
-    return resolved;
+    return single && Array.isArray(resolved) ? resolved[0] : resolved;
   }
 
   async resolveIntermediate(
@@ -190,16 +183,18 @@ export default class Native extends DataSource<any, any> {
     // you'll have a Map<string, AnyObj[]>, that will be passed into some kind of join
     let intermediate: Map<string, AnyObj[]> | AnyObj[] | undefined;
     if (Array.isArray(source.value)) {
-      // ContextualisedSourceArray, instanceof doesn't narrow here
-      intermediate = new Map<string, AnyObj[]>();
-      for (const sourceValue of source.value) {
-        const [key, value] = await this.resolveSource(
-          sourceValue,
-          data,
-          results,
-          params
-        );
-        intermediate.set(key, value);
+      if (source.value.length) {
+        // ContextualisedSourceArray, instanceof doesn't narrow here
+        intermediate = new Map<string, AnyObj[]>();
+        for (const sourceValue of source.value) {
+          const [key, value] = await this.resolveSource(
+            sourceValue,
+            data,
+            results,
+            params
+          );
+          intermediate.set(key, value);
+        }
       }
     } else if (source.value) {
       [, intermediate] = await this.resolveSource(
