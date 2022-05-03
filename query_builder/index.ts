@@ -83,14 +83,14 @@ export const orders: DataModel = {
 };
 
 const Users = {
-  id: users.fields.find((i) => i.name === 'id'),
-  name: users.fields.find((i) => i.name === 'name'),
+  id: users.fields.find((i: any) => i.name === 'id'),
+  name: users.fields.find((i: any) => i.name === 'name'),
 } as const;
 
 const Orders = {
-  id: orders.fields.find((i) => i.name === 'id'),
-  userId: orders.fields.find((i) => i.name === 'userId'),
-  name: orders.fields.find((i) => i.name === 'name'),
+  id: orders.fields.find((i: any) => i.name === 'id'),
+  userId: orders.fields.find((i: any) => i.name === 'userId'),
+  name: orders.fields.find((i: any) => i.name === 'name'),
 } as const;
 
 selfReference(users);
@@ -232,7 +232,7 @@ class SourceClass<ModelType> {
 
 function transformModel<Signature>(model: DataModel): Source<Signature> {
   const fieldObj: Model<Signature> = model.fields.reduce(
-    (acc, field) => {
+    (acc: any, field: any) => {
       return {
         ...acc,
         [field.name]: new Field(field.name, field.datatype, model.name),
