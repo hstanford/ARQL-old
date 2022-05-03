@@ -7,6 +7,11 @@ const mainDb = new Native({
     { id: 1, age: 42 },
     { id: 2, age: 39 },
   ],
+  tigers: [
+    { id: 1, tag: 'A', elephantId: 2 },
+    { id: 2, tag: 'B', elephantId: 1 },
+    { id: 3, tag: 'C', elephantId: 2 },
+  ]
 });
 nativeConfigurer(mainDb);
 
@@ -37,6 +42,31 @@ export const elephants: DataModel = {
       datatype: 'number',
       source: mainDb,
     },
+  ],
+};
+
+export const tigers: DataModel = {
+  type: 'datamodel',
+  name: 'tigers',
+  fields: [
+    {
+      type: 'datafield',
+      name: 'id',
+      datatype: 'number',
+      source: mainDb,
+    },
+    {
+      type: 'datafield',
+      name: 'elephantId',
+      datatype: 'number',
+      source: mainDb,
+    },
+    {
+      type: 'datafield',
+      name: 'tag',
+      datatype: 'string',
+      source: mainDb
+    }
   ],
 };
 
@@ -87,12 +117,15 @@ export const orders: DataModel = {
 selfReference(users);
 selfReference(orders);
 selfReference(elephants);
+selfReference(tigers);
 mainDb.add(users);
 mainDb.add(elephants);
+mainDb.add(tigers);
 secondaryDb.add(orders);
 
 export default new Map([
   ['users', users],
   ['orders', orders],
   ['elephants', elephants],
+  ['tigers', tigers],
 ]);

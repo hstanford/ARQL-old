@@ -92,11 +92,16 @@ export function native(source: Native) {
         const compareFn = (v1: any, v2: any) => {
           let isGreater = 0;
           for (let field of fields) {
+            let f1 = v1, f2 = v2;
+            if (typeof field.from?.name === 'string' && field.from.name in v1) {
+              f1 = v1[field.from.name];
+              f2 = v2[field.from.name];
+            }
             isGreater =
               isGreater ||
-              (v1[field.name] > v2[field.name]
+              (f1[field.name] > f2[field.name]
                 ? 1
-                : v1[field.name] < v2[field.name]
+                : f1[field.name] < f2[field.name]
                 ? -1
                 : 0);
           }
