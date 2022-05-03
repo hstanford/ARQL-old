@@ -35,7 +35,7 @@ import type {
 } from './types.js';
 
 export default function buildParser(opResolver = (expr: any) => expr) {
-  const keyword: Parser<string, string, any> = regex(/^[a-zA-Z][a-zA-Z0-9]*/);
+  const keyword: Parser<string, string, any> = regex(/^[a-zA-Z_][a-zA-Z0-9_]*/);
 
   const dotSequence: Parser<string, string, any> = sequenceOf([
     char('.'),
