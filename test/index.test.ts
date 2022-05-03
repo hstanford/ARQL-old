@@ -179,6 +179,23 @@ describe('can retrieve a join and a reshaping', () => {
 
     expect(data[0].orders).to.have.length(0);
   });
+
+  it('field names in shape default to the underlying field name rather than model name', async () => {
+    const data = await arql(`
+      (
+        u: users,
+        o: orders
+      ) | join(u.id = o.userId) {
+        u.id,
+        orderId: o.id,
+      }
+    `, []);
+
+    expect(data).to.deep.equal([{
+      "id": 1,
+      "orderId": 1
+    }]);
+  });
 });
 
 describe('data modification', () => {

@@ -350,7 +350,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     alias:
       parts[0] ||
       (parts[2].type === 'source' && parts[2].alias) ||
-      (parts[2].type === 'alphachain' && parts[2].root) || // root or last part?
+      (parts[2].type === 'alphachain' && [parts[2].root, ...parts[2].parts].pop()) ||
       null,
     value: parts[2],
   }));
