@@ -1,3 +1,6 @@
+/**
+ * Utility functions and guides for custom operator creation
+ */
 import type { Operator, RankedOperator } from './types.js';
 export const EXPR = Symbol('EXPR');
 

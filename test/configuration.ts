@@ -6,7 +6,11 @@ import type {
   AnyObj,
 } from 'arql';
 
+// this configuration applies only to native sources
+// (or the collector) and tells them how to perform
+// the actions the query tree asks for
 export function native(source: Native) {
+  // basic native operators
   source.operators = new Map([
     ['addition', (a, b) => a + b],
     ['subtraction', (a, b) => a - b],
@@ -15,6 +19,10 @@ export function native(source: Native) {
     ['ternary', (a, b, c) => (a ? b : c)],
     ['+', (a, b) => a + b],
   ]);
+
+  // transform definitions:
+  // transforms that follow a sourcelist will recieve a Map as input
+  // anything else will recieve an array
   source.transforms = new Map<
     string,
     (
@@ -114,6 +122,8 @@ export function native(source: Native) {
   ]);
 }
 
+// this configuration applies to all data sources:
+// postgres, native js, etc
 export function generic() {
   const transforms: TransformDef[] = [
     {

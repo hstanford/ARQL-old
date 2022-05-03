@@ -1,3 +1,6 @@
+/**
+ * Data source utilities
+ */
 import { DataSource, ContextualisedField } from './types.js';
 import { uniq } from './util.js';
 

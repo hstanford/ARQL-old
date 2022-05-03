@@ -1,3 +1,7 @@
+/**
+ * A models/data setup for tests, using multiple
+ * native data sources.
+ */
 import { Native, DataModel } from 'arql';
 import { v4 as uuid } from 'uuid';
 import { native as nativeConfigurer } from './configuration.js';

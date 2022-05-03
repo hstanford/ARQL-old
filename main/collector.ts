@@ -1,24 +1,23 @@
+/**
+ * COLLECTOR
+ * 
+ * The Collector's role is to take a tree and delegated queries from the delegator,
+ * execute the delegated queries and recombine them into the final data form.
+ * 
+ * It is a special case of the native (js) resolver, as it shares the same methods
+ * of applying transforms and shapes to source data.
+ */
+
 // async resolve(ast, queries): Promise<any> (data)
 // 1. run all the queries in parallel to get the data
 // 2. feed the ast through the native resolver, replacing the delegated queries with data
 //    also support in-memory data access for fields whose source is the native resolver
 import {
-  AnyObj,
-  ContextualisedSource,
-  DataField,
-  DataModel,
   DataSourceOpts,
-  DelegatedField,
-  DelegatedQuery,
-  DelegatedSource,
-  DelegatedQueryResult,
   ResolutionTree,
-  ContextualisedField,
 } from './types.js';
 
 import Native from './native.js';
-
-type Transform = (modifiers: string[], ...args: any[]) => Promise<any>;
 
 export default class Collector extends Native {
   constructor(opts?: DataSourceOpts) {

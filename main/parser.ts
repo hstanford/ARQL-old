@@ -1,7 +1,19 @@
+/**
+ * PARSER
+ * 
+ * The Parser's role is to take a string and construct an AST (Abstract Syntax Tree)
+ * which is independent of the models configured. It is "what is the user trying to
+ * ask for" without knowing what can be provided.
+ * 
+ * It is dependent on an "opResolver" function, which is used to transform a flat
+ * expression into a tree. This function should know what symbols correspond to which
+ * operations, and know the overall operator precedence. Except for modifications
+ * "-+", "-x" and "->", all operators are configurable.
+ */
+
 import {
   char,
   choice,
-  digit,
   digits,
   many,
   many1,
@@ -11,7 +23,6 @@ import {
   regex,
   sequenceOf,
   Parser,
-  lookAhead,
   sepBy,
 } from 'arcsecond';
 
@@ -35,8 +46,10 @@ import type {
 } from './types.js';
 
 export default function buildParser(opResolver = (expr: any) => expr) {
+  // first_name, firstName, f1rstnam3 etc
   const keyword: Parser<string, string, any> = regex(/^[a-zA-Z_][a-zA-Z0-9_]*/);
 
+  // keyword preceeded by a "."
   const dotSequence: Parser<string, string, any> = sequenceOf([
     char('.'),
     optionalWhitespace,
@@ -44,6 +57,8 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     optionalWhitespace,
   ]).map((parts) => parts[2]);
 
+  // a list of dot-separated keywords corresponds to accessing a field
+  // in an object: e.g. users.id or users.settings.dark_mode
   const alphachain: Parser<Alphachain, string, any> = sequenceOf([
     keyword,
     optionalWhitespace,
@@ -54,12 +69,18 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     parts: parts[2],
   }));
 
+  // change the name used for field or source down the data pipeline
+  // by using ":" e.g. "u: users" allows "users" to be referred to as
+  // "u" later on
   const alias: Parser<string, string, any> = sequenceOf([
     keyword,
     optionalWhitespace,
     char(':'),
   ]).map((parts) => parts[0]);
 
+  // all variables and primitives like strings, numbers and booleans in a query
+  // must be parameterised out to eliminate the risk of injection vulnerabilities.
+  // Refer to the parameters by their index in the array of parameters e.g. "$3"
   const param: Parser<Param, string, any> = sequenceOf([char('$'), digits]).map(
     ([, index]) => ({
       type: 'param',
@@ -67,6 +88,9 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     })
   );
 
+  // the characters matched by this regex can be combined to create operators.
+  // The function, name, and precedence of these operators is defined in the
+  // "opResolver"
   const opchar: Parser<OpChar, string, any> = regex(
     /^[+\-*\/<>=~!@#%^&|`?:]/
   ) as Parser<any, string, any>;
@@ -75,11 +99,16 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     symbol: x.join(''),
   }));
 
+  // ->, -+ and -x indicate that data from the left of the query is being
+  // used to modify the data on the right side of the query
   const modifier: Parser<Modifier, string, any> = sequenceOf([
     char('-'),
     choice([char('>'), char('+'), char('x')]),
   ]).map((parts) => parts.join('') as Modifier);
 
+  // an expression is a series of parameters, fields, or sources transformed
+  // in some way by operators and functions. Parentheses group sections of the
+  // expression and can be used to subvert or clarify operator precedence.
   const exprNoOp: Parser<SubExpr, string, any> = recursiveParser(function () {
     return choice([
       sequenceOf([
@@ -118,6 +147,8 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     )
   );
 
+  // expressions are parsed by looking for prefix/postfix operators then recursively
+  // looking for expressions once those operators are considered
   const exprUnary: Parser<ExprUnary | ExprUnary[], string, any> =
     recursiveParser(() =>
       choice([
@@ -162,6 +193,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     choice([sourceWithTransforms, sourceWithShape, exprOp, exprNoOp])
   );
 
+  // a comma-separated list of expressions form function arguments
   const exprlist: Parser<Expr[] | null, string, any> = possibly(
     sequenceOf([
       expr,
@@ -178,6 +210,9 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     ]).map((parts) => [parts[0], ...parts[2]].filter((p) => p !== null))
   );
 
+  // transforms are functions applied to sources. Examples include filters,
+  // sorts, limits/offsets, joins, unions, and aggregate functions.
+  // They are invoked like functions, e.g. filter(users.id = orders.userId)
   const transformArg: Parser<Expr | Shape | Source> = recursiveParser(() =>
     choice([expr, shape, source])
   );
@@ -225,6 +260,8 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     ]).map((parts) => parts[2])
   );
 
+  // transforms are applied to a data source using a vertical bar, conceptually
+  // similar to the "pipe" in unix.
   const transforms: Parser<Transform[], string, any> = many1(
     sequenceOf([
       char('|'),
@@ -234,6 +271,9 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     ]).map((parts) => parts[2])
   );
 
+  // a source corresponds to another source or data model providing
+  // the incoming data, 0 or more transforms, and then finally an
+  // optional "shape"
   const source: Parser<Source, string, any> = recursiveParser(() =>
     sequenceOf([
       possibly(alias),
@@ -304,6 +344,9 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     }))
   );
 
+  // when you want to combine data from different sources, you can collect
+  // them in parentheses as a sourcelist before applying a transform to combine
+  // e.g. ( users, orders ) | join(users.id = orders.userId)
   const sourcelist: Parser<Source | Source[], string, any> = sequenceOf([
     char('('),
     optionalWhitespace,
@@ -324,6 +367,9 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     return parts[4].length ? [parts[2]].concat(parts[4]) : parts[2];
   });
 
+  // when applying a modifier, you're writing data somewhere. That somewhere
+  // is the destination "dest". e.g. "-x users | filter(id = $1)" means
+  // delete users whose id is equal to the value stored in parameter 1
   const dest: Parser<Dest, string, any> = recursiveParser(() =>
     sequenceOf([
       possibly(alias),
@@ -364,6 +410,13 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     optionalWhitespace,
   ]).map((parts) => parts[1].filter((i) => !!i) as Field[]);
 
+  // the shape is effectively a very powerful transform function. You specify the
+  // structure of the data you want out of the source in json-like syntax. If you
+  // want graphical data access you can use the shape for this e.g.
+  // users {                                                 [{
+  //   userId: users.id,                                ->     "userId": 1,
+  //   orders | filter(users.id = orders.userId) {id}   ->     "orders": [{"id": 2}]
+  // }                                                       }]
   const shape: Parser<Shape, string, any> = sequenceOf([
     char('{'),
     optionalWhitespace,
@@ -375,6 +428,8 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     fields: parts[2],
   }));
 
+  // when selecting static data it's often useful to express many shapes
+  // between [] in an array-like syntax. e.g. [{id: $1}, {id: $2}]
   const multiShape: Parser<Shape[], string, any> = sequenceOf([
     char('['),
     optionalWhitespace,
@@ -385,6 +440,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     char(']'),
   ]).map((parts) => parts[2].filter((i) => !!i) as Shape[]);
 
+  // the query parser is used to parse all forms of queries
   const query: Parser<Query, string, any> = sequenceOf([
     optionalWhitespace,
     possibly(choice([source, sourceWithShape])),

@@ -10,7 +10,6 @@ import {
   getOperatorLookup,
   delegator,
   Collector,
-  ResolutionTree,
 } from 'arql';
 
 import models from './models.js';
