@@ -304,18 +304,21 @@ describe('can retrieve a join and a reshaping', () => {
       {
         id: 2,
         name: 'bar',
-      }
+      },
     ]);
   });
 
   it('does nice inner shape selects', async () => {
-    const data = await arql(`users {
+    const data = await arql(
+      `users {
       user: {
         name: users.name
       }
-    }`, []);
+    }`,
+      []
+    );
 
-    expect(data).to.deep.equal([{user: {name: 'hello'}}]);
+    expect(data).to.deep.equal([{ user: { name: 'hello' } }]);
   });
 });
 
@@ -369,17 +372,23 @@ describe('data modification', () => {
     const data0 = await arql('users', []);
     expect(data0).to.have.length(1);
 
-    const data = await arql(`
+    const data = await arql(
+      `
     [{id: $1, name: $2}, {id: $3, name: $2 + $4}] -+ users
-    `, [4, 'mctest', 5, '2']);
+    `,
+      [4, 'mctest', 5, '2']
+    );
 
-    expect(data).to.deep.equal([{
-      id: 4,
-      name: 'mctest'
-    }, {
-      id: 5,
-      name: 'mctest2'
-    }]);
+    expect(data).to.deep.equal([
+      {
+        id: 4,
+        name: 'mctest',
+      },
+      {
+        id: 5,
+        name: 'mctest2',
+      },
+    ]);
 
     const data2 = await arql('users', []);
     expect(data2).to.have.length(3);

@@ -11,7 +11,7 @@ const mainDb = new Native({
     { id: 1, tag: 'A', elephantId: 2 },
     { id: 2, tag: 'B', elephantId: 1 },
     { id: 3, tag: 'C', elephantId: 2 },
-  ]
+  ],
 });
 nativeConfigurer(mainDb);
 
@@ -65,8 +65,8 @@ export const tigers: DataModel = {
       type: 'datafield',
       name: 'tag',
       datatype: 'string',
-      source: mainDb
-    }
+      source: mainDb,
+    },
   ],
 };
 

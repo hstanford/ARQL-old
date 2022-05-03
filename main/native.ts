@@ -130,7 +130,10 @@ export default class Native extends DataSource<any, any> {
     results: any[],
     params: any[]
   ): Promise<AnyObj[] | AnyObj> {
-    let single = intermediate && !(intermediate instanceof Map) && !Array.isArray(intermediate);
+    let single =
+      intermediate &&
+      !(intermediate instanceof Map) &&
+      !Array.isArray(intermediate);
     if (single) {
       intermediate = [intermediate];
     }
@@ -154,7 +157,10 @@ export default class Native extends DataSource<any, any> {
     }
 
     if (source.shape?.length) {
-      if (resolved && (typeof resolved !== 'object' || !Array.isArray(resolved))) {
+      if (
+        resolved &&
+        (typeof resolved !== 'object' || !Array.isArray(resolved))
+      ) {
         throw new Error(
           `Unsupported type "${typeof resolved}" for shape manipulation`
         );
@@ -393,7 +399,9 @@ export default class Native extends DataSource<any, any> {
       );
     } else if (modifier === '->') {
       if (Array.isArray(source) || !source) {
-        throw new Error('Collection or absent sources are not yet supported for updates');
+        throw new Error(
+          'Collection or absent sources are not yet supported for updates'
+        );
       }
       const intermediate = await this.resolveIntermediate(
         dest,
@@ -415,12 +423,12 @@ export default class Native extends DataSource<any, any> {
       const arrToUpdate = Array.isArray(toUpdate) ? toUpdate : [toUpdate];
       arrToUpdate.forEach((item: AnyObj) => Object.assign(item, source));
       // TODO: do this comparison for hidden internal UUIDs for native
-      this.data[dest.name].forEach(
-        (item: AnyObj) => {
-          const matching = arrToUpdate.find((other: AnyObj) => item.id === other.id);
-          Object.assign(item, matching);
-        }
-      );
+      this.data[dest.name].forEach((item: AnyObj) => {
+        const matching = arrToUpdate.find(
+          (other: AnyObj) => item.id === other.id
+        );
+        Object.assign(item, matching);
+      });
       // apply shape to data output
       delete dest.transform;
       dest.shape = tmpShape;

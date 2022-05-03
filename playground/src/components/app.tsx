@@ -47,9 +47,9 @@ export default function App() {
         );
         const delegated = delegator(contextualised);
         if (
-          ((delegated.tree.type === 'query' && delegated.tree.dest)
-          || (delegated.queries.some((q: any) => q.type === 'query' && q.dest)))
-          && auto
+          ((delegated.tree.type === 'query' && delegated.tree.dest) ||
+            delegated.queries.some((q: any) => q.type === 'query' && q.dest)) &&
+          auto
         ) {
           setNeedsManualRun(true);
           setResults('Please press "run" to execute modification queries');
@@ -140,7 +140,7 @@ export default function App() {
                   },
                 }}
                 inputProps={{
-                  ref: inputRef
+                  ref: inputRef,
                 }}
               />
             </Box>

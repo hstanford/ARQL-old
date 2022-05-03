@@ -151,7 +151,7 @@ export class Contextualiser {
         out = {
           type: 'source',
           transform: outTransform,
-          value: (Array.isArray(out.value) && !out.transform) ? out.value : out,
+          value: Array.isArray(out.value) && !out.transform ? out.value : out,
           fields: out.fields,
           name: out.name,
           subModels: out.subModels,
@@ -175,8 +175,11 @@ export class Contextualiser {
     } else {
       out.shape = out.fields;
     }
-    if (!Array.isArray(out.shape[0])) { // should be type guard for ContextualisedField[][]
-      out.sources = uniq(out.sources.concat(combine(out.shape as ContextualisedField[])));
+    if (!Array.isArray(out.shape[0])) {
+      // should be type guard for ContextualisedField[][]
+      out.sources = uniq(
+        out.sources.concat(combine(out.shape as ContextualisedField[]))
+      );
     }
 
     return out;
@@ -205,9 +208,9 @@ export class Contextualiser {
 
     // TODO: fix this hack by passing required fields back down
     contextualisedDest.sources =
-    model?.fields?.[0] && model.fields[0].type === 'datafield'
-      ? [model.fields[0].source]
-      : [];
+      model?.fields?.[0] && model.fields[0].type === 'datafield'
+        ? [model.fields[0].source]
+        : [];
 
     if (dest.transforms.length) {
       for (const transform of dest.transforms) {
@@ -224,10 +227,13 @@ export class Contextualiser {
     }
     if (dest.shape) {
       out.shape = this.getShape(dest.shape, out, context);
-      if (Array.isArray(out.shape[0])) { // should be type guard for ContextualisedField[][]
+      if (Array.isArray(out.shape[0])) {
+        // should be type guard for ContextualisedField[][]
         throw new Error('Cannot doubly nest shapes yet');
       }
-      out.sources = uniq(out.sources.concat(combine(out.shape as ContextualisedField[])));
+      out.sources = uniq(
+        out.sources.concat(combine(out.shape as ContextualisedField[]))
+      );
     } else {
       out.shape = out.fields;
     }
@@ -285,11 +291,12 @@ export class Contextualiser {
         if (arg.type === 'source') return this.handleSource(arg, context);
         if (arg.type === 'shape') {
           const shape = this.getShape(arg, model, context);
-          if (Array.isArray(shape[0])) { // should be type guard for ContextualisedField[][]
+          if (Array.isArray(shape[0])) {
+            // should be type guard for ContextualisedField[][]
             throw new Error('Cannot doubly nest shapes yet');
           }
           return shape as ContextualisedField[];
-        };
+        }
         throw new Error(`Unrecognised arg type`);
       }
     );
@@ -322,7 +329,8 @@ export class Contextualiser {
     if (Array.isArray(shape)) {
       return shape.map((subShape) => {
         const contextualised = this.getShape(subShape, model, context);
-        if (Array.isArray(contextualised[0])) { // should be type guard for ContextualisedField[][]
+        if (Array.isArray(contextualised[0])) {
+          // should be type guard for ContextualisedField[][]
           throw new Error('Cannot doubly nest shapes yet');
         }
         return contextualised as ContextualisedField[];

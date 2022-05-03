@@ -22,20 +22,24 @@ function uniq<T>(arr: T[]) {
   );
 }
 
-function findSplitShape (
+function findSplitShape(
   ast: DataModel | ContextualisedSource | DataField,
   queries: (ContextualisedQuery | ContextualisedSource)[],
-  inShape: ContextualisedField[] | ContextualisedField[][],
+  inShape: ContextualisedField[] | ContextualisedField[][]
 ): DelegatedField[] | DelegatedField[][] {
   if (ast.type !== 'source') {
     throw new Error('cannot find shape split for non-source');
   }
   if (Array.isArray(inShape?.[0])) {
-    return (inShape as ContextualisedField[][]).map(shape => findSplitShape(ast, queries, shape) as DelegatedField[]);
+    return (inShape as ContextualisedField[][]).map(
+      (shape) => findSplitShape(ast, queries, shape) as DelegatedField[]
+    );
   }
   let shape: DelegatedField[] = inShape as DelegatedField[];
   const sourceDataSources = uniq(combine(ast.subModels || []));
-  const shapeDataSources = uniq(combine((shape as ContextualisedField[]) || []));
+  const shapeDataSources = uniq(
+    combine((shape as ContextualisedField[]) || [])
+  );
   const inShapeNotInSource = shapeDataSources.filter(
     (source) => !sourceDataSources.includes(source)
   );
@@ -90,18 +94,14 @@ function findSplitShape (
         if (
           field.sources.some((source) => inShapeNotInSource.includes(source))
         ) {
-          throw new Error(
-            'Multi-source origin expressions are not supported'
-          );
+          throw new Error('Multi-source origin expressions are not supported');
         }
         return field;
       } else if (field.type === 'datamodel') {
         throw new Error('Lone data models in shapes are not fully supported');
       } else if (field.type === 'datafield') {
         if (inShapeNotInSource.includes(field.source)) {
-          throw new Error(
-            'Lone data fields in shapes are not fully supported'
-          );
+          throw new Error('Lone data fields in shapes are not fully supported');
         }
         return field;
       } else if (field.type === 'param') {
@@ -146,7 +146,7 @@ function findSplit(
   let shape: DelegatedField[] | DelegatedField[][] | undefined;
 
   if (ast.shape) {
-    shape = findSplitShape(ast, queries, ast.shape)
+    shape = findSplitShape(ast, queries, ast.shape);
   }
 
   // TODO: handle unresolvable transforms
