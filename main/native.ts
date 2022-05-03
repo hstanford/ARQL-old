@@ -1,6 +1,6 @@
 /**
  * NATIVE RESOLVER / DATA SOURCE
- * 
+ *
  * The native resolver is a data source that stores data in memory
  * in js and facilitates querying it via a contextualised or delegated
  * query tree.

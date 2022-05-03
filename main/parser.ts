@@ -1,10 +1,10 @@
 /**
  * PARSER
- * 
+ *
  * The Parser's role is to take a string and construct an AST (Abstract Syntax Tree)
  * which is independent of the models configured. It is "what is the user trying to
  * ask for" without knowing what can be provided.
- * 
+ *
  * It is dependent on an "opResolver" function, which is used to transform a flat
  * expression into a tree. This function should know what symbols correspond to which
  * operations, and know the overall operator precedence. Except for modifications

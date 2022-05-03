@@ -1,6 +1,6 @@
 /**
  * OP RESOLVER
- * 
+ *
  * The Op Resolver takes user-defined operators and turns a flat
  * list of symbols and values into a tree based on precedence and
  * arity of the operators

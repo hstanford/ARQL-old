@@ -1,6 +1,6 @@
 /**
  * CONTEXTUALISER
- * 
+ *
  * The Contextualiser's role is to take an AST (Abstract Syntax Tree) returned from the Parser
  * and to add knowledge of what data can be provided. It depends on the AST structure and on
  * the models configured. If the models are stored in different storage engines or databases
