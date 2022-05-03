@@ -141,8 +141,7 @@ export default class Native extends DataSource<any, any> {
         );
       return intermediate;
     }
-    let resolved: AnyObj[] | undefined;
-    let firstResolved: AnyObj | undefined;
+    let resolved: AnyObj[] | AnyObj | undefined;
 
     if (source.transform) {
       const transform = this.transforms.get(source.transform.name);
@@ -162,14 +161,7 @@ export default class Native extends DataSource<any, any> {
     }
 
     if (source.shape?.length) {
-      let takeFirst = false;
-      // support selecting literal values in a shape
-      // without any data
-      if (!resolved) {
-        resolved = [{}];
-        takeFirst = true;
-      }
-      if (typeof resolved !== 'object') {
+      if (resolved && (typeof resolved !== 'object' || !Array.isArray(resolved))) {
         throw new Error(
           `Unsupported type "${typeof resolved}" for shape manipulation`
         );
@@ -180,12 +172,11 @@ export default class Native extends DataSource<any, any> {
         results,
         params
       );
-      if (takeFirst) firstResolved = resolved[0];
     }
     if (!resolved) {
       throw new Error(`Couldn't resolve source`);
     }
-    return firstResolved || resolved;
+    return resolved;
   }
 
   async resolveIntermediate(
@@ -222,15 +213,35 @@ export default class Native extends DataSource<any, any> {
   }
 
   async resolveShape(
-    shape: DelegatedField[],
-    source: any[],
+    shape: DelegatedField[] | DelegatedField[][],
+    source: AnyObj[] | undefined,
     results: any[],
     params: any[]
-  ) {
+  ): Promise<AnyObj | AnyObj[]> {
+    if (Array.isArray(shape[0])) {
+      const multi = [];
+      for (const subShape of shape as DelegatedField[][]) {
+        multi.push(await this.resolveShape(subShape, source, results, params));
+      }
+      return multi;
+    }
+    if (!source) {
+      const shaped: AnyObj = {};
+      for (let field of shape as DelegatedField[]) {
+        const [key, resolved] = await this.resolveField(
+          field,
+          {},
+          results,
+          params
+        );
+        shaped[key] = resolved;
+      }
+      return shaped;
+    }
     const out: AnyObj[] = [];
     for (let item of source) {
       const shaped: AnyObj = {};
-      for (let field of shape) {
+      for (let field of shape as DelegatedField[]) {
         const [key, resolved] = await this.resolveField(
           field,
           item,

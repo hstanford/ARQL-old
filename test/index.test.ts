@@ -244,7 +244,7 @@ describe('can retrieve a join and a reshaping', () => {
     ]);
   });
 
-  it.only('sort after a filter definitely sorts', async () => {
+  it('sort after a filter definitely sorts', async () => {
     const data = await arql(
       `
       (
@@ -275,6 +275,35 @@ describe('can retrieve a join and a reshaping', () => {
         tigerId: 3,
         tag: 'C',
       },
+    ]);
+  });
+
+  it.only('supports multiple static objects as a source', async () => {
+    const data = await arql(
+      `
+      [
+        {
+          id: $1,
+          name: $2,
+        },
+        {
+          id: $3,
+          name: $4
+        }
+      ]
+    `,
+      [1, 'foo', 2, 'bar']
+    );
+
+    expect(data).to.deep.equal([
+      {
+        id: 1,
+        name: 'foo',
+      },
+      {
+        id: 2,
+        name: 'bar',
+      }
     ]);
   });
 });

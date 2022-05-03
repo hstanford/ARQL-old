@@ -64,7 +64,7 @@ export interface Source {
   alias: string | undefined;
   value: Alphachain | Source[] | Source | null;
   transforms: Transform[];
-  shape: Shape | null;
+  shape: Shape | Shape[] | null;
 }
 
 export interface Model {
@@ -210,7 +210,7 @@ export interface ContextualisedSource {
   fields: ContextualisedField[];
   name?: Alphachain | string;
   subModels?: ContextualisedSourceValue[];
-  shape?: ContextualisedField[];
+  shape?: ContextualisedField[] | ContextualisedField[][];
   sources: DataSource<any, any>[];
   transform?: ContextualisedTransform;
   alias?: string;
@@ -291,7 +291,7 @@ export interface DelegatedSource
             | DataModel
             | DataField
           )[];
-      shape?: DelegatedField[];
+      shape?: DelegatedField[] | DelegatedField[][];
     }
   > {}
 

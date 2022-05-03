@@ -11,6 +11,7 @@ import type {
   ResolutionTree,
   DelegatedSource,
   DelegatedQuery,
+  ContextualisedField,
 } from './types.js';
 
 import { combine } from './sources.js';
@@ -19,6 +20,98 @@ function uniq<T>(arr: T[]) {
   return arr.filter(
     (field, idx, self) => idx === self.findIndex((f2) => f2 === field)
   );
+}
+
+function findSplitShape (
+  ast: DataModel | ContextualisedSource | DataField,
+  queries: (ContextualisedQuery | ContextualisedSource)[],
+  inShape: ContextualisedField[] | ContextualisedField[][],
+): DelegatedField[] | DelegatedField[][] {
+  if (ast.type !== 'source') {
+    throw new Error('cannot find shape split for non-source');
+  }
+  if (Array.isArray(inShape?.[0])) {
+    return (inShape as ContextualisedField[][]).map(shape => findSplitShape(ast, queries, shape) as DelegatedField[]);
+  }
+  let shape: DelegatedField[] = inShape as DelegatedField[];
+  const sourceDataSources = uniq(combine(ast.subModels || []));
+  const shapeDataSources = uniq(combine((shape as ContextualisedField[]) || []));
+  const inShapeNotInSource = shapeDataSources.filter(
+    (source) => !sourceDataSources.includes(source)
+  );
+
+  if (inShapeNotInSource.length) {
+    shape = (inShape as ContextualisedField[]).map((field) => {
+      if (field.type === 'source') {
+        if (
+          field.sources.every((source) => inShapeNotInSource.includes(source))
+        ) {
+          queries.push(field);
+          return {
+            type: 'delegatedQueryResult',
+            index: queries.length - 1,
+            alias: typeof field.name === 'string' ? field.name : undefined,
+          };
+        }
+        if (
+          field.sources.some((source) => inShapeNotInSource.includes(source))
+        ) {
+          // TODO: this may need some very fancy logic
+          if (
+            Array.isArray(field.value) &&
+            field.value[0].type === 'source' &&
+            field.value?.length === 1
+          ) {
+            queries.push(field.value[0]);
+            return {
+              ...field,
+              value: [
+                {
+                  type: 'delegatedQueryResult',
+                  index: queries.length - 1,
+                  alias:
+                    typeof field.value[0].name === 'string'
+                      ? field.value[0].name
+                      : undefined,
+                },
+              ],
+            };
+          } else {
+            if (!Array.isArray(field.value)) {
+              return { ...field, value: findSplit(field.value, queries) };
+            }
+            throw new Error(
+              'Mixed source shapes currently have minimal support'
+            );
+          }
+        }
+        return field;
+      } else if (field.type === 'exprtree') {
+        if (
+          field.sources.some((source) => inShapeNotInSource.includes(source))
+        ) {
+          throw new Error(
+            'Multi-source origin expressions are not supported'
+          );
+        }
+        return field;
+      } else if (field.type === 'datamodel') {
+        throw new Error('Lone data models in shapes are not fully supported');
+      } else if (field.type === 'datafield') {
+        if (inShapeNotInSource.includes(field.source)) {
+          throw new Error(
+            'Lone data fields in shapes are not fully supported'
+          );
+        }
+        return field;
+      } else if (field.type === 'param') {
+        return field;
+      } else {
+        throw new Error('Unrecognised field type');
+      }
+    });
+  }
+  return shape;
 }
 
 function findSplit(
@@ -50,86 +143,10 @@ function findSplit(
     };
   }
 
-  let shape: DelegatedField[] | undefined = ast.shape;
-  // if shape has data sources that "sources" is missing, split off
-  if (ast.shape) {
-    const sourceDataSources = uniq(combine(ast.subModels || []));
-    const shapeDataSources = uniq(combine(ast.shape || []));
-    const inShapeNotInSource = shapeDataSources.filter(
-      (source) => !sourceDataSources.includes(source)
-    );
+  let shape: DelegatedField[] | DelegatedField[][] | undefined;
 
-    if (inShapeNotInSource.length) {
-      shape = ast.shape.map((field) => {
-        if (field.type === 'source') {
-          if (
-            field.sources.every((source) => inShapeNotInSource.includes(source))
-          ) {
-            queries.push(field);
-            return {
-              type: 'delegatedQueryResult',
-              index: queries.length - 1,
-              alias: typeof field.name === 'string' ? field.name : undefined,
-            };
-          }
-          if (
-            field.sources.some((source) => inShapeNotInSource.includes(source))
-          ) {
-            // TODO: this may need some very fancy logic
-            if (
-              Array.isArray(field.value) &&
-              field.value[0].type === 'source' &&
-              field.value?.length === 1
-            ) {
-              queries.push(field.value[0]);
-              return {
-                ...field,
-                value: [
-                  {
-                    type: 'delegatedQueryResult',
-                    index: queries.length - 1,
-                    alias:
-                      typeof field.value[0].name === 'string'
-                        ? field.value[0].name
-                        : undefined,
-                  },
-                ],
-              };
-            } else {
-              if (!Array.isArray(field.value)) {
-                return { ...field, value: findSplit(field.value, queries) };
-              }
-              throw new Error(
-                'Mixed source shapes currently have minimal support'
-              );
-            }
-          }
-          return field;
-        } else if (field.type === 'exprtree') {
-          if (
-            field.sources.some((source) => inShapeNotInSource.includes(source))
-          ) {
-            throw new Error(
-              'Multi-source origin expressions are not supported'
-            );
-          }
-          return field;
-        } else if (field.type === 'datamodel') {
-          throw new Error('Lone data models in shapes are not fully supported');
-        } else if (field.type === 'datafield') {
-          if (inShapeNotInSource.includes(field.source)) {
-            throw new Error(
-              'Lone data fields in shapes are not fully supported'
-            );
-          }
-          return field;
-        } else if (field.type === 'param') {
-          return field;
-        } else {
-          throw new Error('Unrecognised field type');
-        }
-      });
-    }
+  if (ast.shape) {
+    shape = findSplitShape(ast, queries, ast.shape)
   }
 
   // TODO: handle unresolvable transforms

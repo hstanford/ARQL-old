@@ -288,7 +288,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
       possibly(choice([sourcelist, alphachain])),
       optionalWhitespace,
       possiblyTransforms,
-      shape,
+      choice([shape, multiShape]),
     ]).map((parts) => ({
       type: 'source',
       alias:
@@ -373,6 +373,16 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     type: 'shape',
     fields: parts[2],
   }));
+
+  const multiShape: Parser<Shape[], string, any> = sequenceOf([
+    char('['),
+    optionalWhitespace,
+    sepBy(sequenceOf([optionalWhitespace, char(','), optionalWhitespace]))(
+      possibly(shape)
+    ),
+    optionalWhitespace,
+    char(']'),
+  ]).map((parts) => parts[2].filter((i) => !!i) as Shape[]);
 
   const query: Parser<Query, string, any> = sequenceOf([
     optionalWhitespace,

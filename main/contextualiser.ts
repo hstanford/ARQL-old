@@ -175,7 +175,9 @@ export class Contextualiser {
     } else {
       out.shape = out.fields;
     }
-    out.sources = uniq(out.sources.concat(combine(out.shape)));
+    if (!Array.isArray(out.shape[0])) { // should be type guard for ContextualisedField[][]
+      out.sources = uniq(out.sources.concat(combine(out.shape as ContextualisedField[])));
+    }
 
     return out;
   }
@@ -222,7 +224,10 @@ export class Contextualiser {
     }
     if (dest.shape) {
       out.shape = this.getShape(dest.shape, out, context);
-      out.sources = uniq(out.sources.concat(combine(out.shape)));
+      if (Array.isArray(out.shape[0])) { // should be type guard for ContextualisedField[][]
+        throw new Error('Cannot doubly nest shapes yet');
+      }
+      out.sources = uniq(out.sources.concat(combine(out.shape as ContextualisedField[])));
     } else {
       out.shape = out.fields;
     }
@@ -278,7 +283,13 @@ export class Contextualiser {
         if (arg.type === 'exprtree' || arg.type === 'alphachain')
           return this.getExpression(arg, model, context);
         if (arg.type === 'source') return this.handleSource(arg, context);
-        if (arg.type === 'shape') return this.getShape(arg, model, context);
+        if (arg.type === 'shape') {
+          const shape = this.getShape(arg, model, context);
+          if (Array.isArray(shape[0])) { // should be type guard for ContextualisedField[][]
+            throw new Error('Cannot doubly nest shapes yet');
+          }
+          return shape as ContextualisedField[];
+        };
         throw new Error(`Unrecognised arg type`);
       }
     );
@@ -304,10 +315,19 @@ export class Contextualiser {
   }
 
   getShape(
-    shape: Shape,
+    shape: Shape | Shape[],
     model: ContextualisedSource,
     context: ContextualiserState
-  ) {
+  ): ContextualisedField[] | ContextualisedField[][] {
+    if (Array.isArray(shape)) {
+      return shape.map((subShape) => {
+        const contextualised = this.getShape(subShape, model, context);
+        if (Array.isArray(contextualised[0])) { // should be type guard for ContextualisedField[][]
+          throw new Error('Cannot doubly nest shapes yet');
+        }
+        return contextualised as ContextualisedField[];
+      });
+    }
     const out = [];
     for (let field of shape.fields) {
       out.push(this.getField(field, model, context));
