@@ -278,7 +278,7 @@ describe('can retrieve a join and a reshaping', () => {
     ]);
   });
 
-  it.only('supports multiple static objects as a source', async () => {
+  it('supports multiple static objects as a source', async () => {
     const data = await arql(
       `
       [
@@ -352,5 +352,25 @@ describe('data modification', () => {
     const data2 = await arql('users', []);
 
     expect(data2).to.deep.equal([{ id: 1, name: 'blah' }]);
+  });
+
+  it('can insert from a multi-shape', async () => {
+    const data0 = await arql('users', []);
+    expect(data0).to.have.length(1);
+
+    const data = await arql(`
+    [{id: $1, name: $2}, {id: $3, name: $2 + $4}] -+ users
+    `, [4, 'mctest', 5, '2']);
+
+    expect(data).to.deep.equal([{
+      id: 4,
+      name: 'mctest'
+    }, {
+      id: 5,
+      name: 'mctest2'
+    }]);
+
+    const data2 = await arql('users', []);
+    expect(data2).to.have.length(3);
   });
 });
