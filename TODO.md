@@ -39,3 +39,5 @@
 
 - Multi-request transactional atomicity layer (token in http header? request body key?)
 - subscriptions?
+- Thoroughly comment codebase to make it nice enough for other people to work on
+- Add support for relationships e.g. users.orders
