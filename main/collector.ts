@@ -16,7 +16,7 @@ import {
   ContextualisedField,
 } from './types.js';
 
-import Native from './native';
+import Native from './native.js';
 
 type Transform = (modifiers: string[], ...args: any[]) => Promise<any>;
 

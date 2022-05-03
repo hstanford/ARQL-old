@@ -9,7 +9,6 @@
   "dependencies": {
     "prettier": "^2.5.1"
   },
-  "devDependencies": {},
   "scripts": {
     "test": "cd ./main && npm run test && cd ../test && npm run test && cd ..",
     "install": "cd ./main && npm i && npm run build && cd ../test && npm i && cd ..",

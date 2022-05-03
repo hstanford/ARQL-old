@@ -1,5 +1,6 @@
 import { Native, DataModel, DataField } from 'arql';
 import { native as nativeConfigurer } from './configuration';
+import { v4 as uuid } from 'uuid';
 export class Data {
   sources: Map<string, Native> = new Map();
   models: Map<string, DataModel> = new Map();
@@ -65,6 +66,7 @@ export class Data {
   addRecord(record: any, sourceName: string, modelName: string) {
     const source = this.sources.get(sourceName);
     source.data[modelName].push(record);
+    record._id = uuid();
     this.onChange();
   }
   removeRecord(record: any, sourceName: string, modelName: string) {

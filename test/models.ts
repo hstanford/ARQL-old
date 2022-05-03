@@ -1,22 +1,23 @@
 import { Native, DataModel } from 'arql';
+import { v4 as uuid } from 'uuid';
 import { native as nativeConfigurer } from './configuration.js';
 
 const mainDb = new Native({
-  users: [{ id: 1, name: 'hello' }],
+  users: [{ id: 1, name: 'hello', _id: uuid() }],
   elephants: [
-    { id: 1, age: 42 },
-    { id: 2, age: 39 },
+    { id: 1, age: 42, _id: uuid() },
+    { id: 2, age: 39, _id: uuid() },
   ],
   tigers: [
-    { id: 1, tag: 'A', elephantId: 2 },
-    { id: 2, tag: 'B', elephantId: 1 },
-    { id: 3, tag: 'C', elephantId: 2 },
+    { id: 1, tag: 'A', elephantId: 2, _id: uuid() },
+    { id: 2, tag: 'B', elephantId: 1, _id: uuid() },
+    { id: 3, tag: 'C', elephantId: 2, _id: uuid() },
   ],
 });
 nativeConfigurer(mainDb);
 
 const secondaryDb = new Native({
-  orders: [{ id: 1, userId: 1, name: 'foo', stuff: new Date() }],
+  orders: [{ id: 1, userId: 1, name: 'foo', stuff: new Date(), _id: uuid() }],
 });
 nativeConfigurer(secondaryDb);
 

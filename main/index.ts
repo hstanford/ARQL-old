@@ -1,5 +1,5 @@
 export { default as buildParser } from './parser.js';
-export { default as contextualise } from './contextualiser';
+export { default as contextualise } from './contextualiser.js';
 export { default as opResolver } from './op_resolver.js';
 export { getOperatorLookup } from './operations.js';
 export { default as delegator } from './delegator.js';

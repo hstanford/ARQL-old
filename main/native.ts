@@ -13,8 +13,9 @@ import type {
   DelegatedQueryResult,
   operatorOp,
   transformFn,
-} from './types';
-import { DataSource } from './types';
+} from './types.js';
+import { DataSource } from './types.js';
+import { v4 as uuid } from 'uuid';
 
 export default class Native extends DataSource<any, any> {
   transforms: Map<string, transformFn> = new Map();
@@ -354,7 +355,10 @@ export default class Native extends DataSource<any, any> {
         throw new Error('Cannot insert undefined');
       }
       this.data[dest.value.name].push(
-        ...(Array.isArray(source) ? source : [source])
+        ...(Array.isArray(source) ? source : [source]).map((item) => ({
+          ...item,
+          _id: uuid(),
+        }))
       );
       return await this.applyTransformsAndShape(dest, source, results, params);
     } else if (modifier === '-x') {
@@ -385,7 +389,7 @@ export default class Native extends DataSource<any, any> {
       // TODO: do this comparison for hidden internal UUIDs for native
       this.data[dest.name] = this.data[dest.name].filter(
         (item: AnyObj) =>
-          !arrToDelete.find((other: AnyObj) => item.id === other.id)
+          !arrToDelete.find((other: AnyObj) => item._id === other._id)
       );
 
       // apply shape to data output
@@ -425,7 +429,7 @@ export default class Native extends DataSource<any, any> {
       // TODO: do this comparison for hidden internal UUIDs for native
       this.data[dest.name].forEach((item: AnyObj) => {
         const matching = arrToUpdate.find(
-          (other: AnyObj) => item.id === other.id
+          (other: AnyObj) => item._id === other._id
         );
         Object.assign(item, matching);
       });
