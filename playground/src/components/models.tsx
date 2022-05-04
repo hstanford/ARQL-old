@@ -12,10 +12,10 @@ import {
 import { Data } from '../models';
 
 export default function Models({
-  onChange,
+  onChange = () => {},
   dataInstance,
 }: {
-  onChange: (...args: any[]) => any;
+  onChange?: (...args: any[]) => any;
   dataInstance: Data;
 }) {
   const [source, setSource] = React.useState('');
