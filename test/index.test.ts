@@ -319,6 +319,14 @@ describe('can retrieve a join and a reshaping', () => {
 
     expect(data).to.deep.equal([{ user: { name: 'hello' } }]);
   });
+
+  it('map of undefined issue', async () => {
+    const data = await arql(`(users, elephants) | join(users.id = elephants.id){
+      users.id,
+      orders | filter(orders.id)
+    }`, []);
+    console.log(data);
+  });
 });
 
 describe('data modification', () => {

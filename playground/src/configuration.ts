@@ -1,7 +1,6 @@
 import type {
-  ContextualisedExpr,
+  ContextualisedField,
   TransformDef,
-  DataField,
   Native,
   AnyObj,
 } from 'arql';
@@ -29,7 +28,7 @@ export function native(source: Native) {
         modifiers: string[],
         params: any[],
         values: Map<any, any> | AnyObj[],
-        condition: ContextualisedExpr
+        condition: ContextualisedField
       ): Promise<AnyObj[]> => {
         if (Array.isArray(values)) {
           throw new Error('Unsupported input');
@@ -41,18 +40,16 @@ export function native(source: Native) {
           for (const [otheralias, othermodel] of values.entries()) {
             if (alias === otheralias) continue;
             for (const row of model) {
-              const matching = othermodel.filter((r: any) => {
-                return source.resolveExpr(
+              for (let r of othermodel) {
+                const [, matches] = await source.resolveField(
                   condition,
-                  new Map([
-                    [alias, row],
-                    [otheralias, r],
-                  ]),
+                  { [alias]: row, [otheralias]: r },
+                  [],
                   params
                 );
-              });
-              for (let m of matching) {
-                vals.push({ ...m, ...row, [alias]: row, [otheralias]: m });
+                if (matches) {
+                  vals.push({ ...r, ...row, [alias]: row, [otheralias]: r });
+                }
               }
             }
           }
@@ -66,15 +63,24 @@ export function native(source: Native) {
         modifiers: string[],
         params: any[],
         values: Map<any, any> | AnyObj[],
-        condition: ContextualisedExpr
+        condition: ContextualisedField
       ) => {
         if (!Array.isArray(values)) {
           throw new Error('Unsupported input');
         }
-        return values.filter((r: AnyObj) => {
-          const cloned = new Map([[0, r]]);
-          return source.resolveExpr(condition, cloned, params);
-        });
+        const filtered = [];
+        for (const r of values) {
+          const [, matches] = await source.resolveField(
+            condition,
+            r,
+            [],
+            params
+          );
+          if (matches) {
+            filtered.push(r);
+          }
+        }
+        return filtered;
       },
     ],
     [
@@ -83,31 +89,42 @@ export function native(source: Native) {
         modifiers: string[],
         params: any[],
         values: Map<any, any> | AnyObj[],
-        ...fields: DataField[]
+        ...fields: ContextualisedField[]
       ) => {
         if (!Array.isArray(values)) {
           throw new Error('Unsupported input');
         }
+        const comparable = [];
+        for (const value of values) {
+          const results = []
+          for (const field of fields) {
+            const [, resolved] = await source.resolveField(
+              field,
+              value,
+              [],
+              params
+            );
+            results.push(resolved);
+          }
+          comparable.push([results, value]);
+        }
         const compareFn = (v1: any, v2: any) => {
           let isGreater = 0;
           for (let field of fields) {
-            let f1 = v1,
-              f2 = v2;
-            if (typeof field.from?.name === 'string' && field.from.name in v1) {
-              f1 = v1[field.from.name];
-              f2 = v2[field.from.name];
-            }
+            let f1 = v1[0],
+              f2 = v2[0];
             isGreater =
               isGreater ||
-              (f1[field.name] > f2[field.name]
+              (f1 > f2
                 ? 1
-                : f1[field.name] < f2[field.name]
+                : f1 < f2
                 ? -1
                 : 0);
           }
           return modifiers.includes('desc') ? -isGreater : isGreater;
         };
-        return values.sort(compareFn);
+        comparable.sort(compareFn);
+        return comparable.map(c => c[1]);
       },
     ],
   ]);
