@@ -1,9 +1,4 @@
-import type {
-  ContextualisedField,
-  TransformDef,
-  Native,
-  AnyObj,
-} from 'arql';
+import type { ContextualisedField, TransformDef, Native, AnyObj } from 'arql';
 
 export function native(source: Native) {
   source.operators = new Map([
@@ -96,7 +91,7 @@ export function native(source: Native) {
         }
         const comparable = [];
         for (const value of values) {
-          const results = []
+          const results = [];
           for (const field of fields) {
             const [, resolved] = await source.resolveField(
               field,
@@ -113,18 +108,12 @@ export function native(source: Native) {
           for (let field of fields) {
             let f1 = v1[0],
               f2 = v2[0];
-            isGreater =
-              isGreater ||
-              (f1 > f2
-                ? 1
-                : f1 < f2
-                ? -1
-                : 0);
+            isGreater = isGreater || (f1 > f2 ? 1 : f1 < f2 ? -1 : 0);
           }
           return modifiers.includes('desc') ? -isGreater : isGreater;
         };
         comparable.sort(compareFn);
-        return comparable.map(c => c[1]);
+        return comparable.map((c) => c[1]);
       },
     ],
   ]);

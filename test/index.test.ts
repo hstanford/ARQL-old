@@ -321,10 +321,13 @@ describe('can retrieve a join and a reshaping', () => {
   });
 
   it('map of undefined issue', async () => {
-    const data = await arql(`(users, elephants) | join(users.id = elephants.id){
+    const data = await arql(
+      `(users, elephants) | join(users.id = elephants.id){
       users.id,
       orders | filter(orders.id)
-    }`, []);
+    }`,
+      []
+    );
     console.log(data);
   });
 });
