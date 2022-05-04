@@ -320,15 +320,28 @@ describe('can retrieve a join and a reshaping', () => {
     expect(data).to.deep.equal([{ user: { name: 'hello' } }]);
   });
 
-  it('map of undefined issue', async () => {
+  it('supports any type of field in a filter', async () => {
     const data = await arql(
       `(users, elephants) | join(users.id = elephants.id){
       users.id,
+      elephants.age,
       orders | filter(orders.id)
     }`,
       []
     );
-    console.log(data);
+    expect(data).to.deep.equal([
+      {
+        id: 1,
+        age: 42,
+        orders: [
+          {
+            id: 1,
+            name: 'foo',
+            userId: 1,
+          },
+        ],
+      },
+    ]);
   });
 });
 
