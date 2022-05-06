@@ -154,7 +154,7 @@ params: [10]
 Delete user 10
 
 ```
-query: '-> users | filter(id = $1)',
+query: '-x users | filter(id = $1)',
 params: [10]
 ```
 
