@@ -11,7 +11,8 @@ import {
 } from 'arql';
 
 import dataInstance from '../models';
-import { generic, native as nativeConfigurer } from '../configuration';
+import generic from '@arql/stdlib-general';
+import nativeConfigurer from '@arql/stdlib-native';
 
 const { transforms, operators } = generic();
 const opMap = getOperatorLookup(operators);

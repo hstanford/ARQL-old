@@ -1,0 +1,19 @@
+{
+  "name": "@arql/stdlib-picodb",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "operations and transforms standard library for arql's native source",
+  "main": "index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Henry Stanford",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^4.6.4"
+  },
+  "dependencies": {
+    "@arql/source-picodb": "file:../../sources/picodb",
+    "arql": "file:../../main"
+  }
+}

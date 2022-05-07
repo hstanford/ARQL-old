@@ -1,31 +1,10 @@
 import React from 'react';
 import { Box, Tabs, Tab } from '@mui/material';
 
-import {
-  buildParser,
-  opResolver,
-  contextualise,
-  getOperatorLookup,
-  delegator,
-  Collector,
-} from 'arql';
-
 import dataInstance from '../models';
-import { generic, native as nativeConfigurer } from '../configuration';
 
 import Model from './models';
 import Querier from './querier';
-
-const { transforms, operators } = generic();
-const opMap = getOperatorLookup(operators);
-
-// declare this once for multiple parsings
-const resolve = opResolver(opMap);
-
-const parser = buildParser(resolve);
-
-const collector = new Collector();
-nativeConfigurer(collector);
 
 export default function App() {
   const [page, setPage] = React.useState(0);

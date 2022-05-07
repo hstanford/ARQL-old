@@ -4,7 +4,7 @@
  */
 import { Native, DataModel } from 'arql';
 import { v4 as uuid } from 'uuid';
-import { native as nativeConfigurer } from './configuration.js';
+import nativeConfigurer from '@arql/stdlib-native';
 
 const mainDb = new Native({
   users: [{ id: 1, name: 'hello', _id: uuid() }],

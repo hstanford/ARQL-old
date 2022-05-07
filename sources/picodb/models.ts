@@ -4,7 +4,7 @@
  */
 import { Native, DataModel } from 'arql';
 import { v4 as uuid } from 'uuid';
-import { pico as picoConfigurer } from './example.js';
+import picoConfigurer from '@arql/stdlib-picodb';
 import Pico from './index.js';
  
 import PicoDb from 'picodb';

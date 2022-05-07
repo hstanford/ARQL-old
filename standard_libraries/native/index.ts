@@ -1,17 +1,25 @@
-import type { ContextualisedField, TransformDef, Native, AnyObj } from 'arql';
+import type { ContextualisedField, Native, AnyObj } from 'arql';
 
 // this configuration applies only to native sources
 // (or the collector) and tells them how to perform
 // the actions the query tree asks for
-export function native(source: Native) {
+export default function native(source: Native) {
   // basic native operators
   source.operators = new Map([
     ['addition', (a, b) => a + b],
     ['subtraction', (a, b) => a - b],
     ['negation', (a) => !a],
-    ['equality', (a, b) => a === b],
     ['ternary', (a, b, c) => (a ? b : c)],
     ['+', (a, b) => a + b],
+    ['-', (a, b) => a - b],
+    ['notEquals', (a, b) => a !== b],
+    ['equality', (a, b) => a === b],
+    ['gt', (a, b) => a > b],
+    ['lt', (a, b) => a < b],
+    ['gte', (a, b) => a >= b],
+    ['lte', (a, b) => a <= b],
+    ['in', (a, b) => b.includes(a)],
+    ['notIn', (a, b) => !b.includes(a)],
   ]);
 
   // transform definitions:
@@ -126,51 +134,4 @@ export function native(source: Native) {
       },
     ],
   ]);
-}
-
-// this configuration applies to all data sources:
-// postgres, native js, etc
-export function generic() {
-  const transforms: TransformDef[] = [
-    {
-      name: 'filter',
-      modifiers: [],
-      nArgs: 1,
-    },
-    {
-      name: 'sort',
-      modifiers: ['desc', 'asc', 'nullsFirst', 'nullsLast'],
-      nArgs: '1+',
-    },
-    {
-      name: 'join',
-      modifiers: [],
-      nArgs: 1,
-    },
-  ].map((o) => ({ ...o, type: 'transformdef' }));
-
-  const EXPR = Symbol.for('EXPR');
-
-  const operators = [
-    {
-      name: 'negation',
-      pattern: ['!', EXPR],
-    },
-    {
-      name: '+',
-      pattern: [EXPR, '+', EXPR],
-    },
-    {
-      name: 'equality',
-      pattern: [EXPR, '=', EXPR],
-    },
-    {
-      name: 'ternary',
-      pattern: [EXPR, '?', EXPR, ':', EXPR],
-    },
-  ];
-  return {
-    transforms,
-    operators,
-  };
 }

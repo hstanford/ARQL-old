@@ -1,5 +1,5 @@
 import { Native, DataModel, DataField } from 'arql';
-import { native as nativeConfigurer } from './configuration';
+import nativeConfigurer from '@arql/stdlib-native';
 import { v4 as uuid } from 'uuid';
 export class Data {
   sources: Map<string, Native> = new Map();

@@ -13,7 +13,8 @@ import {
 } from 'arql';
 
 import models from './models.js';
-import { generic, native as nativeConfigurer } from './configuration.js';
+import generic from '@arql/stdlib-general';
+import nativeConfigurer from '@arql/stdlib-native';
 
 const { transforms, operators } = generic();
 const opMap = getOperatorLookup(operators);

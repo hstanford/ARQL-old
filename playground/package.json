@@ -13,6 +13,8 @@
   "author": "Henry Stanford",
   "license": "MIT",
   "devDependencies": {
+    "@arql/stdlib-general": "file:../standard_libraries/general",
+    "@arql/stdlib-native": "file:../standard_libraries/native",
     "@emotion/react": "^11.8.1",
     "@emotion/styled": "^11.8.1",
     "@mui/material": "^5.4.4",
