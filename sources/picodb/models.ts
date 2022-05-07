@@ -6,10 +6,14 @@ import { Native, DataModel } from 'arql';
 import { v4 as uuid } from 'uuid';
 import picoConfigurer from '@arql/stdlib-picodb';
 import Pico from './index.js';
- 
+
 import PicoDb from 'picodb';
 
-export const mainDb = new Pico({db: (PicoDb as any)(), operators: new Map(), transforms: new Map() });
+export const mainDb = new Pico({
+  db: (PicoDb as any)(),
+  operators: new Map(),
+  transforms: new Map(),
+});
 picoConfigurer(mainDb);
 
 function selfReference(model: DataModel) {
@@ -40,7 +44,4 @@ export const items: DataModel = {
 selfReference(items);
 mainDb.add(items);
 
-export default new Map([
-  ['items', items],
-]);
- 
+export default new Map([['items', items]]);

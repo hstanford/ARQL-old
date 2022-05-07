@@ -29,12 +29,12 @@ export default function Querier({
   content,
   setContent,
   params,
-  setParams
+  setParams,
 }: {
-  content: string,
-  setContent: any,
-  params: any[],
-  setParams: any
+  content: string;
+  setContent: any;
+  params: any[];
+  setParams: any;
 }) {
   const [results, setResults] = React.useState('');
   const [param, setParam] = React.useState<any>('');

@@ -13,13 +13,19 @@ export default function App() {
   return (
     <>
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Tabs value={page} onChange={(e, newValue) => setPage(newValue)} aria-label="app-tabs">
+        <Tabs
+          value={page}
+          onChange={(e, newValue) => setPage(newValue)}
+          aria-label="app-tabs"
+        >
           <Tab label="Querier" />
           <Tab label="Models" />
         </Tabs>
       </Box>
-      {page === 0 && <Querier {...{content, setContent, params, setParams}}/>}
-      {page === 1 && <Model dataInstance={dataInstance}/>}
+      {page === 0 && (
+        <Querier {...{ content, setContent, params, setParams }} />
+      )}
+      {page === 1 && <Model dataInstance={dataInstance} />}
     </>
   );
 }

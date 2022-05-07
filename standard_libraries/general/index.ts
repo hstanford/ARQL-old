@@ -1,20 +1,20 @@
-import type {TransformDef} from 'arql';
+import type { TransformDef } from 'arql';
 
 const EXPR = Symbol.for('EXPR');
 
-function prefixUnary (symbol: string) {
+function prefixUnary(symbol: string) {
   return [symbol, EXPR];
 }
 
-function postfixUnary (symbol: string) {
+function postfixUnary(symbol: string) {
   return [EXPR, symbol];
 }
 
-function binary (symbol: string) {
+function binary(symbol: string) {
   return [EXPR, symbol, EXPR];
 }
 
-function ternary (symbol1: string, symbol2: string) {
+function ternary(symbol1: string, symbol2: string) {
   return [EXPR, symbol1, EXPR, symbol2, EXPR];
 }
 
@@ -38,7 +38,6 @@ export default function generic() {
       nArgs: 1,
     },
   ].map((o) => ({ ...o, type: 'transformdef' }));
-
 
   const operators = [
     {

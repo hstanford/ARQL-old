@@ -39,24 +39,36 @@ export default class Pico extends DataSource<any, any> {
         if (ast.source.type === 'delegatedQueryResult')
           sourceQuery = results[ast.source.index];
         else
-          [sourceQuery, sourceShape] = await this.resolveSources(ast.source, data, results, params);
+          [sourceQuery, sourceShape] = await this.resolveSources(
+            ast.source,
+            data,
+            results,
+            params
+          );
       }
       if (ast.dest) {
         if (ast.dest.type === 'delegatedQueryResult') {
           throw new Error('Not implemented yet');
         }
-        destQuery = await this.resolveDest(
-          ast.dest
-        );
+        destQuery = await this.resolveDest(ast.dest);
       }
     } else if (ast.type === 'source') {
-      [sourceQuery, sourceShape] = await this.resolveSources(ast, data, results, params);
+      [sourceQuery, sourceShape] = await this.resolveSources(
+        ast,
+        data,
+        results,
+        params
+      );
     } else throw new Error('Not implemented yet');
 
-    return destQuery || (await this.db.find(sourceQuery, sourceShape).toArray()).map((i: any) => {
-      delete i._id;
-      return i;
-    }) || [];
+    return (
+      destQuery ||
+      (await this.db.find(sourceQuery, sourceShape).toArray()).map((i: any) => {
+        delete i._id;
+        return i;
+      }) ||
+      []
+    );
   }
 
   async resolveSources(
@@ -86,32 +98,25 @@ export default class Pico extends DataSource<any, any> {
         if (Array.isArray(field)) {
           throw new Error('Array shapes are not supported');
         }
-        shape = {shape, ...this.resolveField(field, params)};
+        shape = { shape, ...this.resolveField(field, params) };
       }
     }
     return [query, shape];
   }
 
-  resolveField(
-    field: DelegatedField,
-    params: any[]
-  ) {
+  resolveField(field: DelegatedField, params: any[]) {
     if (field.type === 'source') {
       throw new Error('Subsources not supported');
     } else if (field.type === 'exprtree') {
       return this.resolveExpression(field, params);
     } else if (field.type === 'datafield') {
-      return {[field.name]: 1};
+      return { [field.name]: 1 };
     } else {
       throw new Error(`${field.type} not supported`);
     }
-
   }
 
-  resolveExpression(
-    expression: ContextualisedExpr,
-    params: any[]
-  ) {
+  resolveExpression(expression: ContextualisedExpr, params: any[]) {
     let field: string = '';
     let value: any;
     for (let arg of expression.args) {

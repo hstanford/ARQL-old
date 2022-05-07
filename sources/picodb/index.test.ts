@@ -46,6 +46,6 @@ describe('picodb', () => {
       { count: 10, name: 'boo' },
     ]);
     const out = await arql('items | filter(count > $1) {name}', [7]);
-    expect(out).to.deep.equal([{name: 'yo'}, {name: 'boo'}]);
+    expect(out).to.deep.equal([{ name: 'yo' }, { name: 'boo' }]);
   });
 });
