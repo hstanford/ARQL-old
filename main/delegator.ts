@@ -32,6 +32,22 @@ function uniq<T>(arr: T[]) {
   );
 }
 
+/**
+ * needs a bit of a redesign? Needs to support:
+ * - splitting on a source
+ * - splitting a shape (will need all required fields selected out of the delegated query)
+ * - splitting an expression (will need partial expressions selected out of the delegated query)
+ * - splitting based on source flags
+ * 
+ * at each node:
+ * - is it single source?
+ * - does the source support the whole shape?
+ * - does the source support the transform and all its arguments?
+ * 
+ * perhaps a recursive "supports(node, source)" function that ensures all leaves and nodes in between
+ * can be resolved by the source
+ */ 
+
 function findSplitShape(
   ast: DataModel | ContextualisedSource | DataField,
   queries: (ContextualisedQuery | ContextualisedSource)[],

@@ -27,6 +27,22 @@ export default class Native extends DataSource<any, any> {
   operators: Map<string, operatorOp> = new Map();
   data: AnyObj;
   params: any[] = [];
+
+  supportsExpressions: boolean = true;
+  supportsSubExpressions: boolean = true;
+  supportsSubSources: boolean = true;
+  supportsShaping: boolean = true;
+  supportsFieldAliasing: boolean = true;
+  supportsExpressionFields: boolean = true;
+  supportsGraphFields: boolean = true; // like users {orders {name}}
+  supportsRecursiveJoins: boolean = false;
+  supportsInsert: boolean = true;
+  supportsUpdate: boolean = true;
+  supportsDelete: boolean = true;
+  supportsStaticDataInjection: boolean = true; // like VALUES
+  supportsQueryNarrowing: boolean = false; // id IN (...) type operations
+  supportsSubscriptions: boolean = false;
+
   constructor(data: any, opts?: DataSourceOpts) {
     super();
     this.data = data;

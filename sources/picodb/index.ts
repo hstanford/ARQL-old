@@ -18,6 +18,22 @@ export default class Pico extends DataSource<any, any> {
   operators: Map<string, operatorOp> = new Map();
   params: any[] = [];
   db: any; // PicoDB instance, don't think it has types yet
+
+  supportsExpressions: boolean = true;
+  supportsSubExpressions: boolean = false;
+  supportsSubSources: boolean = false;
+  supportsShaping: boolean = true;
+  supportsFieldAliasing: boolean = false;
+  supportsExpressionFields: boolean = false;
+  supportsGraphFields: boolean = false; // like users {orders {name}}
+  supportsRecursiveJoins: boolean = false;
+  supportsInsert: boolean = false;
+  supportsUpdate: boolean = false;
+  supportsDelete: boolean = false;
+  supportsStaticDataInjection: boolean = false; // like VALUES
+  supportsQueryNarrowing: boolean = false; // id IN (...) type operations
+  supportsSubscriptions: boolean = false;
+
   constructor(opts: PicoSourceOpts) {
     super();
     this.operators = opts.operators;

@@ -118,6 +118,24 @@ export abstract class DataSource<ModelType, FieldType> {
   operators: Map<string, operatorOp> = new Map();
   transforms: Map<string, transformFn> = new Map();
 
+  // these will be used by the contextualiser/delegator to work out if
+  // we need to reject the query or where to break the node off the tree
+  // as a delegated query we can definitely resolve
+  supportsExpressions: boolean = false;
+  supportsSubExpressions: boolean = false;
+  supportsSubSources: boolean = false;
+  supportsShaping: boolean = false;
+  supportsFieldAliasing: boolean = false;
+  supportsExpressionFields: boolean = false;
+  supportsGraphFields: boolean = false; // like users {orders {name}}
+  supportsRecursiveJoins: boolean = false;
+  supportsInsert: boolean = false;
+  supportsUpdate: boolean = false;
+  supportsDelete: boolean = false;
+  supportsStaticDataInjection: boolean = false; // like VALUES
+  supportsQueryNarrowing: boolean = false; // id IN (...) type operations
+  supportsSubscriptions: boolean = false;
+
   add(def: DataModel) {}
 
   getField(

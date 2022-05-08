@@ -122,9 +122,9 @@ export default function native(source: Native) {
         }
         const compareFn = (v1: any, v2: any) => {
           let isGreater = 0;
-          for (let field of fields) {
-            let f1 = v1[0],
-              f2 = v2[0];
+          for (let i = 0; i < v1[0].length; i++) {
+            let f1 = v1[0][i],
+              f2 = v2[0][i];
             isGreater = isGreater || (f1 > f2 ? 1 : f1 < f2 ? -1 : 0);
           }
           return modifiers.includes('desc') ? -isGreater : isGreater;

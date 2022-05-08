@@ -34,7 +34,7 @@ import type {
   TransformDef,
 } from './types.js';
 
-import { Unresolveable, combine } from './sources.js';
+import { combine } from './sources.js';
 
 import { uniq, uniqBy } from './util.js';
 
@@ -163,12 +163,7 @@ export class Contextualiser {
           fields: out.fields,
           name: out.name,
           subModels: out.subModels,
-          sources: uniq(
-            (out.sources.length === 1 &&
-            out.sources[0].implementsTransform(outTransform)
-              ? out.sources
-              : out.sources.concat([Unresolveable])
-            ).concat(outTransform.sources)
+          sources: uniq(out.sources.concat(outTransform.sources)
           ),
         };
       }
