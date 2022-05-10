@@ -199,18 +199,17 @@ export default function Querier({
               size="small"
               value={param}
               onChange={(e) =>
-                setParam(
-                  isNaN(e.target.value as any)
-                    ? e.target.value
-                    : parseFloat(e.target.value)
-                )
+                setParam(e.target.value)
               }
             />
             <Button
               sx={{ marginLeft: '4px' }}
               variant="outlined"
               onClick={() => {
-                setParams(params.concat([param]));
+                const castParam = isNaN(param as any)
+                    ? param
+                    : parseFloat(param);
+                setParams(params.concat([castParam]));
                 setParam('');
               }}
             >
