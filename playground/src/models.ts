@@ -1,4 +1,4 @@
-import { Native, DataModel, DataField } from 'arql';
+import { Native, DataModel, DataField, DataReference } from 'arql';
 import nativeConfigurer from '@arql/stdlib-native';
 import { v4 as uuid } from 'uuid';
 export class Data {
@@ -61,6 +61,26 @@ export class Data {
     model.fields.push(newField);
     this.onChange();
   }
+  addRelation(
+    name: string,
+    modelName: string,
+    hasOne: boolean,
+    otherName: string,
+    modelCol: string,
+    otherCol: string
+  ) {
+    const model = this.models.get(modelName);
+    const other = this.models.get(otherName);
+    const newReference: DataReference = {
+      type: 'datareference',
+      name,
+      hasOne,
+      other,
+      join: (a, b) => `filter(${a}.${modelCol} = ${b}.${otherCol})`
+    };
+    model.fields.push(newReference);
+    this.onChange();
+  }
   removeField(name: string, modelName: string) {
     const model = this.models.get(modelName);
     model.fields = model.fields.filter((field) => field.name !== name);
@@ -95,6 +115,8 @@ data.addField('age', 'number', 'elephants', 'main');
 data.addField('id', 'number', 'orders', 'secondary');
 data.addField('userId', 'number', 'orders', 'secondary');
 data.addField('name', 'string', 'orders', 'secondary');
+data.addRelation('orders', 'users', false, 'orders', 'id', 'userId');
+data.addRelation('user', 'orders', true, 'users', 'userId', 'id');
 data.addRecord({ id: 1, name: 'hello' }, 'main', 'users');
 data.addRecord({ id: 2, name: 'goodbye' }, 'main', 'users');
 data.addRecord({ id: 1, age: 42 }, 'main', 'elephants');
