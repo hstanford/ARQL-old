@@ -73,9 +73,8 @@ export const tigers: DataModel = {
     {
       type: 'datareference',
       name: 'elephant',
-      hasOne: true,
       other: elephants,
-      join: (self: string, other: string) => `filter(${self}.elephantId = ${other}.id)`
+      join: (self: string, other: string) => `| filter(${self}.elephantId = ${other}.id)`
     },
   ].map((f: any) => (f.source = f.source || mainDb, f)),
 };
@@ -98,8 +97,7 @@ export const users: DataModel = {
     {
       type: 'datareference',
       name: 'orders',
-      hasOne: false,
-      join: (self: string, other: string) => `filter(${self}.id = ${other}.userId)`,
+      join: (self: string, other: string) => `| filter(${self}.id = ${other}.userId)`,
       get other() { return orders }
     },
   ].map((f: any) => (f.source = f.source || mainDb, f)),
@@ -128,8 +126,8 @@ export const orders: DataModel = {
     {
       type: 'datareference',
       name: 'user',
-      hasOne: true,
-      join: (self: string, other: string) => `filter(${self}.userId = ${other}.id)`
+      join: (self: string, other: string) => `| filter(${self}.userId = ${other}.id) | first()`,
+      other: users
     },
   ].map((f: any) => (f.source = f.source || secondaryDb, f)),
 };

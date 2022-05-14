@@ -32,7 +32,7 @@ export default function native(source: Native) {
       params: any[],
       values: Map<any, any> | AnyObj[],
       ...args: any[]
-    ) => Promise<AnyObj[]>
+    ) => Promise<AnyObj | AnyObj[]>
   >([
     [
       'join',
@@ -133,5 +133,18 @@ export default function native(source: Native) {
         return comparable.map((c) => c[1]);
       },
     ],
+    [
+      'first',
+      async (
+        modifiers: string[],
+        params: any[],
+        values: Map<any, any> | AnyObj[],
+      ) => { 
+         if (!Array.isArray(values)) {
+           throw new Error('Unsupported input format for "first"');
+         }
+         return values[0];
+      }
+    ]
   ]);
 }

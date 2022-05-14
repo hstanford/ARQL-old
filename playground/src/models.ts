@@ -74,9 +74,8 @@ export class Data {
     const newReference: DataReference = {
       type: 'datareference',
       name,
-      hasOne,
       other,
-      join: (a, b) => `filter(${a}.${modelCol} = ${b}.${otherCol})`
+      join: (a, b) => `| filter(${a}.${modelCol} = ${b}.${otherCol}) ${hasOne ? '| first() ' : ''}`
     };
     model.fields.push(newReference);
     this.onChange();

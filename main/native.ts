@@ -100,7 +100,7 @@ export default class Native extends DataSource<any, any> {
           `No support for ${JSON.stringify(source.name)} as a source name yet`
         );
       const subVals = await this.resolveSources(source, data, results, params);
-      return [source.name, Array.isArray(subVals) ? subVals : [subVals]];
+      return [source.name, subVals];
     } else if (source.type === 'datafield') {
       if (!data) throw new Error('Not yet implemented...');
       return [source.name, data[source.name]];
@@ -179,14 +179,6 @@ export default class Native extends DataSource<any, any> {
     }
 
     if (source.shape?.length) {
-      if (
-        resolved &&
-        (typeof resolved !== 'object' || !Array.isArray(resolved))
-      ) {
-        throw new Error(
-          `Unsupported type "${typeof resolved}" for shape manipulation`
-        );
-      }
       resolved = await this.resolveShape(
         source.shape,
         resolved,
@@ -244,7 +236,7 @@ export default class Native extends DataSource<any, any> {
 
   async resolveShape(
     shape: DelegatedField[] | DelegatedField[][],
-    source: AnyObj[] | undefined,
+    source: AnyObj[] | AnyObj | undefined,
     results: any[],
     params: any[]
   ): Promise<AnyObj | AnyObj[]> {
@@ -268,8 +260,7 @@ export default class Native extends DataSource<any, any> {
       }
       return shaped;
     }
-    const out: AnyObj[] = [];
-    for (let item of source) {
+    const reShape = async (item: AnyObj) => {
       const shaped: AnyObj = {};
       for (let field of shape as DelegatedField[]) {
         const [key, resolved] = await this.resolveField(
@@ -280,9 +271,17 @@ export default class Native extends DataSource<any, any> {
         );
         shaped[key] = resolved;
       }
-      out.push(shaped);
+      return shaped;
+    };
+    if (Array.isArray(source)) {
+      const out: AnyObj[] = [];
+      for (let item of source) {
+        out.push(await reShape(item));
+      }
+      return out;
+    } else {
+      return await reShape(source);
     }
-    return out;
   }
 
   async resolveField(

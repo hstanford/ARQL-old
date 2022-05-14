@@ -354,6 +354,24 @@ describe('can retrieve a join and a reshaping', () => {
       }
     ]);
   });
+
+  it('supports relationships to lone models', async () => {
+    const data = await arql(`orders {id, orders.user {name}}`);
+    expect(data).to.deep.equal([
+      {
+        id: 1,
+        user: { name: 'hello' },
+      }
+    ]);
+  });
+
+  it('supports "first" transforms', async () => {
+    const data = await arql(`orders | first() {id, name}`);
+    expect(data).to.deep.equal({
+      id: 1,
+      name: 'foo'
+    });
+  });
 });
 
 describe('data modification', () => {

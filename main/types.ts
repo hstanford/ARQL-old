@@ -186,7 +186,6 @@ export interface DataField {
 export interface DataReference {
   type: 'datareference';
   name: string;
-  hasOne: boolean;
   join: (self: string, other: string) => string;
   other: DataModel;
 }

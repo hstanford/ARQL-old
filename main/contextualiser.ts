@@ -265,10 +265,7 @@ export class Contextualiser {
     const name = model.alias || model.name;
     if (!name || typeof name !== 'string')
       throw new Error('Data reference only supported for strings');
-    const trfm = this.parser(
-      dataReference.join(name, dataReference.other.name),
-      'transform'
-    );
+    const trfms = this.parser(dataReference.join(name, dataReference.other.name), 'transforms');
     const source: ContextualisedSource = {
       type: 'source',
       name,
@@ -281,19 +278,34 @@ export class Contextualiser {
           ? [model.fields[0].source]
           : [],
     };
-    const transform = this.getTransform(trfm, source, context);
     const outSources =
       dataReference.other.fields[0].type === 'datafield'
         ? [dataReference.other.fields[0].source]
         : [];
-    return {
+
+    let out: ContextualisedSource = {
       type: 'source',
       name: dataReference.other.name,
       value: dataReference.other,
       fields: dataReference.other.fields.filter(function (f): f is DataField { return f.type === 'datafield' }),
       sources: uniq(outSources.concat(source.sources)),
-      transform,
     };
+    for (const trfm of trfms) {
+      const outTransform = this.getTransform(trfm, out, context);
+      out = {
+        type: 'source',
+        transform: outTransform,
+        value: Array.isArray(out.value) && !out.transform ? out.value : out,
+        fields: out.fields,
+        name: out.name,
+        subModels: out.subModels,
+        sources: uniq(out.sources.concat(outTransform.sources)),
+      };
+    }
+    if (!out) {
+      throw new Error('Datareference without a transform');
+    }
+    return out;
   }
 
   getModel(alphachain: Alphachain, context: ContextualiserState) {
