@@ -10,7 +10,7 @@
  * particular data source. The rest of the tree is left for the native (js) resolver to
  * combine from the delegated query results.
  */
-
+import { inspect } from 'util';
 import type {
   ContextualisedQuery,
   ContextualisedSource,
@@ -150,7 +150,7 @@ function findSplit(
       type: 'source',
       value: ast,
       fields: [],
-      sources: [ast.fields[0]?.source].filter((i) => !!i),
+      sources: [(ast.fields[0] as DataField)?.source].filter((i) => !!i),
     });
     return {
       type: 'delegatedQueryResult',

@@ -17,7 +17,9 @@ export class Data {
   removeSource(name: string) {
     const source = this.sources.get(name);
     for (const model of this.models.values()) {
-      model.fields = model.fields.filter((field) => field.source === source);
+      model.fields = model.fields
+        .filter(function (field): field is DataField { return field.type === 'datafield' })
+        .filter((field) => field.source === source);
     }
     this.sources.delete(name);
     this.onChange();
@@ -25,6 +27,7 @@ export class Data {
   addModel(name: string, ...sourceNames: string[]) {
     const newModel: DataModel = {
       type: 'datamodel',
+      source: this.sources.get(sourceNames[0]),
       name,
       fields: [],
     };

@@ -22,7 +22,9 @@ import type {
   ContextualisedSourceValue,
   ContextualisedTransform,
   ContextualiserState,
+  DataField,
   DataModel,
+  DataReference,
   DataSource,
   Dest,
   ExprUnary,
@@ -34,6 +36,8 @@ import type {
   TransformDef,
 } from './types.js';
 
+import type { ARQLParser } from './parser';
+
 import { combine } from './sources.js';
 
 import { uniq, uniqBy } from './util.js';
@@ -41,9 +45,15 @@ import { uniq, uniqBy } from './util.js';
 export class Contextualiser {
   models: Map<string, DataModel>;
   transforms: TransformDef[];
-  constructor(models: Map<string, DataModel>, transforms: TransformDef[]) {
+  parser: ARQLParser;
+  constructor(
+    models: Map<string, DataModel>,
+    transforms: TransformDef[],
+    parser: ARQLParser
+  ) {
     this.models = models;
     this.transforms = transforms;
+    this.parser = parser;
   }
 
   run(ast: Query) {
@@ -126,12 +136,15 @@ export class Contextualiser {
 
       contextualisedSource.value = model;
       contextualisedSource.subModels = [model];
-      if (model.fields) contextualisedSource.fields = model.fields; // need contextualising?
+      if (model.fields)
+        contextualisedSource.fields = (model.fields as any).filter(
+          (f: any) => f.type === 'datafield'
+        ) as DataField[]; // need contextualising?
       // TODO: fix this hack by passing required fields back down
-      contextualisedSource.sources =
-        model?.fields?.[0] && model.fields[0].type === 'datafield'
+      contextualisedSource.sources = (model.type === 'source' && model.sources) ||
+        (model?.fields?.[0] && model.fields[0].type === 'datafield'
           ? [model.fields[0].source]
-          : [];
+          : []);
       // TODO: sources independent from shape if inner join?
     }
 
@@ -163,8 +176,7 @@ export class Contextualiser {
           fields: out.fields,
           name: out.name,
           subModels: out.subModels,
-          sources: uniq(out.sources.concat(outTransform.sources)
-          ),
+          sources: uniq(out.sources.concat(outTransform.sources)),
         };
       }
     }
@@ -206,7 +218,9 @@ export class Contextualiser {
     );
 
     contextualisedDest.value = model;
-    contextualisedDest.fields = model.fields || [];
+    contextualisedDest.fields = ((model.fields || []) as DataField[]).filter?.(
+      (f) => f.type === 'datafield'
+    );
     contextualisedDest.name = model.name;
 
     // TODO: fix this hack by passing required fields back down
@@ -243,16 +257,55 @@ export class Contextualiser {
     return out;
   }
 
+  getDataReference(
+    model: ContextualisedSource | DataModel,
+    dataReference: DataReference,
+    context: ContextualiserState
+  ): ContextualisedSource {
+    const name = model.alias || model.name;
+    if (!name || typeof name !== 'string')
+      throw new Error('Data reference only supported for strings');
+    const trfm = this.parser(
+      dataReference.join(name, dataReference.other.name),
+      'transform'
+    );
+    const source: ContextualisedSource = {
+      type: 'source',
+      name,
+      value: model,
+      fields: (model.fields as any[]).filter(function (f: any): f is DataField { return f.type === 'datafield' }),
+      sources:
+        model.type === 'source'
+          ? model.sources
+          : model.fields[0].type === 'datafield'
+          ? [model.fields[0].source]
+          : [],
+    };
+    const transform = this.getTransform(trfm, source, context);
+    const outSources =
+      dataReference.other.fields[0].type === 'datafield'
+        ? [dataReference.other.fields[0].source]
+        : [];
+    return {
+      type: 'source',
+      name: dataReference.other.name,
+      value: dataReference.other,
+      fields: dataReference.other.fields.filter(function (f): f is DataField { return f.type === 'datafield' }),
+      sources: uniq(outSources.concat(source.sources)),
+      transform,
+    };
+  }
+
   getModel(alphachain: Alphachain, context: ContextualiserState) {
     // TODO: handle parts
-    let model;
+    let model: ContextualisedSource | DataModel | DataField | undefined;
     if (context.aliases.has(alphachain.root)) {
       model = context.aliases.get(alphachain.root);
     } else if (this.models.has(alphachain.root)) {
       model = this.models.get(alphachain.root);
     }
 
-    let prevModel: any = model;
+    let prevModel = model;
 
     if (model?.type === 'source') {
       model = model?.subModels?.[0];
@@ -263,15 +316,35 @@ export class Contextualiser {
     }
 
     for (let part of alphachain.parts) {
-      model = model?.fields?.find?.(({ name }) => name === part);
+      for (let subModel of model?.fields || []) {
+        if (subModel.name === part) {
+          if (subModel.type === 'datareference') {
+            if (!model || model.type === 'datafield') {
+              throw new Error('Invalid model for data references');
+            }
+            model = this.getDataReference(model, subModel, context);
+          } else {
+            if (subModel.type === 'exprtree' || subModel.type === 'param') {
+              throw new Error(`${subModel.type} invalid for submodel`);
+            }
+            model = subModel;
+          }
+          break;
+        }
+      }
       if (!model)
         throw new Error(
           `Failed to find model ${JSON.stringify(alphachain)} at part "${part}"`
         );
-      model = { ...model, from: prevModel };
-      prevModel = model;
-      if (model.type === 'exprtree' || model.type === 'param')
-        throw new Error('Exprtrees and params cannot be used as models');
+      if (model.type === 'datamodel' || model.type === 'source') {
+        prevModel = model;
+      } else {
+        model = {
+          ...model,
+          from: prevModel?.type === 'source' ? prevModel : undefined,
+        };
+        prevModel = model;
+      }
     }
     return model;
   }
@@ -383,30 +456,21 @@ export class Contextualiser {
             `Unable to find nested field ${part} on ${field.name}`
           );
         }
-        let subField: ContextualisedField | undefined = field.fields.find(
-          (f) => f.name === part
-        );
+        let subField: ContextualisedField | undefined = (field.fields as any)
+          .filter((f: any) => f.type === 'datafield')
+          .find((f: any) => f.name === part);
         if (!subField) {
           subField = context.aliases.get(part);
         }
         if (!subField) {
-          // think it must be a model
-          return this.handleSource(
-            {
-              type: 'source',
-              alias: expr.root, // probably should handle parts
-              value: expr,
-              transforms: [],
-              shape: null,
-            },
-            context
-          );
+          subField = this.models.get(part);
         }
-        if (subField) {
-          if (subField.type === 'datafield' && field.type === 'source')
-            subField.from = field;
-          field = subField;
+        if (!subField) {
+          throw new Error(`Can't find subfield for ${part}`);
         }
+        if (subField.type === 'datafield' && field.type === 'source')
+          subField.from = field;
+        field = subField;
       }
       return field;
     }
@@ -430,7 +494,8 @@ export class Contextualiser {
 export default function contextualise(
   ast: Query,
   models: Map<string, DataModel>,
-  transforms: TransformDef[]
+  transforms: TransformDef[],
+  parser: ARQLParser
 ) {
-  return new Contextualiser(models, transforms).run(ast);
+  return new Contextualiser(models, transforms, parser).run(ast);
 }

@@ -13,7 +13,9 @@ export function combine(fields: ContextualisedField[]) {
     if (m.type === 'datafield') {
       sources = [m.source];
     } else if (m.type === 'datamodel') {
-      sources = uniq(m.fields.map((f) => f.source));
+      sources = uniq((m.fields as any)
+        .filter((f: any) => f.type === 'datafield')
+        .map((f: any) => f.source));
     } else if (m.type === 'param') {
       sources = [];
     } else {

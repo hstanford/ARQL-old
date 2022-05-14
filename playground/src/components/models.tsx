@@ -10,6 +10,7 @@ import {
   TextField,
 } from '@mui/material';
 import { Data } from '../models';
+import type { DataField } from 'arql';
 
 export default function Models({
   onChange = () => {},
@@ -78,7 +79,9 @@ export default function Models({
                 key={k}
               >
                 <Box>{k}</Box>
-                {m.fields.map((f) => (
+                {m.fields.filter(function (f): f is DataField {
+                  return f.type === 'datafield';
+                }).map((f) => (
                   <Box>
                     {`${f.name} (${f.datatype}) (${[
                       ...data.sources.keys(),

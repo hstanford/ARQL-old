@@ -24,6 +24,7 @@ import {
   sequenceOf,
   Parser,
   sepBy,
+  Ok,
 } from 'arcsecond';
 
 import type {
@@ -289,7 +290,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
         (typeof parts[2] === 'string' && parts[2]) ||
         (!Array.isArray(parts[2]) &&
           parts[2].type === 'alphachain' &&
-          parts[2].root) ||
+          [parts[2].root, ...parts[2].parts].pop()) ||
         undefined,
       value: parts[2],
       transforms: parts[4],
@@ -313,7 +314,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
           (typeof parts[2] === 'string' && parts[2]) ||
           (!Array.isArray(parts[2]) &&
             parts[2].type === 'alphachain' &&
-            parts[2].root) ||
+            [parts[2].root, ...parts[2].parts].pop()) ||
           undefined,
         value: parts[2],
         transforms: parts[4],
@@ -336,7 +337,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
         (typeof parts[2] === 'string' && parts[2]) ||
         (!Array.isArray(parts[2]) &&
           parts[2]?.type === 'alphachain' &&
-          parts[2].root) ||
+          [parts[2].root, ...parts[2].parts].pop()) ||
         undefined,
       value: parts[2],
       transforms: parts[4],
@@ -488,15 +489,19 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     query,
   };
 
-  function run(str: string, parserName: keyof typeof parsers = 'query') {
+  function run<T extends keyof typeof parsers>(str: string, parserName: T) {
+    type extractGeneric<Type> = Type extends Parser<infer X> ? X : never;
+    type S = extractGeneric<typeof parsers[T]>;
     const out = parsers[parserName].run(str);
     if (out.isError === true) throw new Error(out.error);
-    else return out.result;
+    else return out.result as S;
   }
 
   run.query = function (str: string) {
-    return run(str) as Query;
+    return run(str, 'query');
   };
 
   return run;
 }
+
+export type ARQLParser = ReturnType<typeof buildParser>;

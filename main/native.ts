@@ -93,7 +93,7 @@ export default class Native extends DataSource<any, any> {
     data: AnyObj,
     results: any[],
     params: any[]
-  ): Promise<[string, AnyObj[]]> {
+  ): Promise<[string, any]> {
     if (source.type === 'source') {
       if (typeof source.name !== 'string')
         throw new Error(
@@ -231,6 +231,13 @@ export default class Native extends DataSource<any, any> {
         results,
         params
       );
+      if (typeof source.name === 'string' && Array.isArray(intermediate)) {
+        for (const obj of intermediate) {
+          if (typeof obj === 'object') {
+            obj[source.name] = obj;
+          }
+        }
+      }
     }
     return intermediate;
   }
@@ -353,10 +360,19 @@ export default class Native extends DataSource<any, any> {
         args.push(resolved);
       }
       return [field.alias || '', op(...args)];
-    }
-    // ... TODO handle more field types
-    else {
-      throw new Error(`Not yet implemented: ${field.type}`);
+    } else if (field.type === 'datamodel') {
+      const [key, out] = await this.resolveSource(field, item, results, params);
+      return [key, out.map((obj: AnyObj) => {
+        const picked: AnyObj = {};
+        for (let datafield of field.fields) {
+          if (datafield.type === 'datafield') {
+            picked[datafield.name] = obj[datafield.name];
+          }
+        }
+        return picked;
+      })];
+    } else {
+      throw new Error('Missing field type');
     }
   }
 

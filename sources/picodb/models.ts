@@ -18,13 +18,15 @@ picoConfigurer(mainDb);
 
 function selfReference(model: DataModel) {
   for (const field of model.fields) {
-    field.model = model;
+    if (field.type === 'datafield')
+      field.model = model;
   }
 }
 
 export const items: DataModel = {
   type: 'datamodel',
   name: 'items',
+  source: mainDb,
   fields: [
     {
       type: 'datafield',
@@ -38,7 +40,7 @@ export const items: DataModel = {
       datatype: 'string',
       source: mainDb,
     },
-  ],
+  ].map((f: { [key: string]: any }) => (f.source = f.source || mainDb)),
 };
 
 selfReference(items);

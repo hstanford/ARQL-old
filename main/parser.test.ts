@@ -20,7 +20,7 @@ test('keyword takes only the first word of multiple', () => {
 });
 
 test('keyword supports numbers after the first alpha char', () => {
-  let out = run('h3llo', 'keyword');
+  let out: string | null = run('h3llo', 'keyword');
   expect(out).toBe('h3llo');
   try {
     out = run('3ello', 'keyword');

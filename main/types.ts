@@ -183,6 +183,14 @@ export interface DataField {
   alias?: string;
 }
 
+export interface DataReference {
+  type: 'datareference';
+  name: string;
+  hasOne: boolean;
+  join: (self: string, other: string) => string;
+  other: DataModel;
+}
+
 export interface ContextualisedParam {
   index: number;
   type: 'param';
@@ -195,7 +203,8 @@ export interface DataModel {
   type: 'datamodel';
   name: string;
   alias?: string;
-  fields: DataField[];
+  source: DataSource<any, any>;
+  fields: (DataField | DataReference)[];
 }
 
 export interface TransformDef {

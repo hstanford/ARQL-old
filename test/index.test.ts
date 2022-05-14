@@ -30,7 +30,7 @@ nativeConfigurer(collector);
 async function arql(query: string, params: any[]) {
   console.time(query);
   let ast = parser.query(query);
-  const contextualised = contextualise(ast, models, transforms);
+  const contextualised = contextualise(ast, models, transforms, parser);
   const delegated = delegator(contextualised);
   const data = await collector.run(delegated, params);
   console.timeEnd(query);
@@ -342,6 +342,16 @@ describe('can retrieve a join and a reshaping', () => {
           },
         ],
       },
+    ]);
+  });
+
+  it('supports relationships', async () => {
+    const data = await arql(`u: users {u.id, u.orders {name}}`);
+    expect(data).to.deep.equal([
+      {
+        id: 1,
+        orders: [{ name: 'foo' }],
+      }
     ]);
   });
 });

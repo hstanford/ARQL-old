@@ -50,7 +50,8 @@ export default function Querier({
         const contextualised = contextualise(
           ast,
           dataInstance.models,
-          transforms
+          transforms,
+          parser
         );
         const delegated = delegator(contextualised);
         if (

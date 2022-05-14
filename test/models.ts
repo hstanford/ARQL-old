@@ -27,96 +27,111 @@ nativeConfigurer(secondaryDb);
 
 function selfReference(model: DataModel) {
   for (const field of model.fields) {
-    field.model = model;
+    if (field.type === 'datafield')
+      field.model = model;
   }
 }
 
 export const elephants: DataModel = {
   type: 'datamodel',
   name: 'elephants',
+  source: mainDb,
   fields: [
     {
       type: 'datafield',
       name: 'id',
       datatype: 'number',
-      source: mainDb,
     },
     {
       type: 'datafield',
       name: 'age',
       datatype: 'number',
-      source: mainDb,
     },
-  ],
+  ].map((f: any) => (f.source = f.source || mainDb, f)),
 };
 
 export const tigers: DataModel = {
   type: 'datamodel',
   name: 'tigers',
+  source: mainDb,
   fields: [
     {
       type: 'datafield',
       name: 'id',
       datatype: 'number',
-      source: mainDb,
     },
     {
       type: 'datafield',
       name: 'elephantId',
       datatype: 'number',
-      source: mainDb,
     },
     {
       type: 'datafield',
       name: 'tag',
       datatype: 'string',
-      source: mainDb,
     },
-  ],
+    {
+      type: 'datareference',
+      name: 'elephant',
+      hasOne: true,
+      other: elephants,
+      join: (self: string, other: string) => `filter(${self}.elephantId = ${other}.id)`
+    },
+  ].map((f: any) => (f.source = f.source || mainDb, f)),
 };
 
 export const users: DataModel = {
   type: 'datamodel',
   name: 'users',
+  source: mainDb,
   fields: [
     {
       type: 'datafield',
       name: 'id',
       datatype: 'number',
-      source: mainDb,
     },
     {
       type: 'datafield',
       name: 'name',
       datatype: 'string',
-      source: mainDb,
     },
-  ],
+    {
+      type: 'datareference',
+      name: 'orders',
+      hasOne: false,
+      join: (self: string, other: string) => `filter(${self}.id = ${other}.userId)`,
+      get other() { return orders }
+    },
+  ].map((f: any) => (f.source = f.source || mainDb, f)),
 };
 
 export const orders: DataModel = {
   type: 'datamodel',
   name: 'orders',
+  source: secondaryDb,
   fields: [
     {
       type: 'datafield',
       name: 'id',
       datatype: 'number',
-      source: secondaryDb,
     },
     {
       type: 'datafield',
       name: 'userId',
       datatype: 'number',
-      source: secondaryDb,
     },
     {
       type: 'datafield',
       name: 'name',
       datatype: 'string',
-      source: secondaryDb,
     },
-  ],
+    {
+      type: 'datareference',
+      name: 'user',
+      hasOne: true,
+      join: (self: string, other: string) => `filter(${self}.userId = ${other}.id)`
+    },
+  ].map((f: any) => (f.source = f.source || secondaryDb, f)),
 };
 
 selfReference(users);
