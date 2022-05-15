@@ -52,6 +52,22 @@ import { combine } from './sources.js';
 
 import { uniq, uniqBy, getAlias, getSourceName } from './util.js';
 
+function shapeToField (source: ContextualisedSourceValue) {
+  if (!isSource(source) || !source.shape || isMultiShape(source.shape)) {
+    throw new Error('Cannot map shape');
+  }
+  return source.shape.map(
+    (f) =>
+      ({
+        type: 'datafield',
+        from: source,
+        name: f.alias,
+        source: getSourcesFromContextualisedField(f),
+      } as DataField)
+  );
+
+}
+
 function getFieldsFromSource(
   source: ContextualisedSourceValue
 ): ContextualisedField[] {
@@ -59,15 +75,7 @@ function getFieldsFromSource(
   if (isSource(source)) {
     fields = source.fields;
     if (source.shape && !isMultiShape(source.shape)) {
-      fields = source.shape.map(
-        (f) =>
-          ({
-            type: 'datafield',
-            from: source,
-            name: f.alias,
-            source: getSourcesFromContextualisedField(f),
-          } as DataField)
-      );
+      fields = shapeToField(source);
     }
   } else if (isDataModel(source)) {
     fields = source.fields.filter(isDataField);
@@ -83,6 +91,8 @@ function getSubmodels(source: ContextualisedSourceValue) {
   let subModels: ContextualisedSourceValue[] = [];
   if (isSource(source)) {
     subModels = source.subModels || [];
+  } else if (isDataModel(source)) {
+    return [source];
   } else {
     throw new Error(
       `Unsupported source type ${source.type} for extracting subModels`
@@ -258,13 +268,16 @@ export class Contextualiser {
 
     if (source.shape) {
       out.shape = this.getShape(source.shape, out, context);
+      if (!out.fields?.length && !isMultiShape(out.shape)) {
+        out.fields = shapeToField(out);
+      }
     } else {
       out.shape = out.fields;
     }
     if (!isMultiShape(out.shape)) {
       out.sources = uniq(out.sources.concat(combine(out.shape)));
     }
-
+    
     return out;
   }
 

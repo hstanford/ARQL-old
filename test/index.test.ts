@@ -464,4 +464,31 @@ describe('data modification', () => {
     const data2 = await arql('users', []);
     expect(data2).to.have.length(3);
   });
+
+  it('can delete from a selection', async () => {
+    const data0 = await arql('users', []);
+    expect(data0).to.have.length(3);
+
+    const data1 = await arql(
+      `
+    old: {id: $1} -x users | filter(users.id = old.id)
+    `,
+      [4]
+    );
+
+    const data = await arql('users', []);
+
+    expect(data).to.deep.equal([
+      {
+        id: 1,
+        name: 'blah',
+      },
+      {
+        id: 5,
+        name: 'mctest2',
+      },
+    ]);
+
+    expect(data).to.have.length(2);
+  });
 });

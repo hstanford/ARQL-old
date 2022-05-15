@@ -21,6 +21,7 @@ import type {
 } from './types.js';
 import { DataSource } from './types.js';
 import { v4 as uuid } from 'uuid';
+import { getAlias } from './util.js';
 
 export default class Native extends DataSource<any, any> {
   transforms: Map<string, transformFn> = new Map();
@@ -99,7 +100,7 @@ export default class Native extends DataSource<any, any> {
         throw new Error(
           `No support for ${JSON.stringify(source.name)} as a source name yet`
         );
-      const subVals = await this.resolveSources(source, data, results, params);
+      const subVals = await this.resolveSources(source, data, results, params, false);
       return [source.name, subVals];
     } else if (source.type === 'datafield') {
       if (!data) throw new Error('Not yet implemented...');
@@ -130,7 +131,8 @@ export default class Native extends DataSource<any, any> {
     source: DelegatedSource,
     data: any,
     results: any[],
-    params: any[]
+    params: any[],
+    exposeAlias: boolean,
   ): Promise<AnyObj[] | AnyObj> {
     const intermediate = await this.resolveIntermediate(
       source,
@@ -142,7 +144,8 @@ export default class Native extends DataSource<any, any> {
       source,
       intermediate || data,
       results,
-      params
+      params,
+      exposeAlias,
     );
   }
 
@@ -150,7 +153,8 @@ export default class Native extends DataSource<any, any> {
     source: DelegatedSource,
     intermediate: Map<string, AnyObj[]> | AnyObj[] | AnyObj | undefined,
     results: any[],
-    params: any[]
+    params: any[],
+    exposeAlias: boolean,
   ): Promise<AnyObj[] | AnyObj> {
     let single =
       intermediate &&
@@ -188,6 +192,16 @@ export default class Native extends DataSource<any, any> {
     }
     if (!resolved) {
       throw new Error(`Couldn't resolve source`);
+    }
+    if (exposeAlias) {
+      const alias = getAlias(source.alias || source.name);
+      if (Array.isArray(resolved)) {
+        for (let item of resolved) {
+          item[alias] = item;
+        }
+      } else {
+        resolved[alias] = resolved;
+      }
     }
     return single && Array.isArray(resolved) ? resolved[0] : resolved;
   }
@@ -295,10 +309,11 @@ export default class Native extends DataSource<any, any> {
     } else if (field.type === 'datafield') {
       let path: string[] = [];
       if (field.from) {
-        if (typeof field.from.name === 'string') {
-          path = [field.from.name];
-        } else if (field.from.name) {
-          path = [field.from.name.root, ...field.from.name.parts];
+        const name = field.from.name || field.from.alias;
+        if (typeof name === 'string') {
+          path = [name];
+        } else if (name) {
+          path = [name.root, ...name.parts];
         }
       }
       let value = item;
@@ -341,7 +356,7 @@ export default class Native extends DataSource<any, any> {
       }
       return [
         key,
-        await this.resolveSources(field, { ...item, ...data }, results, params),
+        await this.resolveSources(field, { ...item, ...data }, results, params, false),
       ];
     } else if (field.type === 'param') {
       return [field.alias || field.name || '', params[field.index - 1]];
@@ -399,18 +414,30 @@ export default class Native extends DataSource<any, any> {
           _id: uuid(),
         }))
       );
-      return await this.applyTransformsAndShape(dest, source, results, params);
+      return await this.applyTransformsAndShape(dest, source, results, params, false);
     } else if (modifier === '-x') {
-      if (source !== undefined) {
-        throw new Error('Deletion based on source data is not supported yet');
-      }
-
-      const intermediate = await this.resolveIntermediate(
+      let intermediate = await this.resolveIntermediate(
         dest,
         data,
         results,
         params
       );
+
+      if (source !== undefined) {
+        const sourceArr = Array.isArray(source) ? source : [source];
+        if (Array.isArray(intermediate)) {
+          const out = [];
+          for (let item of intermediate) {
+            for (let s of sourceArr) {
+              out.push({...s, ...item});
+            }
+          }
+          intermediate = out;
+        } else {
+          throw new Error('Unsupported');
+        }
+        //throw new Error('Deletion based on source data is not supported yet');
+      }
 
       // apply transforms (e.g. a filter) but not shape to items requiring deletion
       const tmpShape = dest.shape;
@@ -419,7 +446,8 @@ export default class Native extends DataSource<any, any> {
         dest,
         intermediate,
         results,
-        params
+        params,
+        false,
       );
       if (typeof dest.name !== 'string') {
         throw new Error('Unsupported destination model');
@@ -438,7 +466,8 @@ export default class Native extends DataSource<any, any> {
         dest,
         arrToDelete,
         results,
-        params
+        params,
+        false,
       );
     } else if (modifier === '->') {
       if (Array.isArray(source) || !source) {
@@ -458,7 +487,8 @@ export default class Native extends DataSource<any, any> {
         dest,
         intermediate,
         results,
-        params
+        params,
+        false,
       );
       if (typeof dest.name !== 'string') {
         throw new Error('Unsupported destination model');
@@ -479,7 +509,8 @@ export default class Native extends DataSource<any, any> {
         dest,
         arrToUpdate,
         results,
-        params
+        params,
+        false,
       );
     } else {
       throw new Error(`Modifier ${modifier} not supported yet`);
@@ -499,7 +530,7 @@ export default class Native extends DataSource<any, any> {
         if (ast.source.type === 'delegatedQueryResult')
           source = results[ast.source.index];
         else
-          source = await this.resolveSources(ast.source, data, results, params);
+          source = await this.resolveSources(ast.source, data, results, params, !!ast.dest);
       }
       if (ast.dest) {
         if (ast.dest.type === 'delegatedQueryResult') {
@@ -516,7 +547,7 @@ export default class Native extends DataSource<any, any> {
       }
       return dest || source || [];
     } else if (ast.type === 'source') {
-      return await this.resolveSources(ast, data, results, params);
+      return await this.resolveSources(ast, data, results, params, false);
     } else throw new Error('Not implemented yet');
   }
 }
