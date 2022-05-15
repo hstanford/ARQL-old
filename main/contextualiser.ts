@@ -83,8 +83,16 @@ export class Contextualiser {
     if (Array.isArray(contSource.value)) {
       contSource.fields = uniqBy(
         contSource.value.reduce(
-          (acc, source) =>
-            acc.concat(source.type === 'source' ? source.fields : []),
+          (acc, source) => {
+            let fields: ContextualisedField[] = [];
+            if (source.type === 'source') {
+              fields = source.fields;
+              if (source.shape && !Array.isArray(source.shape[0])) {
+                fields = source.shape as ContextualisedField[];
+              }
+            }
+            return acc.concat(fields);
+          },
           [] as ContextualisedField[]
         ) || [],
         'name'
@@ -105,8 +113,13 @@ export class Contextualiser {
       )?.name;
       contSource.sources = uniq(combine(contSource.subModels));
     } else {
-      contSource.fields =
-        contSource.value.type === 'source' ? contSource.value.fields : [];
+      contSource.fields = [];
+      if (contSource.value.type === 'source') {
+        contSource.fields = contSource.value.fields;
+        if (contSource.value.shape && !Array.isArray(contSource.value.shape[0])) {
+          contSource.fields = contSource.value.shape as ContextualisedField[];
+        }
+      }
       contSource.subModels =
         contSource.value?.type === 'source'
           ? contSource.value.subModels
@@ -141,7 +154,8 @@ export class Contextualiser {
           (f: any) => f.type === 'datafield'
         ) as DataField[]; // need contextualising?
       // TODO: fix this hack by passing required fields back down
-      contextualisedSource.sources = (model.type === 'source' && model.sources) ||
+      contextualisedSource.sources =
+        (model.type === 'source' && model.sources) ||
         (model?.fields?.[0] && model.fields[0].type === 'datafield'
           ? [model.fields[0].source]
           : []);
@@ -174,7 +188,7 @@ export class Contextualiser {
           transform: outTransform,
           value: Array.isArray(out.value) && !out.transform ? out.value : out,
           fields: out.fields,
-          name: out.name,
+          name: out.alias || out.name,
           subModels: out.subModels,
           sources: uniq(out.sources.concat(outTransform.sources)),
         };
@@ -236,7 +250,7 @@ export class Contextualiser {
           transform: this.getTransform(transform, out, context),
           value: out,
           fields: out.fields,
-          name: out.name,
+          name: out.alias || out.name,
           subModels: out.subModels,
           sources: out.sources, // TODO: combine with if source supports transform
         };
@@ -265,12 +279,17 @@ export class Contextualiser {
     const name = model.alias || model.name;
     if (!name || typeof name !== 'string')
       throw new Error('Data reference only supported for strings');
-    const trfms = this.parser(dataReference.join(name, dataReference.other.name), 'transforms');
+    const trfms = this.parser(
+      dataReference.join(name, dataReference.other.name),
+      'transforms'
+    );
     const source: ContextualisedSource = {
       type: 'source',
       name,
       value: model,
-      fields: (model.fields as any[]).filter(function (f: any): f is DataField { return f.type === 'datafield' }),
+      fields: (model.fields as any[]).filter(function (f: any): f is DataField {
+        return f.type === 'datafield';
+      }),
       sources:
         model.type === 'source'
           ? model.sources
@@ -287,7 +306,9 @@ export class Contextualiser {
       type: 'source',
       name: dataReference.other.name,
       value: dataReference.other,
-      fields: dataReference.other.fields.filter(function (f): f is DataField { return f.type === 'datafield' }),
+      fields: dataReference.other.fields.filter(function (f): f is DataField {
+        return f.type === 'datafield';
+      }),
       sources: uniq(outSources.concat(source.sources)),
     };
     for (const trfm of trfms) {
@@ -329,7 +350,7 @@ export class Contextualiser {
 
     for (let part of alphachain.parts) {
       for (let subModel of model?.fields || []) {
-        if (subModel.name === part) {
+        if (subModel.name === part || (subModel.type !== 'datareference' && subModel.alias === part)) {
           if (subModel.type === 'datareference') {
             if (!model || model.type === 'datafield') {
               throw new Error('Invalid model for data references');
@@ -426,7 +447,32 @@ export class Contextualiser {
     }
     const out = [];
     for (let field of shape.fields) {
-      out.push(this.getField(field, model, context));
+      if (field.type === 'wildcard') {
+        if (field.parts?.length) {
+          throw new Error('Not yet supported');
+        }
+        if (field.root) {
+          if (Array.isArray(model.value)) {
+            for (let val of model.value) {
+              if (
+                (field.root === val.alias || field.root === val.name) &&
+                val.fields
+              ) {
+                for (let f of val.fields) {
+                  if (f.type !== 'datareference') out.push(f);
+                }
+              }
+            }
+          } else {
+            // TODO: handle deep models?
+            out.push(...model.fields);
+          }
+        } else {
+          out.push(...model.fields);
+        }
+      } else {
+        out.push(this.getField(field, model, context));
+      }
     }
     return out;
   }
@@ -469,8 +515,8 @@ export class Contextualiser {
           );
         }
         let subField: ContextualisedField | undefined = (field.fields as any)
-          .filter((f: any) => f.type === 'datafield')
-          .find((f: any) => f.name === part);
+          .filter((f: any) => f.type !== 'datareference')
+          .find((f: any) => f.name === part || f.alias === part);
         if (!subField) {
           subField = context.aliases.get(part);
         }

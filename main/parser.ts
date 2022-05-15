@@ -44,6 +44,7 @@ import type {
   Dest,
   Field,
   Query,
+  Wildcard,
 } from './types.js';
 
 export default function buildParser(opResolver = (expr: any) => expr) {
@@ -403,13 +404,33 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     value: parts[2],
   }));
 
-  const fieldList: Parser<Field[], string, any> = sequenceOf([
+  const wildcard: Parser<Wildcard, string, any> = sequenceOf([
+    many(sequenceOf([
+      keyword,
+      optionalWhitespace,
+      char('.'),
+      optionalWhitespace,
+    ]).map(parts => parts[0])),
+    char('*')
+  ]).map(([[root, ...parts], wcard]) => {
+    if (wcard !== '*') {
+      throw new Error('Unknown wildcard character');
+    }
+    return {
+      type: 'wildcard',
+      value: wcard,
+      root,
+      parts,
+    }
+  });
+
+  const fieldList: Parser<(Field | Wildcard)[], string, any> = sequenceOf([
     optionalWhitespace,
     sepBy(sequenceOf([optionalWhitespace, char(','), optionalWhitespace]))(
-      possibly(field)
+      possibly(choice([wildcard, field]))
     ),
     optionalWhitespace,
-  ]).map((parts) => parts[1].filter((i) => !!i) as Field[]);
+  ]).map((parts) => parts[1].filter((i) => !!i) as (Field | Wildcard)[]);
 
   // the shape is effectively a very powerful transform function. You specify the
   // structure of the data you want out of the source in json-like syntax. If you

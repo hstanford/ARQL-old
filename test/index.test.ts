@@ -372,6 +372,13 @@ describe('can retrieve a join and a reshaping', () => {
       name: 'foo'
     });
   });
+
+  it('supports passing fields from inner shapes', async () => {
+    const data = await arql(`(users { id, uname: name }) {uname}`);
+    expect(data).to.deep.equal([{
+      uname: 'hello'
+    }]);
+  });
 });
 
 describe('data modification', () => {

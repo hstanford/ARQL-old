@@ -305,7 +305,7 @@ export default class Native extends DataSource<any, any> {
       for (let key of path) {
         if (key in value) value = value[key];
       }
-      return [field.alias || field.name, value[field.name]];
+      return [field.alias || field.name, value[field.alias || field.name] || value[field.name]];
     } else if (field.type === 'source') {
       // TODO: review this section
       let data;

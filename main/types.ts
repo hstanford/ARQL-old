@@ -87,9 +87,16 @@ export interface Field {
   value: Source | Expr;
 }
 
+export interface Wildcard {
+  type: 'wildcard';
+  value: '*';
+  root?: string;
+  parts?: string[];
+}
+
 export interface Shape {
   type: 'shape';
-  fields: Field[];
+  fields: (Field | Wildcard)[];
 }
 
 export interface Query {

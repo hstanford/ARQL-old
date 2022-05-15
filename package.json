@@ -12,7 +12,8 @@
   "scripts": {
     "test": "cd ./main && npm run test && cd ../test && npm run test && cd ..",
     "install": "cd ./main && npm i && npm run build && cd ../test && npm i && cd ..",
-    "rebuild": "cd ./main && npm run build && cd ../test && npm i ../main && cd .."
+    "rebuild": "cd ./main && npm run build && cd ../test && npm i ../main && cd ..",
+    "playground": "cd playground && npm run start"
   },
   "repository": {
     "type": "git",
