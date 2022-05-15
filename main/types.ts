@@ -220,9 +220,9 @@ export type ContextualisedField =
 export interface DataField {
   type: 'datafield';
   name: string;
-  datatype: dataType;
+  datatype?: dataType;
   fields?: DataField[];
-  source: DataSource<any, any>;
+  source: DataSource<any, any> | DataSource<any, any>[];
   model?: DataModel;
   from?: ContextualisedSource;
   alias?: string;

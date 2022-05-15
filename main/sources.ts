@@ -11,11 +11,13 @@ export function combine(fields: ContextualisedField[]) {
   return fields.reduce((acc, m) => {
     let sources: DataSource<any, any>[] = [];
     if (m.type === 'datafield') {
-      sources = [m.source];
+      sources = Array.isArray(m.source) ? m.source : [m.source];
     } else if (m.type === 'datamodel') {
-      sources = uniq((m.fields as any)
-        .filter((f: any) => f.type === 'datafield')
-        .map((f: any) => f.source));
+      sources = uniq(
+        (m.fields as any)
+          .filter((f: any) => f.type === 'datafield')
+          .map((f: any) => f.source)
+      );
     } else if (m.type === 'param') {
       sources = [];
     } else {

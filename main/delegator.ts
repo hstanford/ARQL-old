@@ -28,6 +28,7 @@ import {
   isExpr,
   isParam,
   isQuery,
+  DataSource,
 } from './types.js';
 
 import { combine } from './sources.js';
@@ -133,7 +134,14 @@ function findSplitShape(
       } else if (isDataModel(field)) {
         throw new Error('Lone data models in shapes are not fully supported');
       } else if (isDataField(field)) {
-        if (inShapeNotInSource.includes(field.source)) {
+        const anyIn = (source: DataSource<any, any>) =>
+          inShapeNotInSource.includes(source);
+        if (
+          Array.isArray(field.source)
+            ? field.source.some(anyIn)
+            : anyIn(field.source)
+        ) {
+          console.log(field.source, inShapeNotInSource);
           throw new Error('Lone data fields in shapes are not fully supported');
         }
         return field;

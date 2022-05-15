@@ -16,7 +16,6 @@ import {
   Alphachain,
   ContextualisedExpr,
   ContextualisedField,
-  ContextualisedParam,
   ContextualisedQuery,
   ContextualisedSource,
   ContextualisedSourceValue,
@@ -60,8 +59,18 @@ function getFieldsFromSource(
   if (isSource(source)) {
     fields = source.fields;
     if (source.shape && !isMultiShape(source.shape)) {
-      fields = source.shape;
+      fields = source.shape.map(
+        (f) =>
+          ({
+            type: 'datafield',
+            from: source,
+            name: f.alias,
+            source: getSourcesFromContextualisedField(f),
+          } as DataField)
+      );
     }
+  } else if (isDataModel(source)) {
+    fields = source.fields.filter(isDataField);
   } else {
     throw new Error(
       `Unsupported source type ${source.type} for extracting fields`
@@ -82,12 +91,35 @@ function getSubmodels(source: ContextualisedSourceValue) {
   return subModels;
 }
 
-function getNameForContextualisedSource(source: ContextualisedSource) {
-  let name: string | Alphachain | undefined;
-  if (Array.isArray(source.value)) {
-    name = (source.value[0] || source.subModels?.[0])?.name;
+function getSourcesFromSourceValue(source: ContextualisedSourceValue) {
+  const firstField = source?.fields?.[0];
+  if (isSource(source)) {
+    return source.sources;
+  } else if (isDataField(firstField)) {
+    return getSourcesFromDataField(firstField);
+  } else {
+    return [];
   }
-  return name;
+}
+
+function getSourcesFromDataField(dataField: DataField) {
+  if (Array.isArray(dataField.source)) {
+    return dataField.source;
+  } else {
+    return [dataField.source].filter((i) => !!i);
+  }
+}
+
+function getSourcesFromContextualisedField(field: ContextualisedField) {
+  if (isDataField(field)) {
+    return getSourcesFromDataField(field);
+  } else if (isDataModel(field)) {
+    return getSourcesFromSourceValue(field);
+  } else if (isParam(field)) {
+    return [];
+  } else {
+    return field.sources;
+  }
 }
 
 function aggregateQuerySources(query: ContextualisedQuery) {
@@ -141,7 +173,7 @@ export class Contextualiser {
       contSource.fields = getFieldsFromSource(contSource.value);
       contSource.subModels = getSubmodels(contSource.value);
     }
-    contSource.name = getNameForContextualisedSource(contSource);
+    contSource.name = getSourceName(contSource);
     contSource.sources = uniq(combine(contSource.subModels || []));
   }
 
@@ -191,9 +223,7 @@ export class Contextualiser {
         ).filter(isDataField); // need contextualising?
       // TODO: fix this hack by passing required fields back down
       const firstField = model?.fields?.[0];
-      contextualisedSource.sources =
-        (isSource(model) && model.sources) ||
-        (isDataField(firstField) ? [firstField.source] : []);
+      contextualisedSource.sources = getSourcesFromSourceValue(model);
       // TODO: sources independent from shape if inner join?
     }
 
@@ -201,7 +231,9 @@ export class Contextualiser {
       !Array.isArray(contextualisedSource.value) &&
       isDataField(contextualisedSource.value)
     ) {
-      contextualisedSource.sources.push(contextualisedSource.value.source);
+      contextualisedSource.sources.push(
+        ...getSourcesFromSourceValue(contextualisedSource.value)
+      );
     }
 
     contextualisedSource.name = getSourceName(contextualisedSource);
@@ -255,7 +287,9 @@ export class Contextualiser {
       ),
       value: model,
       // TODO: fix this hack by passing required fields back down
-      sources: isDataField(firstField) ? [firstField.source] : [],
+      sources: isDataField(firstField)
+        ? getSourcesFromDataField(firstField)
+        : [],
       name: model.name,
     };
 
@@ -286,17 +320,12 @@ export class Contextualiser {
       dataReference.join(name, dataReference.other.name),
       'transforms'
     );
-    const firstField = model.fields?.[0];
     const source: ContextualisedSource = {
       type: 'source',
       name,
       value: model,
       fields: (model.fields as any[]).filter(isDataField),
-      sources: isSource(model)
-        ? model.sources
-        : isDataField(firstField)
-        ? [firstField.source]
-        : [],
+      sources: getSourcesFromSourceValue(model),
     };
 
     const firstOtherField = dataReference.other.fields?.[0];
@@ -306,9 +335,10 @@ export class Contextualiser {
       value: dataReference.other,
       fields: dataReference.other.fields.filter(isDataField),
       sources: uniq(
-        (isDataField(firstOtherField) ? [firstOtherField.source] : []).concat(
-          source.sources
-        )
+        (isDataField(firstOtherField)
+          ? getSourcesFromDataField(firstOtherField)
+          : []
+        ).concat(source.sources)
       ),
     };
 
@@ -499,11 +529,9 @@ export class Contextualiser {
     if (isAlphachain(expr)) {
       const parts = [expr.root].concat(expr.parts);
       let field: ContextualisedField = model;
-      let mod: ContextualisedField = model;
       while (parts.length) {
         const part = parts.shift();
         if (!part) continue;
-        mod = field;
         if (!field.fields) {
           throw new Error(
             `Unable to find nested field ${part} on ${field.name}`

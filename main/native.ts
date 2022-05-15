@@ -305,7 +305,7 @@ export default class Native extends DataSource<any, any> {
       for (let key of path) {
         if (key in value) value = value[key];
       }
-      return [field.alias || field.name, value[field.alias || field.name] || value[field.name]];
+      return [field.alias || field.name, value[field.name]];
     } else if (field.type === 'source') {
       // TODO: review this section
       let data;
@@ -361,15 +361,18 @@ export default class Native extends DataSource<any, any> {
       return [field.alias || '', op(...args)];
     } else if (field.type === 'datamodel') {
       const [key, out] = await this.resolveSource(field, item, results, params);
-      return [key, out.map((obj: AnyObj) => {
-        const picked: AnyObj = {};
-        for (let datafield of field.fields) {
-          if (datafield.type === 'datafield') {
-            picked[datafield.name] = obj[datafield.name];
+      return [
+        key,
+        out.map((obj: AnyObj) => {
+          const picked: AnyObj = {};
+          for (let datafield of field.fields) {
+            if (datafield.type === 'datafield') {
+              picked[datafield.name] = obj[datafield.name];
+            }
           }
-        }
-        return picked;
-      })];
+          return picked;
+        }),
+      ];
     } else {
       throw new Error('Missing field type');
     }

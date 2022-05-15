@@ -351,7 +351,7 @@ describe('can retrieve a join and a reshaping', () => {
       {
         id: 1,
         orders: [{ name: 'foo' }],
-      }
+      },
     ]);
   });
 
@@ -361,7 +361,7 @@ describe('can retrieve a join and a reshaping', () => {
       {
         id: 1,
         user: { name: 'hello' },
-      }
+      },
     ]);
   });
 
@@ -369,15 +369,27 @@ describe('can retrieve a join and a reshaping', () => {
     const data = await arql(`orders | first() {id, name}`);
     expect(data).to.deep.equal({
       id: 1,
-      name: 'foo'
+      name: 'foo',
     });
   });
 
   it('supports passing fields from inner shapes', async () => {
     const data = await arql(`(users { id, uname: name }) {uname}`);
-    expect(data).to.deep.equal([{
-      uname: 'hello'
-    }]);
+    expect(data).to.deep.equal([
+      {
+        uname: 'hello',
+      },
+    ]);
+  });
+
+  it('supports field switching', async () => {
+    const data = await arql(`users {name: id, id: name}`);
+    expect(data).to.deep.equal([
+      {
+        name: 1,
+        id: 'hello',
+      },
+    ]);
   });
 });
 
