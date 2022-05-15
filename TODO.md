@@ -51,3 +51,4 @@
 
 - Multi-request transactional atomicity layer (token in http header? request body key?)
 - subscriptions?
+- fix aliasing issue where one of `(users {uname: name}) {uname}` or `users {name: id}` does the wrong thing
