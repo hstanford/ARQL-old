@@ -51,14 +51,16 @@ import type { ARQLParser } from './parser';
 
 import { combine } from './sources.js';
 
-import { uniq, uniqBy } from './util.js';
+import { uniq, uniqBy, getAlias, getSourceName } from './util.js';
 
-function getFieldsFromSource(source: ContextualisedSourceValue) {
-  let fields: ContextualisedField[] = [];
+function getFieldsFromSource(
+  source: ContextualisedSourceValue
+): ContextualisedField[] {
+  let fields = [];
   if (isSource(source)) {
     fields = source.fields;
-    if (source.shape && !Array.isArray(source.shape[0])) {
-      fields = source.shape as ContextualisedField[];
+    if (source.shape && !isMultiShape(source.shape)) {
+      fields = source.shape;
     }
   } else {
     throw new Error(
@@ -90,16 +92,6 @@ function getNameForContextualisedSource(source: ContextualisedSource) {
 
 function aggregateQuerySources(query: ContextualisedQuery) {
   return uniq(query?.source?.sources || []).concat(query?.dest?.sources || []);
-}
-
-function getAlias(ipt: string | Alphachain | null | undefined) {
-  let alias: string = '';
-  if (isAlphachain(ipt)) {
-    alias = [ipt.root, ...ipt.parts].pop() || '';
-  } else if (typeof ipt === 'string') {
-    alias = ipt;
-  }
-  return alias;
 }
 
 export class Contextualiser {
@@ -167,7 +159,7 @@ export class Contextualiser {
           ? source.value
           : source,
       fields: source.fields,
-      name: source.alias || source.name,
+      name: getAlias(source.alias || source.name),
       subModels: source.subModels,
       sources: uniq(source.sources.concat(outTransform.sources)),
     };
@@ -212,15 +204,14 @@ export class Contextualiser {
       contextualisedSource.sources.push(contextualisedSource.value.source);
     }
 
-    // TODO: revise this (doesn't make sense for Array source.value)
-    contextualisedSource.name =
-      source.alias || contextualisedSource.subModels?.[0].name;
+    contextualisedSource.name = getSourceName(contextualisedSource);
 
-    const key =
-      typeof contextualisedSource.name === 'string'
-        ? contextualisedSource.name
-        : contextualisedSource.name?.root;
-    if (key) context.aliases.set(key, contextualisedSource);
+    if (source.alias) {
+      context.aliases.set(source.alias, contextualisedSource);
+      contextualisedSource.alias = source.alias;
+    }
+    if (contextualisedSource.name)
+      context.aliases.set(contextualisedSource.name, contextualisedSource);
 
     let out = contextualisedSource;
     if (source.transforms.length) {

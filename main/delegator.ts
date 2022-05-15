@@ -10,8 +10,7 @@
  * particular data source. The rest of the tree is left for the native (js) resolver to
  * combine from the delegated query results.
  */
-import { inspect } from 'util';
-import type {
+import {
   ContextualisedQuery,
   ContextualisedSource,
   DataModel,
@@ -22,15 +21,17 @@ import type {
   DelegatedSource,
   DelegatedQuery,
   ContextualisedField,
+  isMultiShape,
+  isDataModel,
+  isDataField,
+  isSource,
+  isExpr,
+  isParam,
+  isQuery,
 } from './types.js';
 
 import { combine } from './sources.js';
-
-function uniq<T>(arr: T[]) {
-  return arr.filter(
-    (field, idx, self) => idx === self.findIndex((f2) => f2 === field)
-  );
-}
+import { getSourceName, uniq } from './util.js';
 
 /**
  * needs a bit of a redesign? Needs to support:
@@ -38,41 +39,50 @@ function uniq<T>(arr: T[]) {
  * - splitting a shape (will need all required fields selected out of the delegated query)
  * - splitting an expression (will need partial expressions selected out of the delegated query)
  * - splitting based on source flags
- * 
+ *
  * at each node:
  * - is it single source?
  * - does the source support the whole shape?
  * - does the source support the transform and all its arguments?
- * 
+ *
  * perhaps a recursive "supports(node, source)" function that ensures all leaves and nodes in between
  * can be resolved by the source
- */ 
+ */
+
+function findSplitShapeMulti(
+  ast: DataModel | ContextualisedSource | DataField,
+  queries: (ContextualisedQuery | ContextualisedSource)[],
+  inShape: ContextualisedField[] | ContextualisedField[][]
+) {
+  if (isMultiShape(inShape)) {
+    const shapes: DelegatedField[][] = [];
+    for (let shape of inShape) {
+      shapes.push(findSplitShape(ast, queries, shape));
+    }
+    return shapes;
+  } else {
+    return findSplitShape(ast, queries, inShape);
+  }
+}
 
 function findSplitShape(
   ast: DataModel | ContextualisedSource | DataField,
   queries: (ContextualisedQuery | ContextualisedSource)[],
-  inShape: ContextualisedField[] | ContextualisedField[][]
-): DelegatedField[] | DelegatedField[][] {
+  inShape: ContextualisedField[]
+) {
   if (ast.type !== 'source') {
     throw new Error('cannot find shape split for non-source');
   }
-  if (Array.isArray(inShape?.[0])) {
-    return (inShape as ContextualisedField[][]).map(
-      (shape) => findSplitShape(ast, queries, shape) as DelegatedField[]
-    );
-  }
-  let shape: DelegatedField[] = inShape as DelegatedField[];
+  let shape: DelegatedField[] = inShape;
   const sourceDataSources = uniq(combine(ast.subModels || []));
-  const shapeDataSources = uniq(
-    combine((shape as ContextualisedField[]) || [])
-  );
+  const shapeDataSources = uniq(combine(inShape || []));
   const inShapeNotInSource = shapeDataSources.filter(
     (source) => !sourceDataSources.includes(source)
   );
 
   if (inShapeNotInSource.length) {
-    shape = (inShape as ContextualisedField[]).map((field) => {
-      if (field.type === 'source') {
+    shape = inShape.map((field) => {
+      if (isSource(field)) {
         if (
           field.sources.every((source) => inShapeNotInSource.includes(source))
         ) {
@@ -89,8 +99,8 @@ function findSplitShape(
           // TODO: this may need some very fancy logic
           if (
             Array.isArray(field.value) &&
-            field.value[0].type === 'source' &&
-            field.value?.length === 1
+            field.value?.length === 1 &&
+            isSource(field.value[0])
           ) {
             queries.push(field.value[0]);
             return {
@@ -99,10 +109,7 @@ function findSplitShape(
                 {
                   type: 'delegatedQueryResult',
                   index: queries.length - 1,
-                  alias:
-                    typeof field.value[0].name === 'string'
-                      ? field.value[0].name
-                      : undefined,
+                  alias: getSourceName(field.value[0]),
                 },
               ],
             };
@@ -116,21 +123,21 @@ function findSplitShape(
           }
         }
         return field;
-      } else if (field.type === 'exprtree') {
+      } else if (isExpr(field)) {
         if (
           field.sources.some((source) => inShapeNotInSource.includes(source))
         ) {
           throw new Error('Multi-source origin expressions are not supported');
         }
         return field;
-      } else if (field.type === 'datamodel') {
+      } else if (isDataModel(field)) {
         throw new Error('Lone data models in shapes are not fully supported');
-      } else if (field.type === 'datafield') {
+      } else if (isDataField(field)) {
         if (inShapeNotInSource.includes(field.source)) {
           throw new Error('Lone data fields in shapes are not fully supported');
         }
         return field;
-      } else if (field.type === 'param') {
+      } else if (isParam(field)) {
         return field;
       } else {
         throw new Error('Unrecognised field type');
@@ -145,19 +152,19 @@ function findSplit(
   queries: (ContextualisedQuery | ContextualisedSource)[]
 ): DelegatedSource | DelegatedQueryResult {
   // if the ast only has one data source, add that
-  if (ast.type === 'datamodel') {
+  if (isDataModel(ast)) {
     queries.push({
       type: 'source',
       value: ast,
       fields: [],
-      sources: [(ast.fields[0] as DataField)?.source].filter((i) => !!i),
+      sources: [ast.source].filter((i) => !!i),
     });
     return {
       type: 'delegatedQueryResult',
       index: queries.length - 1,
       alias: ast.name,
     };
-  } else if (ast.type === 'datafield') {
+  } else if (isDataField(ast)) {
     throw new Error('Cannot Delegate data field on its own');
   }
   if (ast.sources.length === 1) {
@@ -169,11 +176,7 @@ function findSplit(
     };
   }
 
-  let shape: DelegatedField[] | DelegatedField[][] | undefined;
-
-  if (ast.shape) {
-    shape = findSplitShape(ast, queries, ast.shape);
-  }
+  const shape = ast.shape && findSplitShapeMulti(ast, queries, ast.shape);
 
   // TODO: handle unresolvable transforms
 
@@ -209,12 +212,12 @@ export default function delegator(ast: ContextualisedQuery): ResolutionTree {
     queries.push(ast);
   } else if (ast.sources.length > 1) {
     // TODO: can this not mutate ast?
-    if (ast.source && ast.type === 'query')
+    if (ast.source && isQuery(ast))
       tree = {
         ...(tree || ast),
         source: findSplit(ast.source, queries),
       } as DelegatedQuery;
-    if (ast.dest && ast.type === 'query')
+    if (ast.dest && isQuery(ast))
       tree = {
         ...(tree || ast),
         dest: findSplit(ast.dest, queries),
