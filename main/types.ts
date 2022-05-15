@@ -26,6 +26,10 @@ export interface Alphachain {
   parts: string[];
 }
 
+export function isAlphachain(ipt: any): ipt is Alphachain {
+  return ipt?.type === 'alphachain';
+}
+
 export interface Param {
   type: 'param';
   index: number;
@@ -34,6 +38,10 @@ export interface Param {
 export interface Op {
   type: 'op';
   symbol: string;
+}
+
+export function isOp(ipt: any): ipt is Op {
+  return ipt?.type === 'op';
 }
 
 export type Expr = ExprTree | Param | Alphachain | Source;
@@ -51,6 +59,10 @@ export interface FunctionCall {
   type: 'function';
   expr: Expr;
   args: Expr[];
+}
+
+export function isFunction(ipt: any): ipt is FunctionCall {
+  return ipt?.type === 'function';
 }
 
 export interface Transform {
@@ -73,6 +85,10 @@ export interface Model {
   value: Alphachain;
 }
 
+export function isModel(ipt: any): ipt is Model {
+  return ipt?.type === 'model';
+}
+
 export interface Dest {
   type: 'dest';
   alias: string | null;
@@ -81,10 +97,18 @@ export interface Dest {
   value: string;
 }
 
+export function isDest(ipt: any): ipt is Dest {
+  return ipt?.type === 'dest';
+}
+
 export interface Field {
   type: 'field';
   alias: string | null;
   value: Source | Expr;
+}
+
+export function isField(ipt: any): ipt is Field {
+  return ipt?.type === 'field';
 }
 
 export interface Wildcard {
@@ -94,9 +118,23 @@ export interface Wildcard {
   parts?: string[];
 }
 
+export function isWildcard(ipt: any): ipt is Wildcard {
+  return ipt?.type === 'wildcard';
+}
+
 export interface Shape {
   type: 'shape';
   fields: (Field | Wildcard)[];
+}
+
+export function isShape(ipt: any): ipt is Shape {
+  return ipt?.type === 'shape';
+}
+
+export function isMultiShape(
+  ipt: ContextualisedField[] | ContextualisedField[][]
+): ipt is ContextualisedField[][] {
+  return Array.isArray(ipt?.[0]);
 }
 
 export interface Query {
@@ -190,11 +228,19 @@ export interface DataField {
   alias?: string;
 }
 
+export function isDataField(ipt: any): ipt is DataField {
+  return ipt?.type === 'datafield';
+}
+
 export interface DataReference {
   type: 'datareference';
   name: string;
   join: (self: string, other: string) => string;
   other: DataModel;
+}
+
+export function isDataReference(ipt: any): ipt is DataReference {
+  return ipt?.type === 'datareference';
 }
 
 export interface ContextualisedParam {
@@ -205,6 +251,12 @@ export interface ContextualisedParam {
   alias?: string;
 }
 
+export function isParam<T>(
+  ipt: T
+): ipt is Extract<T, Param | ContextualisedParam> {
+  return (ipt as any)?.type === 'param';
+}
+
 export interface DataModel {
   type: 'datamodel';
   name: string;
@@ -213,11 +265,19 @@ export interface DataModel {
   fields: (DataField | DataReference)[];
 }
 
+export function isDataModel(ipt: any): ipt is DataModel {
+  return ipt?.type === 'datamodel';
+}
+
 export interface TransformDef {
   type: 'transformdef';
   name: string;
   modifiers?: string[];
   nArgs: string | number;
+}
+
+export function isTransformDef(ipt: any): ipt is TransformDef {
+  return ipt?.type === 'transformdef';
 }
 
 export interface ContextualiserState {
@@ -232,10 +292,18 @@ export interface ContextualisedQuery {
   sources: DataSource<any, any>[];
 }
 
+export function isQuery<T>(
+  ipt: T
+): ipt is Extract<T, Query | ContextualisedQuery | DelegatedQuery> {
+  return (ipt as any)?.type === 'query';
+}
+
 export type ContextualisedSourceValue =
   | DataField
   | DataModel
   | ContextualisedSource;
+
+export type PerhapsContextualisedField = ContextualisedField | DataReference;
 
 export interface ContextualisedSource {
   type: 'source';
@@ -249,12 +317,24 @@ export interface ContextualisedSource {
   alias?: string;
 }
 
+export function isSource<T>(
+  ipt: T
+): ipt is Extract<T, Source | ContextualisedSource | DelegatedSource> {
+  return (ipt as any)?.type === 'source';
+}
+
 export interface ContextualisedTransform {
   type: 'transform';
   name: string;
   modifier: string[];
   args: (ContextualisedField | ContextualisedExpr | ContextualisedField[])[];
   sources: DataSource<any, any>[];
+}
+
+export function isTransform<T>(
+  ipt: T
+): ipt is Extract<T, Transform | ContextualisedTransform> {
+  return (ipt as any)?.type === 'transform';
 }
 
 export interface ContextualisedExpr {
@@ -265,6 +345,12 @@ export interface ContextualisedExpr {
   args: (ContextualisedExpr | ContextualisedField)[];
   sources: DataSource<any, any>[];
   alias?: string;
+}
+
+export function isExpr<T>(
+  ipt: T
+): ipt is Extract<T, ExprTree | ContextualisedExpr> {
+  return (ipt as any)?.type === 'exprtree';
 }
 
 // operators
@@ -285,6 +371,10 @@ export interface DelegatedQueryResult {
   type: 'delegatedQueryResult';
   index: number;
   alias?: string;
+}
+
+export function isDelegatedQueryResult(ipt: any): ipt is DelegatedQueryResult {
+  return ipt?.type === 'exprtree';
 }
 
 export type DelegatedField =
