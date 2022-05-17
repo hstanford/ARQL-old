@@ -1,4 +1,4 @@
-import { Native, DataModel, DataField, DataReference } from 'arql';
+import { Native, DataModel, DataField, DataReference, DataSource } from 'arql';
 import nativeConfigurer from '@arql/stdlib-native';
 import { v4 as uuid } from 'uuid';
 export class Data {
@@ -45,7 +45,7 @@ export class Data {
   }
   addField(
     name: string,
-    datatype: 'number' | 'string',
+    datatype: DataField["datatype"],
     modelName: string,
     sourceName: string
   ) {
@@ -99,6 +99,11 @@ export class Data {
     }
     this.onChange();
   }
+  getKeyForSource(source: DataSource<any, any>) {
+    return [...data.sources.keys()].find(
+      (s) => source === data.sources.get(s)
+    );
+  }
 }
 
 const data = new Data();
@@ -125,3 +130,22 @@ data.addRecord({ id: 2, userId: 1, name: 'blah' }, 'secondary', 'orders');
 data.addRecord({ id: 3, userId: 2, name: 'other' }, 'secondary', 'orders');
 
 export default data;
+
+const sourceColours: Record<string, string> = {};
+
+function generateLightColorHex() {
+  let color = "#";
+  for (let i = 0; i < 3; i++)
+    color += ("0" + Math.floor(((1 + Math.random()) * Math.pow(16, 2)) / 2).toString(16)).slice(-2);
+  return color;
+}
+
+export function getColourForSource(source: string) {
+  if (source in sourceColours) {
+    return sourceColours[source];
+  } else {
+    const randomColor = generateLightColorHex();
+    sourceColours[source] = randomColor;
+    return randomColor;
+  }
+}

@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import { Data } from '../models';
 import type { DataField, DataReference } from 'arql';
+import Visualiser from './visualiser';
 
 export default function Models({
   onChange = () => {},
@@ -35,12 +36,16 @@ export default function Models({
   const [otherField, setOtherField] = React.useState<string>();
   const [refresh, setRefresh] = React.useState(false);
   const [data] = React.useState(dataInstance);
+  const [models, setModels] = React.useState(dataInstance.models);
   React.useEffect(() => {
     data.onChange = () => {
       onChange();
+      setModels(new Map([...dataInstance.models.entries()]));
       setRefresh(!refresh);
     };
   }, [refresh]);
+
+  return <Visualiser models={models} data={dataInstance}/>;
   return (
     <Box>
       <Box
