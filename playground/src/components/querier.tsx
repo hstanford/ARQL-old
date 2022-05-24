@@ -200,17 +200,15 @@ export default function Querier({
                 sx={{ flexGrow: 1 }}
                 size="small"
                 value={param}
-                onChange={(e) =>
-                  setParam(e.target.value)
-                }
+                onChange={(e) => setParam(e.target.value)}
               />
               <Button
                 sx={{ marginLeft: '4px' }}
                 variant="outlined"
                 onClick={() => {
                   const castParam = isNaN(param as any)
-                      ? param
-                      : parseFloat(param);
+                    ? param
+                    : parseFloat(param);
                   setParams(params.concat([castParam]));
                   setParam('');
                 }}

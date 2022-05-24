@@ -44,8 +44,6 @@
 
 ## Playground
 
-- better interface
-
 ## ?
 
 - Multi-request transactional atomicity layer (token in http header? request body key?)

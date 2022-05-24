@@ -2,7 +2,7 @@ import * as d3 from 'd3';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import * as styles1 from './forceGraph.module.css';
 
-import data, {getColourForSource} from './models';
+import data, { getColourForSource } from './models';
 
 const styles: any = styles1;
 
@@ -107,11 +107,13 @@ export function runForceGraph(
     .data(nodes)
     .join('circle')
     .attr('r', CIRCLE_RADIUS)
-    .attr('fill', (d) => getColourForSource(
-      [...data.sources.entries()].find(
-        ([key, source]) => source === d.model.source
-      )[0]
-    ))
+    .attr('fill', (d) =>
+      getColourForSource(
+        [...data.sources.entries()].find(
+          ([key, source]) => source === d.model.source
+        )[0]
+      )
+    )
     .call(drag(simulation));
 
   const label = svg

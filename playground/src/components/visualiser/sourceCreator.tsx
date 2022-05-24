@@ -1,7 +1,14 @@
-import { Add } from "@mui/icons-material";
-import { Box, Button, Dialog, Stack, TextField, Typography } from "@mui/material";
-import React from "react";
-import { Data, getColourForSource } from "../../models";
+import { Add } from '@mui/icons-material';
+import {
+  Box,
+  Button,
+  Dialog,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
+import React from 'react';
+import { Data, getColourForSource } from '../../models';
 
 export default function SourceCreator({
   data,
@@ -18,19 +25,31 @@ export default function SourceCreator({
       <Stack sx={{}}>
         {[...data.sources.keys()].map((name) => {
           return (
-            <Box key={name} sx={{backgroundColor: getColourForSource(name), padding: 2}}>
+            <Box
+              key={name}
+              sx={{ backgroundColor: getColourForSource(name), padding: 2 }}
+            >
               <Typography variant="subtitle1">{name}</Typography>
             </Box>
           );
         })}
         <Stack direction="row">
-          <TextField size="small" placeholder="Source name" value={name} onChange={(e) => setName(e.target.value)}/>
-          <Button onClick={() => {
-            data.addSource(name);
-            setName('');
-          }}><Add/></Button>
+          <TextField
+            size="small"
+            placeholder="Source name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <Button
+            onClick={() => {
+              data.addSource(name);
+              setName('');
+            }}
+          >
+            <Add />
+          </Button>
         </Stack>
       </Stack>
     </Dialog>
-  )
+  );
 }

@@ -45,7 +45,7 @@ export default function Models({
     };
   }, [refresh]);
 
-  return <Visualiser models={models} data={dataInstance}/>;
+  return <Visualiser models={models} data={dataInstance} />;
   return (
     <Box>
       <Box
@@ -327,7 +327,14 @@ export default function Models({
           sx={{ width: '150px' }}
           variant="contained"
           onClick={() => {
-            data.addRelation(reference, modelForReference, hasOne, otherModel, modelField, otherField);
+            data.addRelation(
+              reference,
+              modelForReference,
+              hasOne,
+              otherModel,
+              modelField,
+              otherField
+            );
             setReference('');
           }}
         >

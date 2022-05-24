@@ -21,7 +21,13 @@ export default function Model({
 }) {
   return (
     <Dialog open={open} onClose={() => setOpen(false)}>
-      <Box padding={2} sx={{backgroundColor: getColourForSource(data.getKeyForSource(model.source)) + '33'}}>
+      <Box
+        padding={2}
+        sx={{
+          backgroundColor:
+            getColourForSource(data.getKeyForSource(model.source)) + '33',
+        }}
+      >
         <Box
           sx={{
             flexGrow: 1,

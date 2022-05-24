@@ -138,13 +138,13 @@ export default function native(source: Native) {
       async (
         modifiers: string[],
         params: any[],
-        values: Map<any, any> | AnyObj[],
-      ) => { 
-         if (!Array.isArray(values)) {
-           throw new Error('Unsupported input format for "first"');
-         }
-         return values[0];
-      }
-    ]
+        values: Map<any, any> | AnyObj[]
+      ) => {
+        if (!Array.isArray(values)) {
+          throw new Error('Unsupported input format for "first"');
+        }
+        return values[0];
+      },
+    ],
   ]);
 }

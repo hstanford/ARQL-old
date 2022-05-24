@@ -41,7 +41,7 @@ export default function generic() {
       name: 'first',
       modifiers: [],
       nArgs: 0,
-    }
+    },
   ].map((o) => ({ ...o, type: 'transformdef' }));
 
   const operators = [

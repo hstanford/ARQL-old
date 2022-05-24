@@ -405,13 +405,15 @@ export default function buildParser(opResolver = (expr: any) => expr) {
   }));
 
   const wildcard: Parser<Wildcard, string, any> = sequenceOf([
-    many(sequenceOf([
-      keyword,
-      optionalWhitespace,
-      char('.'),
-      optionalWhitespace,
-    ]).map(parts => parts[0])),
-    char('*')
+    many(
+      sequenceOf([
+        keyword,
+        optionalWhitespace,
+        char('.'),
+        optionalWhitespace,
+      ]).map((parts) => parts[0])
+    ),
+    char('*'),
   ]).map(([[root, ...parts], wcard]) => {
     if (wcard !== '*') {
       throw new Error('Unknown wildcard character');
@@ -421,7 +423,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
       value: wcard,
       root,
       parts,
-    }
+    };
   });
 
   const fieldList: Parser<(Field | Wildcard)[], string, any> = sequenceOf([

@@ -75,10 +75,18 @@ export default function Visualiser({
   const name = currentModel?.name;
 
   return (
-    <Box sx={{display: 'flex', flexDirection: 'column', flexGrow: 1}}>
-      <Stack direction="row" spacing={1} sx={{position: 'absolute', zIndex: 1, right: '8px', margin: '8px'}}>
-        <Button variant='outlined' onClick={() => setOpenSources(true)}>Add Source</Button>
-        <Button variant='outlined' onClick={() => setOpenModelCreator(true)}>Add Model</Button>
+    <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{ position: 'absolute', zIndex: 1, right: '8px', margin: '8px' }}
+      >
+        <Button variant="outlined" onClick={() => setOpenSources(true)}>
+          Add Source
+        </Button>
+        <Button variant="outlined" onClick={() => setOpenModelCreator(true)}>
+          Add Model
+        </Button>
       </Stack>
       {showGraph && (
         <ForceGraph
@@ -88,9 +96,22 @@ export default function Visualiser({
           onClickNode={onClickNode}
         />
       )}
-      {currentModel && <Model model={currentModel} data={data} refresh={refresh} open={openModel} setOpen={setOpenModel}/>}
-      <SourceCreator data={data} open={openSources} setOpen={setOpenSources}/>
-      <ModelCreator data={data} refresh={refresh} open={openModelCreator} setOpen={setOpenModelCreator}/>
+      {currentModel && (
+        <Model
+          model={currentModel}
+          data={data}
+          refresh={refresh}
+          open={openModel}
+          setOpen={setOpenModel}
+        />
+      )}
+      <SourceCreator data={data} open={openSources} setOpen={setOpenSources} />
+      <ModelCreator
+        data={data}
+        refresh={refresh}
+        open={openModelCreator}
+        setOpen={setOpenModelCreator}
+      />
     </Box>
   );
 }

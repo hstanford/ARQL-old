@@ -164,7 +164,8 @@ function findSplit(
     queries.push({
       type: 'source',
       value: ast,
-      fields: [],
+      availableFields: [],
+      requiredFields: [],
       sources: [ast.source].filter((i) => !!i),
     });
     return {

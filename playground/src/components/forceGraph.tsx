@@ -6,7 +6,7 @@ export default function ForceGraph({
   linksData,
   nodesData,
   nodeHoverTooltip,
-  onClickNode
+  onClickNode,
 }: any) {
   const [reload, setReload] = React.useState(false);
   const containerRef = React.useRef(null);

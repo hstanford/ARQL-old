@@ -215,7 +215,8 @@ export type ContextualisedField =
   | DataModel
   | ContextualisedSource
   | ContextualisedExpr
-  | ContextualisedParam;
+  | ContextualisedParam
+  | DataReference;
 
 export interface DataField {
   type: 'datafield';
@@ -236,7 +237,9 @@ export interface DataReference {
   type: 'datareference';
   name: string;
   join: (self: string, other: string) => string;
+  model: DataModel;
   other: DataModel;
+  alias?: string | Alphachain;
 }
 
 export function isDataReference(ipt: any): ipt is DataReference {
@@ -247,7 +250,6 @@ export interface ContextualisedParam {
   index: number;
   type: 'param';
   name?: string | undefined;
-  fields?: undefined;
   alias?: string;
 }
 
@@ -303,12 +305,11 @@ export type ContextualisedSourceValue =
   | DataModel
   | ContextualisedSource;
 
-export type PerhapsContextualisedField = ContextualisedField | DataReference;
-
 export interface ContextualisedSource {
   type: 'source';
   value: ContextualisedSourceValue[] | ContextualisedSourceValue;
-  fields: ContextualisedField[];
+  availableFields: ContextualisedField[];
+  requiredFields: ContextualisedField[];
   name?: Alphachain | string;
   subModels?: ContextualisedSourceValue[];
   shape?: ContextualisedField[] | ContextualisedField[][];
@@ -341,7 +342,7 @@ export interface ContextualisedExpr {
   type: 'exprtree';
   op: string;
   name?: Alphachain | string;
-  fields?: undefined;
+  requiredFields: ContextualisedField[];
   args: (ContextualisedExpr | ContextualisedField)[];
   sources: DataSource<any, any>[];
   alias?: string;
@@ -384,7 +385,8 @@ export type DelegatedField =
   | DelegatedSource
   | ContextualisedExpr
   | ContextualisedParam
-  | DelegatedQueryResult;
+  | DelegatedQueryResult
+  | DataReference;
 
 export interface ResolutionTree {
   tree: DelegatedQuery | DelegatedQueryResult;

@@ -27,8 +27,7 @@ nativeConfigurer(secondaryDb);
 
 function selfReference(model: DataModel) {
   for (const field of model.fields) {
-    if (field.type === 'datafield')
-      field.model = model;
+    field.model = model;
   }
 }
 
@@ -47,7 +46,7 @@ export const elephants: DataModel = {
       name: 'age',
       datatype: 'number',
     },
-  ].map((f: any) => (f.source = f.source || mainDb, f)),
+  ].map((f: any) => ((f.source = f.source || mainDb), f)),
 };
 
 export const tigers: DataModel = {
@@ -74,9 +73,10 @@ export const tigers: DataModel = {
       type: 'datareference',
       name: 'elephant',
       other: elephants,
-      join: (self: string, other: string) => `| filter(${self}.elephantId = ${other}.id)`
+      join: (self: string, other: string) =>
+        `| filter(${self}.elephantId = ${other}.id)`,
     },
-  ].map((f: any) => (f.source = f.source || mainDb, f)),
+  ].map((f: any) => ((f.source = f.source || mainDb), f)),
 };
 
 export const users: DataModel = {
@@ -97,10 +97,13 @@ export const users: DataModel = {
     {
       type: 'datareference',
       name: 'orders',
-      join: (self: string, other: string) => `| filter(${self}.id = ${other}.userId)`,
-      get other() { return orders }
+      join: (self: string, other: string) =>
+        `| filter(${self}.id = ${other}.userId)`,
+      get other() {
+        return orders;
+      },
     },
-  ].map((f: any) => (f.source = f.source || mainDb, f)),
+  ].map((f: any) => ((f.source = f.source || mainDb), f)),
 };
 
 export const orders: DataModel = {
@@ -126,10 +129,11 @@ export const orders: DataModel = {
     {
       type: 'datareference',
       name: 'user',
-      join: (self: string, other: string) => `| filter(${self}.userId = ${other}.id) | first()`,
-      other: users
+      join: (self: string, other: string) =>
+        `| filter(${self}.userId = ${other}.id) | first()`,
+      other: users,
     },
-  ].map((f: any) => (f.source = f.source || secondaryDb, f)),
+  ].map((f: any) => ((f.source = f.source || secondaryDb), f)),
 };
 
 selfReference(users);

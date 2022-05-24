@@ -55,20 +55,26 @@ Additionally, several other desirable features have been identified:
 - the tooling should be very modular: the base software should purely be a text-to-AST (abstract syntax tree) parser. Separately, the client query building library, the server-side AST interpreter and the server side data resolution libraries should share model and type definitions and have ways of constructing compound type definitions in the language of the program that uses them. The query building and data resolution libraries are outside the scope of this specification.
 - the interface should be deliberately resilient to injection, and therefore should not support data that could be influenced by the user (e.g. strings or numbers) directly in the query string, forcing all values to be parameterised. This should also enable easy monitoring of queries without leaking sensitive values, aggregate metrics and caching.
 
+## Core Concepts
+
+A _Shape_ is a collection of keys and values. Each key-value pair is called a _Field_.
+
+The most basic building block of any query is a _Model_, which presents the shape of some data that's accessible outside ARQL.
+The database, api, or wherever else the data is accessible outside ARQL is its _Source_.
+Several models can belong to one source.
+
+Models are the most simple forms of a _Collection_, which is an intermediate structure of the data.
+Collections consist of an inner collection (which could be a model or another intermediate collection) and several _Transforms_,
+which are used to transform the data from one collection into another e.g. filter, sort.
+A special kind of transform is the _Reshape_, which can be used to declare the output shape in terms of the input shape.
+Reshapes can also be supplied as arguments to other transforms that need to modify shape as part of their other functionality,
+like aggregations.
+
 ## Definitions
 
-### object
+### reshape
 
-An object is a key-value representation of data: e.g. {id: 1, name: 'hello'}.
-A base object is an object that is persisted somewhere (the equivalent of a row in a relational database or an entity in a graphical database).
-
-### model
-
-A model is a collection of homogeneous base objects.
-
-### shape
-
-A shape is a graphql-like/javascript-like nested list of fields, surrounded by `{}` and separated by commas. For example:
+A reshape is written as a graphql-like/javascript-like nested list of fields, surrounded by `{}` and separated by commas. For example:
 
 ```
 users {
@@ -91,34 +97,42 @@ would obtain data that looks like:
 }, ...]
 ```
 
-### source
-
-A collection of objects. A model is the most basic type of source.
-
 ### transform
 
-A function that forms a new source from another source. The sources are applied with a unix-style pipe symbol `|`.
-
-Sources can be aliased like `u: users`, and the aliases can be used to prefix fields to reference relationships or fields in other sections.
-
-If "users" has an "emails" relationship which specifies join conditions under the hood (assumedly in the models layer), you could form a join using `(u: users, em: u.emails) | join()`, whereas `(u: users, em: emails) | join()` would be a join to all emails. You could manually specify a join condition like: `(u: users, em: emails) | join(em.userId = u.id)`.
+A transform is written as function that forms a new collection from another collection. The transforms are applied with a unix-style pipe symbol `|`, e.g. `users | filter(users.id = $1)`.
 
 ### expression
 
-A logical combination of fields and/or static values used for filtering sources and producing custom fields in shapes. Full expression syntax still TBC.
+A logical combination of fields and/or static values. Expressions can be used as transform arguments and as field values in reshapes. The syntax is entirely configurable, but the standard libraries provide a set of javascript-like operators.
+
+### collections
+
+Collections can be aliased like `u: users`, and the aliases can be used to prefix fields to reference relationships or fields in other sections.
+
+It may be necessary to combine multiple collections together, via a join, union or similar.
+This is done by separating the collections with commas, wrapping them in parentheses, and applying the combining filter.
+It may look like this:
+
+```
+(
+  users | filter(name = $1) { id, name },
+  o: orders
+) | join(users.id = o.userId)
+```
 
 ### query
 
-An instruction or set of instructions composed of sources and shapes. Data modification is indicated by `->`, data addition is indicated by `-+`, and data deletion is indicated by `-x`.
-These are all meant to look like arrows indicating data from the left flowing to the right.
+A query is expressed as an instruction or set of instructions composed of collections.
+Data modification is indicated by `->`, data addition is indicated by `-+`, and data deletion is indicated by `-x`.
+Visually, these tokens represent arrows indicating data from the left flowing to the right.
 
 The most complicated query is composed like:
 
 ```
-source shape -> model shape
+collection -> collection
 ```
 
-Which is this equivalent to the SQL `UPDATE ... SET ... FROM ... RETURNING ...`.
+If both collections are reshaped, this is this equivalent to the SQL `UPDATE ... SET ... FROM ... RETURNING ...`.
 
 ## Request format
 
@@ -145,7 +159,7 @@ params: []
 Get the name of the first 10 users:
 
 ```
-query: 'users | order(id) | limit($1) { name }',
+query: 'users | sort(id) | limit($1) { name }',
 params: [10]
 ```
 

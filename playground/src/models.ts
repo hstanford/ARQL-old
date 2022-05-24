@@ -18,7 +18,9 @@ export class Data {
     const source = this.sources.get(name);
     for (const model of this.models.values()) {
       model.fields = model.fields
-        .filter(function (field): field is DataField { return field.type === 'datafield' })
+        .filter(function (field): field is DataField {
+          return field.type === 'datafield';
+        })
         .filter((field) => field.source === source);
     }
     this.sources.delete(name);
@@ -45,7 +47,7 @@ export class Data {
   }
   addField(
     name: string,
-    datatype: DataField["datatype"],
+    datatype: DataField['datatype'],
     modelName: string,
     sourceName: string
   ) {
@@ -75,7 +77,11 @@ export class Data {
       type: 'datareference',
       name,
       other,
-      join: (a, b) => `| filter(${a}.${modelCol} = ${b}.${otherCol}) ${hasOne ? '| first() ' : ''}`
+      join: (a, b) =>
+        `| filter(${a}.${modelCol} = ${b}.${otherCol}) ${
+          hasOne ? '| first() ' : ''
+        }`,
+      model,
     };
     model.fields.push(newReference);
     this.onChange();
@@ -100,9 +106,7 @@ export class Data {
     this.onChange();
   }
   getKeyForSource(source: DataSource<any, any>) {
-    return [...data.sources.keys()].find(
-      (s) => source === data.sources.get(s)
-    );
+    return [...data.sources.keys()].find((s) => source === data.sources.get(s));
   }
 }
 
@@ -134,9 +138,11 @@ export default data;
 const sourceColours: Record<string, string> = {};
 
 function generateLightColorHex() {
-  let color = "#";
+  let color = '#';
   for (let i = 0; i < 3; i++)
-    color += ("0" + Math.floor(((1 + Math.random()) * Math.pow(16, 2)) / 2).toString(16)).slice(-2);
+    color += (
+      '0' + Math.floor(((1 + Math.random()) * Math.pow(16, 2)) / 2).toString(16)
+    ).slice(-2);
   return color;
 }
 

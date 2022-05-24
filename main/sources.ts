@@ -1,7 +1,13 @@
 /**
  * Data source utilities
  */
-import { DataSource, ContextualisedField } from './types.js';
+import {
+  DataSource,
+  ContextualisedField,
+  isDataReference,
+  isParam,
+  isDataField,
+} from './types.js';
 import { uniq } from './util.js';
 
 export class UnresolveableSource extends DataSource<any, any> {}
@@ -13,13 +19,19 @@ export function combine(fields: ContextualisedField[]) {
     if (m.type === 'datafield') {
       sources = Array.isArray(m.source) ? m.source : [m.source];
     } else if (m.type === 'datamodel') {
-      sources = uniq(
-        (m.fields as any)
-          .filter((f: any) => f.type === 'datafield')
-          .map((f: any) => f.source)
-      );
-    } else if (m.type === 'param') {
+      for (const field of m.fields) {
+        if (isDataField(field)) {
+          const source = field.source;
+          Array.isArray(source)
+            ? sources.push(...source)
+            : sources.push(source);
+        }
+      }
+      sources = uniq(sources);
+    } else if (isParam(m)) {
       sources = [];
+    } else if (isDataReference(m)) {
+      sources = uniq([m.model.source, m.other.source]);
     } else {
       sources = m.sources;
     }

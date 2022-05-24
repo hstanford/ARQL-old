@@ -1,7 +1,18 @@
-import { Add } from "@mui/icons-material";
-import { Box, Button, Dialog, FormControl, InputLabel, MenuItem, Select, Stack, TextField, Typography } from "@mui/material";
-import React from "react";
-import { Data, getColourForSource } from "../../models";
+import { Add } from '@mui/icons-material';
+import {
+  Box,
+  Button,
+  Dialog,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
+import React from 'react';
+import { Data, getColourForSource } from '../../models';
 
 export default function ModelCreator({
   data,
@@ -18,7 +29,7 @@ export default function ModelCreator({
   const [sourceName, setSourceName] = React.useState('');
   return (
     <Dialog open={open} onClose={() => setOpen(false)}>
-      <Stack spacing={1} sx={{padding: 1}}>
+      <Stack spacing={1} sx={{ padding: 1 }}>
         <TextField
           sx={{ flexGrow: 1 }}
           size="small"
@@ -36,18 +47,26 @@ export default function ModelCreator({
             onChange={(e) => setSourceName(e.target.value)}
           >
             {[...data.sources.keys()].map((source) => (
-              <MenuItem value={source} key={source} sx={{backgroundColor: getColourForSource(source)}}>
+              <MenuItem
+                value={source}
+                key={source}
+                sx={{ backgroundColor: getColourForSource(source) }}
+              >
                 {source}
               </MenuItem>
             ))}
           </Select>
         </FormControl>
-        <Button onClick={() => {
-          data.addModel(name, sourceName);
-          refresh();
-          setOpen(false);
-        }}><Add/></Button>
+        <Button
+          onClick={() => {
+            data.addModel(name, sourceName);
+            refresh();
+            setOpen(false);
+          }}
+        >
+          <Add />
+        </Button>
       </Stack>
     </Dialog>
-  )
+  );
 }

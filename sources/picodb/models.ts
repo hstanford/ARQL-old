@@ -18,8 +18,7 @@ picoConfigurer(mainDb);
 
 function selfReference(model: DataModel) {
   for (const field of model.fields) {
-    if (field.type === 'datafield')
-      field.model = model;
+    field.model = model;
   }
 }
 
