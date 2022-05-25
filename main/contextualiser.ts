@@ -9,11 +9,14 @@
 
 /* TODO:
 - pass required fields down so the interface of a delegated query is clear
-- default support for left join (to support `users {id, details}` where relationship details is in a different source)
 */
 
 /*
 Shapes demand fields
+Expressions demand fields
+Transforms demand fields
+Sources pass field demand to their values
+Fields of type source can remove demand that's available in that source
 */
 
 import {
@@ -65,7 +68,15 @@ function combineFields(subFields: ContextualisedField[]) {
       fields.push(...subField.requiredFields);
     } else if (isDataField(subField)) {
       // a data field being mentioned requires itself
-      fields.push(subField);
+      fields.push({ ...subField, alias: undefined });
+      if (subField.from) {
+        fields.push({
+          type: 'datafield',
+          from: subField.from,
+          name: subField.from.name,
+          source: getSourcesFromContextualisedField(subField.from),
+        } as DataField);
+      }
     } else if (isDataModel(subField)) {
       // a Data model doesn't put any requirements out
       //fields.push() ???
@@ -74,6 +85,8 @@ function combineFields(subFields: ContextualisedField[]) {
       fields.push(...subField.requiredFields);
     } else if (isParam(subField)) {
       // do nothing: no fields required
+    } else if (isDataReference(subField)) {
+      // do nothing: dataReference meaningless unless used
     } else {
       throw new Error(`Unrecognised type ${(subField as any).type}`);
     }
@@ -176,6 +189,32 @@ function aggregateQuerySources(query: ContextualisedQuery) {
   return uniq(query?.source?.sources || []).concat(query?.dest?.sources || []);
 }
 
+function applyRequiredFields(
+  source: ContextualisedSource,
+  requiredFields: ContextualisedField[]
+) {
+  let required = requiredFields;
+  if (source.transform) {
+    required = required.concat(source.transform.requiredFields);
+  }
+  source.requiredFields = uniq([...source.requiredFields, ...requiredFields]);
+  if (Array.isArray(source.value)) {
+    // divide required fields by source
+    for (let subSource of source.value) {
+      if (!isSource(subSource)) return;
+      const subFields = [];
+      for (let field of requiredFields) {
+        if (isDataField(field) && field.from === subSource) {
+          subFields.push(field);
+        }
+      }
+      applyRequiredFields(subSource, subFields);
+    }
+  } else if (isSource(source.value)) {
+    applyRequiredFields(source.value, source.requiredFields);
+  }
+}
+
 export class Contextualiser {
   models: Map<string, DataModel>;
   transforms: TransformDef[];
@@ -201,6 +240,11 @@ export class Contextualiser {
     };
     if (ast.source) {
       contextualisedQuery.source = this.handleSource(ast.source, context);
+      const source = contextualisedQuery.source;
+      // implicit wildcard
+      if (!source.requiredFields.length && source.availableFields.length) {
+        applyRequiredFields(source, combineFields(source.availableFields));
+      }
     }
     if (ast.dest) {
       contextualisedQuery.dest = this.handleDest(ast.dest, context);
@@ -261,17 +305,27 @@ export class Contextualiser {
     const sources = isMultiShape(outShape)
       ? outShape.map(combine)
       : [combine(outShape)];
+    const requiredFields = isMultiShape(outShape)
+      ? combineFields(
+          outShape.reduce<ContextualisedField[]>(
+            (acc, subShape) => acc.concat(subShape),
+            []
+          )
+        )
+      : combineFields(outShape);
+
     const out: ContextualisedSource = {
       type: 'source',
       value: Array.isArray(source.value) && !source.value.length ? [] : source,
       availableFields: [],
-      requiredFields: isMultiShape(outShape) ? [] : combineFields(outShape),
+      requiredFields: [],
       name: getAlias(source.alias || source.name),
       subModels: source.subModels,
       sources: uniq(source.sources.concat(...sources)),
       shape: outShape,
     };
     out.availableFields = shapeToAvailableFields(outShape, out);
+    applyRequiredFields(out, requiredFields);
     return out;
   }
 
@@ -522,6 +576,16 @@ export class Contextualiser {
       }
     );
 
+    let requiredFields: ContextualisedField[] = [];
+    for (let arg of args) {
+      if (Array.isArray(arg)) {
+        requiredFields = requiredFields.concat(arg);
+      } else {
+        requiredFields = requiredFields.concat([arg]);
+      }
+    }
+    requiredFields = combineFields(requiredFields);
+
     // TODO: handle shape modification e.g. groups
     return {
       type: 'transform',
@@ -539,6 +603,7 @@ export class Contextualiser {
           return acc;
         }, [])
       ),
+      requiredFields,
     };
   }
 
@@ -599,6 +664,16 @@ export class Contextualiser {
     let contextualisedField: ContextualisedField;
     if (isSource(field.value)) {
       contextualisedField = this.handleSource(field.value, context);
+      // implicit wildcard
+      if (
+        !contextualisedField.requiredFields.length &&
+        contextualisedField.availableFields.length
+      ) {
+        applyRequiredFields(
+          contextualisedField,
+          combineFields(contextualisedField.availableFields)
+        );
+      }
     } else {
       contextualisedField = this.getExpression(field.value, model, context);
     }

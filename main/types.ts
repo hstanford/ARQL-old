@@ -330,6 +330,7 @@ export interface ContextualisedTransform {
   modifier: string[];
   args: (ContextualisedField | ContextualisedExpr | ContextualisedField[])[];
   sources: DataSource<any, any>[];
+  requiredFields: ContextualisedField[];
 }
 
 export function isTransform<T>(

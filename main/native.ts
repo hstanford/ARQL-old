@@ -251,6 +251,27 @@ export default class Native extends DataSource<any, any> {
           }
         }
       }
+      // attempt to only hold onto the required fields
+      if (Array.isArray(intermediate)) {
+        const filtered = await this.resolveShape(
+          source.requiredFields,
+          intermediate,
+          results,
+          params
+        );
+        if (!Array.isArray(filtered)) {
+          throw new Error('Unexpected non-array filtering keys');
+        }
+        // keep all nested objects. TODO: don't keep them except
+        // - sources selected on their own in a shape
+        // - filter the keys of other sources to only what's required
+        for (let key in intermediate) {
+          if (typeof intermediate[key] === 'object') {
+            filtered[key] = intermediate[key];
+          }
+        }
+        intermediate = filtered;
+      }
     }
     return intermediate;
   }
