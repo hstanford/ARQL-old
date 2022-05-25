@@ -8,15 +8,7 @@
  */
 
 /* TODO:
-- pass required fields down so the interface of a delegated query is clear
-*/
-
-/*
-Shapes demand fields
-Expressions demand fields
-Transforms demand fields
-Sources pass field demand to their values
-Fields of type source can remove demand that's available in that source
+- Fields of type source should remove required fields that are available in that source
 */
 
 import {

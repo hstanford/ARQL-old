@@ -7,8 +7,6 @@
 
 ## Contextualiser
 
-- Pass fields back through the AST for better query planning/delegation
-
 ## Delegator
 
 - feedback optimisations in delegator (delegated queries can recieve results of other delegated queries)
