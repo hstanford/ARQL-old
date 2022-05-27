@@ -1,122 +1,37 @@
 import type { DataModel } from 'arql';
 import { Native } from 'arql';
+import {
+  DataField,
+  DataReference,
+  Models,
+  ModelsTypes,
+  Model as ModelType,
+} from './models';
 
-const mainDb = new Native({
-  users: [{ id: 1, name: 'hello' }],
-  elephants: [
-    { id: 1, age: 42 },
-    { id: 2, age: 39 },
-  ],
-});
+import { Field, isField, Expression, isExpression, Operators, fieldToQuery, expressionToQuery } from './transforms';
 
-const secondaryDb = new Native({
-  orders: [{ id: 1, userId: 1, name: 'foo', stuff: new Date() }],
-});
-
-function selfReference(model: DataModel) {
-  for (const field of model.fields) {
-    field.model = model;
+function toQuery (item: SourceClass<any> | Field | Expression) {
+  if (item instanceof SourceClass) {
+    return item.toQuery();
+  } else if (isField(item)) {
+    return fieldToQuery(item);
+  } else if (isExpression(item)) {
+    return expressionToQuery(item);
+  } else {
+    throw new Error('Unhandled type');
   }
 }
 
-export const elephants: DataModel = {
-  type: 'datamodel',
-  name: 'elephants',
-  fields: [
-    {
-      type: 'datafield',
-      name: 'id',
-      datatype: 'number',
-      source: mainDb,
-    },
-    {
-      type: 'datafield',
-      name: 'age',
-      datatype: 'number',
-      source: mainDb,
-    },
-  ],
-};
-
-export const users: DataModel = {
-  type: 'datamodel',
-  name: 'users',
-  fields: [
-    {
-      type: 'datafield',
-      name: 'id',
-      datatype: 'number',
-      source: mainDb,
-    },
-    {
-      type: 'datafield',
-      name: 'name',
-      datatype: 'string',
-      source: mainDb,
-    },
-  ],
-};
-
-export const orders: DataModel = {
-  type: 'datamodel',
-  name: 'orders',
-  fields: [
-    {
-      type: 'datafield',
-      name: 'id',
-      datatype: 'number',
-      source: secondaryDb,
-    },
-    {
-      type: 'datafield',
-      name: 'userId',
-      datatype: 'number',
-      source: secondaryDb,
-    },
-    {
-      type: 'datafield',
-      name: 'name',
-      datatype: 'string',
-      source: secondaryDb,
-    },
-  ],
-};
-
-const Users = {
-  id: users.fields.find((i: any) => i.name === 'id'),
-  name: users.fields.find((i: any) => i.name === 'name'),
-} as const;
-
-const Orders = {
-  id: orders.fields.find((i: any) => i.name === 'id'),
-  userId: orders.fields.find((i: any) => i.name === 'userId'),
-  name: orders.fields.find((i: any) => i.name === 'name'),
-} as const;
-
-selfReference(users);
-selfReference(orders);
-selfReference(elephants);
-
-class Field {
-  name: string;
-  datatype: string;
-  model: string;
-  constructor(name: string, datatype: string, model: string) {
-    this.name = name;
-    this.datatype = datatype;
-    this.model = model;
-  }
-
-  toQuery() {
-    return `${this.model}.${this.name}`;
-  }
-
-  equals(otherVal: any): ExprTree {
-    return new ExprTree({
-      op: '=',
-      args: [this, otherVal],
-    });
-  }
+const createField = (name: string, dataType: string, model: string): Field => {
+  const out: Partial<Field> = {
+    _name: name,
+    _datatype: dataType,
+    _model: model,
+  };
+  (Object.entries(Operators) as any).map(([key, value]: [key: keyof typeof Operators, value: any]) => {
+    out[key] = value.bind(out);
+  });
+  return out as Field;
 }
 
 type Model<T> = {
@@ -127,27 +42,6 @@ type Model<T> = {
 interface Transform {
   name: string;
   args: any[];
-}
-
-class ExprTree {
-  op: string;
-  args: (ExprTree | Field)[];
-  constructor({ op, args }: { op: string; args: any[] }) {
-    this.op = op;
-    this.args = args;
-  }
-
-  toQuery(): string {
-    return this.args
-      .map((a) => {
-        if (a?.toQuery) {
-          return a.toQuery();
-        } else {
-          return a;
-        }
-      })
-      .join(` ${this.op} `);
-  }
 }
 
 type FieldMap<T> = { [k in keyof T]: Field };
@@ -208,11 +102,12 @@ class SourceClass<ModelType> {
     for (const transform of this._transforms) {
       out += ` | ${transform.name}(${transform.args
         .map((a) => {
-          if (a?.toQuery) {
-            return a.toQuery();
-          } else {
+          try {
+            return toQuery(a);
+          } catch (e) {
             return a;
           }
+          
         })
         .join(',')})`;
     }
@@ -221,7 +116,7 @@ class SourceClass<ModelType> {
       out +=
         ' {' +
         [...this._shape.entries()]
-          .map(([k, v]) => `${k}: ${v.toQuery()}`)
+          .map(([k, v]) => `${k}: ${toQuery(v)}`)
           .join(', ') +
         '}';
     }
@@ -230,17 +125,25 @@ class SourceClass<ModelType> {
   }
 }
 
-function transformModel<Signature>(model: DataModel): Source<Signature> {
-  const fieldObj: Model<Signature> = model.fields.reduce(
-    (acc: any, field: any) => {
+function transformModel<SignatureKey extends keyof ModelsTypes>(
+  model: ModelType,
+  modelName: SignatureKey
+): Source<ModelsTypes[SignatureKey]> {
+  type Signature = ModelsTypes[SignatureKey];
+  const fieldObj: Model<Signature> = Object.keys(model).reduce(
+    (acc: any, key: keyof typeof model) => {
+      const field = model[key];
+      if (field.type === 'datareference') {
+        return acc;
+      }
       return {
         ...acc,
-        [field.name]: new Field(field.name, field.datatype, model.name),
+        [key]: createField(key, field.datatype, modelName),
       };
     },
-    { _type: 'model', _name: model.name } as Model<Signature>
+    { _type: 'model', _name: modelName } as Model<Signature>
   );
-  return new SourceClass<Signature>([fieldObj]) as any;
+  return new SourceClass<Signature>([fieldObj]) as Source<Signature>;
 }
 
 // TODO: type overrides
@@ -248,8 +151,8 @@ function multi<T, U>(...args: [Source<T>, Source<U>]): Source<{}> {
   return new SourceClass<{}>(args);
 }
 
-const u = transformModel<{ id: number; name: string }>(users);
-const o = transformModel<{ id: number; userId: number; name: string }>(orders);
+const u = transformModel(Models['users'], 'users');
+const o = transformModel(Models['orders'], 'orders');
 
 // extend Source with custom transform method
 interface SourceClass<ModelType> {

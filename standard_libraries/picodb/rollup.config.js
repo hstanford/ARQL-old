@@ -1,6 +1,6 @@
 import resolve from '@rollup/plugin-node-resolve';
 export default {
-  input: './dist/test.js',
-  output: { file: './dist/index.js', format: 'esm' },
+  input: './dist/index.js',
+  output: { file: './dist/main.js', format: 'esm' },
   plugins: [resolve()],
 };
