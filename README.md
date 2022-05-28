@@ -7,7 +7,7 @@ Abstract Relational Query Language
 To install dependencies and build ARQL:
 
 ```
-npm run install
+npm install && npm run install && npm run build
 ```
 
 To run the tests:
@@ -16,10 +16,16 @@ To run the tests:
 npm run test
 ```
 
-To reinstall arql to the test dir after changes:
+To reinstall dependencies after changes:
 
 ```
-npm run rebuild
+npm run build && npm run install
+```
+
+To start the playground:
+
+```
+npm run playground
 ```
 
 ## Motivation

@@ -1,0 +1,30 @@
+{
+  "name": "arql-query-builder",
+  "version": "0.0.1",
+  "description": "Abstract Relational Query Language",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "rimraf dist && tsc && rollup -c rollup.config.js",
+    "run": "node dist/main.js"
+  },
+  "author": "Henry Stanford",
+  "license": "MIT",
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^13.1.3",
+    "@rollup/plugin-typescript": "^8.3.2",
+    "@types/jest": "^27.4.1",
+    "@types/node": "^17.0.14",
+    "jest": "^27.5.1",
+    "rimraf": "^3.0.2",
+    "rollup": "^2.67.0",
+    "ts-jest": "^27.1.3",
+    "tslib": "^2.4.0",
+    "typescript": "^4.5.5"
+  },
+  "dependencies": {
+    "@arql/stdlib-general": "file:../standard_libraries/general",
+    "arql": "file:../main"
+  }
+}
