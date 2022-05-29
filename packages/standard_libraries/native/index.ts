@@ -1,6 +1,15 @@
 import type { ContextualisedField, Native, AnyObj } from 'arql';
 import { getAlias } from 'arql';
 
+// TODO: make this better
+function getKey(...values: any[]) {
+  return JSON.stringify(
+    values.map((value) =>
+      typeof value === 'object' ? JSON.stringify(value) : value
+    )
+  );
+}
+
 // this configuration applies only to native sources
 // (or the collector) and tells them how to perform
 // the actions the query tree asks for
@@ -153,39 +162,88 @@ export default function native(source: Native) {
         modifiers: string[],
         params: any[],
         values: Map<any, any> | AnyObj[],
-        groupField: ContextualisedField,
-        shape: ContextualisedField[]
+        ...groupFields: ContextualisedField[]
       ) => {
         if (!Array.isArray(values)) {
           throw new Error('Unsupported input format for "group"');
         }
-        const group = new Map();
-        const key = getAlias(groupField.alias || groupField.name);
+        const group = new Map<any, any[]>();
         for (const value of values) {
+          const resolvedValues = [];
+          for (const groupField of groupFields) {
+            const [, resolved] = await source.resolveField(
+              groupField,
+              value,
+              [],
+              params
+            );
+            resolvedValues.push(resolved);
+          }
+          const key = getKey(...resolvedValues);
+          if (!group.has(key)) {
+            group.set(key, [value]);
+          } else {
+            const arr = group.get(key);
+            if (arr) arr.push(value);
+          }
+        }
+        const out = [];
+        for (let [key, values] of group.entries()) {
+          const val: Record<any, any> = { __values: values };
+          for (const groupField of groupFields) {
+            const alias = getAlias(groupField.alias || groupField.name);
+            val[alias] = alias in values[0] ? values[0][alias] : key;
+          }
+          out.push(val);
+        }
+        return out;
+      },
+    ],
+    [
+      'count',
+      async (modifiers: string[], params: any[], values: AnyObj) => {
+        return values.__values?.length || 0;
+      },
+    ],
+    [
+      'array',
+      async (
+        modifiers: string[],
+        params: any[],
+        values: AnyObj,
+        field: ContextualisedField
+      ) => {
+        if (!values.__values) {
+          throw new Error(
+            'Array aggregation only supported with grouped output'
+          );
+        }
+        const out = [];
+        for (let value of values.__values) {
           const [, resolved] = await source.resolveField(
-            groupField,
+            field,
             value,
             [],
             params
           );
-          if (!group.has(resolved)) {
-            group.set(resolved, [value]);
-          } else {
-            group.get(resolved).push(value);
-          }
+          out.push(resolved);
+        }
+        return out;
+      },
+    ],
+    [
+      'uniq',
+      async (modifiers: string[], params: any[], values: any) => {
+        if (!Array.isArray(values)) {
+          throw new Error('Only arrays supported for uniq');
         }
         const out = [];
-        for (let [values, key] of group.entries()) {
-          const shaped = await source.resolveShape(
-            shape,
-            {
-              [getAlias(groupField.alias || groupField.name)]: key,
-              __values: values,
-            },
-            [],
-            params
-          );
-          out.push(shaped);
+        const vals = new Set();
+        for (const val of values) {
+          // TODO: handle object types?
+          if (vals.has(val)) continue;
+          vals.add(val);
+          out.push(val);
         }
         return out;
       },

@@ -387,23 +387,17 @@ test('transformarg should accept an expression, a shape, or a source', () => {
 
   out = run('{id: $2}', 'transformArg');
   expect(out).toEqual({
-    type: 'source',
-    alias: undefined,
-    value: null,
-    transforms: [],
-    shape: {
-      type: 'shape',
-      fields: [
-        {
-          type: 'field',
-          alias: 'id',
-          value: {
-            type: 'param',
-            index: 2,
-          },
+    type: 'shape',
+    fields: [
+      {
+        type: 'field',
+        alias: 'id',
+        value: {
+          type: 'param',
+          index: 2,
         },
-      ],
-    },
+      },
+    ],
   });
 
   // TODO: source test
@@ -417,23 +411,17 @@ test('transformargs should accept a series of transform args separated by commas
       index: 3,
     },
     {
-      type: 'source',
-      alias: undefined,
-      value: null,
-      transforms: [],
-      shape: {
-        type: 'shape',
-        fields: [
-          {
-            type: 'field',
-            alias: 'id',
-            value: {
-              type: 'param',
-              index: 2,
-            },
+      type: 'shape',
+      fields: [
+        {
+          type: 'field',
+          alias: 'id',
+          value: {
+            type: 'param',
+            index: 2,
           },
-        ],
-      },
+        },
+      ],
     },
     {
       type: 'alphachain',
@@ -465,23 +453,17 @@ test('transform should match an alphachain followed by parenthesised transformAr
         index: 3,
       },
       {
-        type: 'source',
-        alias: undefined,
-        value: null,
-        transforms: [],
-        shape: {
-          type: 'shape',
-          fields: [
-            {
-              type: 'field',
-              alias: 'id',
-              value: {
-                type: 'param',
-                index: 2,
-              },
+        type: 'shape',
+        fields: [
+          {
+            type: 'field',
+            alias: 'id',
+            value: {
+              type: 'param',
+              index: 2,
             },
-          ],
-        },
+          },
+        ],
       },
       {
         type: 'alphachain',
@@ -515,23 +497,17 @@ test('transforms should match a series of transforms separated by "|"', () => {
           index: 3,
         },
         {
-          type: 'source',
-          alias: undefined,
-          value: null,
-          transforms: [],
-          shape: {
-            type: 'shape',
-            fields: [
-              {
-                type: 'field',
-                alias: 'id',
-                value: {
-                  type: 'param',
-                  index: 2,
-                },
+          type: 'shape',
+          fields: [
+            {
+              type: 'field',
+              alias: 'id',
+              value: {
+                type: 'param',
+                index: 2,
               },
-            ],
-          },
+            },
+          ],
         },
         {
           type: 'alphachain',

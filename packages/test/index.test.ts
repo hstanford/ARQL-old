@@ -392,11 +392,24 @@ describe('can retrieve a join and a reshaping', () => {
     ]);
   });
 
-  it.skip('supports count aggregations', async () => {
+  it('supports count aggregations in the aggregation', async () => {
     const data = await arql(`users | group(id, {
       id,
-      num: count(1)
+      num: count(id)
     })`);
+    expect(data).to.deep.equal([
+      {
+        id: 1,
+        num: 1,
+      },
+    ]);
+  });
+
+  it('supports count aggregations outside the aggregation', async () => {
+    const data = await arql(`users | group(id) {
+      id,
+      num: count(id)
+    }`);
     expect(data).to.deep.equal([
       {
         id: 1,

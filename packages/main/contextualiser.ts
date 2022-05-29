@@ -15,6 +15,7 @@ import {
   Alphachain,
   ContextualisedExpr,
   ContextualisedField,
+  ContextualisedFunction,
   ContextualisedParam,
   ContextualisedQuery,
   ContextualisedSource,
@@ -33,10 +34,12 @@ import {
   isDataModel,
   isDataReference,
   isExpr,
+  isFunction,
   isMultiShape,
   isParam,
   isShape,
   isSource,
+  isTransform,
   isWildcard,
   Query,
   Shape,
@@ -79,6 +82,8 @@ function combineFields(subFields: ContextualisedField[]) {
       // do nothing: no fields required
     } else if (isDataReference(subField)) {
       // do nothing: dataReference meaningless unless used
+    } else if (isTransform(subField)) {
+      fields.push(...subField.requiredFields);
     } else {
       throw new Error(`Unrecognised type ${(subField as any).type}`);
     }
@@ -273,7 +278,15 @@ export class Contextualiser {
     context: ContextualiserState
   ): ContextualisedSource {
     const outTransform = this.getTransform(transform, source, context);
-    return {
+    const outShape = outTransform.args
+      .reverse()
+      .find(function (arg): arg is ContextualisedField[] {
+        return Array.isArray(arg);
+      }); // is a contextualised shape
+    if (outShape) {
+      outTransform.args = outTransform.args.filter((arg) => arg !== outShape);
+    }
+    const outSource: ContextualisedSource = {
       type: 'source',
       transform: outTransform,
       value:
@@ -285,7 +298,13 @@ export class Contextualiser {
       name: getAlias(source.alias || source.name),
       subModels: source.subModels,
       sources: uniq(source.sources.concat(outTransform.sources)),
+      shape: outShape,
     };
+    if (outShape) {
+      return this.applySourceShape(outSource, outShape, context);
+    } else {
+      return outSource;
+    }
   }
 
   shapeSource(
@@ -294,17 +313,23 @@ export class Contextualiser {
     context: ContextualiserState
   ): ContextualisedSource {
     const outShape = this.getShape(shape, source, context);
-    const sources = isMultiShape(outShape)
-      ? outShape.map(combine)
-      : [combine(outShape)];
-    const requiredFields = isMultiShape(outShape)
+    return this.applySourceShape(source, outShape, context);
+  }
+
+  applySourceShape(
+    source: ContextualisedSource,
+    shape: ContextualisedField[] | ContextualisedField[][],
+    context: ContextualiserState
+  ): ContextualisedSource {
+    const sources = isMultiShape(shape) ? shape.map(combine) : [combine(shape)];
+    const requiredFields = isMultiShape(shape)
       ? combineFields(
-          outShape.reduce<ContextualisedField[]>(
+          shape.reduce<ContextualisedField[]>(
             (acc, subShape) => acc.concat(subShape),
             []
           )
         )
-      : combineFields(outShape);
+      : combineFields(shape);
 
     const out: ContextualisedSource = {
       type: 'source',
@@ -314,9 +339,9 @@ export class Contextualiser {
       name: getAlias(source.alias || source.name),
       subModels: source.subModels,
       sources: uniq(source.sources.concat(...sources)),
-      shape: outShape,
+      shape,
     };
-    out.availableFields = shapeToAvailableFields(outShape, out);
+    out.availableFields = shapeToAvailableFields(shape, out);
     applyRequiredFields(out, requiredFields);
     return out;
   }
@@ -516,7 +541,11 @@ export class Contextualiser {
             }
             model = this.getDataReference(model, subModel, context);
           } else {
-            if (isExpr(subModel) || isParam(subModel)) {
+            if (
+              isExpr(subModel) ||
+              isParam(subModel) ||
+              isTransform(subModel)
+            ) {
               throw new Error(`${subModel.type} invalid for submodel`);
             }
             model = subModel;
@@ -735,6 +764,15 @@ export class Contextualiser {
       };
     } else if (isParam(expr)) {
       return { type: 'param', index: expr.index };
+    } else if (isFunction(expr)) {
+      if (!isAlphachain(expr.expr)) {
+        throw new Error('Unhandled function call on complex sub-expression');
+      }
+      return this.getTransform(
+        { type: 'transform', description: expr.expr, args: expr.args },
+        model,
+        context
+      ) as ContextualisedFunction;
     } else {
       throw new Error(`Invalid expression type ${expr.type}`);
     }

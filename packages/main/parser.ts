@@ -133,17 +133,17 @@ export default function buildParser(opResolver = (expr: any) => expr) {
         sequenceOf([
           char('('),
           optionalWhitespace,
-          exprlist,
+          possibly(exprlist),
           optionalWhitespace,
           char(')'),
-        ]).map((parts) => parts[2])
+        ])
       ),
-    ]).map(([ex, args]) =>
-      args
+    ]).map(([ex, func]) =>
+      func
         ? {
             type: 'function',
             expr: ex,
-            args,
+            args: func[2] || [],
           }
         : ex
     )
@@ -216,7 +216,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
   // sorts, limits/offsets, joins, unions, and aggregate functions.
   // They are invoked like functions, e.g. filter(users.id = orders.userId)
   const transformArg: Parser<Expr | Shape | Source> = recursiveParser(() =>
-    choice([expr, shape, source])
+    choice([shape, expr, source])
   );
 
   const transformArgs: Parser<(Expr | Shape | Source)[] | null> = possibly(

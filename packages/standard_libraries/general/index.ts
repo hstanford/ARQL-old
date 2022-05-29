@@ -39,8 +39,23 @@ export const transforms = [
   {
     name: 'group',
     modifiers: [],
-    nArgs: 2,
-  }
+    nArgs: '1+',
+  },
+  {
+    name: 'count',
+    modifiers: [],
+    nArgs: 0,
+  },
+  {
+    name: 'array',
+    modifiers: [],
+    nArgs: 1,
+  },
+  {
+    name: 'uniq',
+    modifiers: [],
+    nArgs: 0,
+  },
 ] as const;
 
 export const operators = [

@@ -216,7 +216,8 @@ export type ContextualisedField =
   | ContextualisedSource
   | ContextualisedExpr
   | ContextualisedParam
-  | DataReference;
+  | DataReference
+  | ContextualisedFunction;
 
 export interface DataField {
   type: 'datafield';
@@ -333,6 +334,10 @@ export interface ContextualisedTransform {
   requiredFields: ContextualisedField[];
 }
 
+export interface ContextualisedFunction extends ContextualisedTransform {
+  alias?: string;
+}
+
 export function isTransform<T>(
   ipt: T
 ): ipt is Extract<T, Transform | ContextualisedTransform> {
@@ -387,7 +392,8 @@ export type DelegatedField =
   | ContextualisedExpr
   | ContextualisedParam
   | DelegatedQueryResult
-  | DataReference;
+  | DataReference
+  | ContextualisedFunction;
 
 export interface ResolutionTree {
   tree: DelegatedQuery | DelegatedQueryResult;

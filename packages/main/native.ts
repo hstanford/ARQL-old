@@ -19,6 +19,7 @@ import {
   operatorOp,
   transformFn,
   isDataReference,
+  isTransform,
 } from './types.js';
 import { DataSource } from './types.js';
 import { v4 as uuid } from 'uuid';
@@ -423,6 +424,15 @@ export default class Native extends DataSource<any, any> {
           }
           return picked;
         }),
+      ];
+    } else if (isTransform(field)) {
+      const transform = this.transforms.get(field.name);
+      if (!transform) {
+        throw new Error(`Couldn't resolve transform "${field.name}"`);
+      }
+      return [
+        field.alias || field.name,
+        await transform(field.modifier, params, item, ...field.args),
       ];
     } else {
       throw new Error('Missing field type');
