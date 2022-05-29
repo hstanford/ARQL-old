@@ -6,6 +6,7 @@ import {
   DataSourceOpts,
   DelegatedQuery,
   DelegatedSource,
+  isSource,
 } from 'arql';
 import { ContextualisedExpr, DelegatedField } from 'arql/types';
 
@@ -93,8 +94,16 @@ export default class Pico extends DataSource<any, any> {
     results: any[],
     params: any[]
   ): Promise<any> {
-    let query: any = {};
     let shape: any = {};
+    let query: any = {};
+    if (isSource(source.value)) {
+      [query, shape] = await this.resolveSources(
+        source.value,
+        data,
+        results,
+        params
+      );
+    }
     if (source.transform) {
       const transform = this.transforms.get(source.transform.name);
       if (!transform) {

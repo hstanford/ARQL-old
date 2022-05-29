@@ -30,7 +30,7 @@ nativeConfigurer(collector);
 async function arql(query: string, params: any[]) {
   console.time(query);
   let ast = parser.query(query);
-  const contextualised = contextualise(ast, models, transforms);
+  const contextualised = contextualise(ast, models, transforms, parser);
   const delegated = delegator(contextualised);
   const data = await collector.run(delegated, params);
   console.timeEnd(query);
@@ -38,7 +38,7 @@ async function arql(query: string, params: any[]) {
   return data;
 }
 
-describe.skip('picodb', () => {
+describe('picodb', () => {
   it('can resolve a basic query', async () => {
     await mainDb.db.insertMany([
       { count: 8, name: 'yo' },
