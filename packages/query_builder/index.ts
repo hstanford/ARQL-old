@@ -8,9 +8,17 @@ import {
   Model as ModelType,
 } from './models';
 
-import { Field, isField, Expression, isExpression, Operators, fieldToQuery, expressionToQuery } from './transforms';
+import {
+  Field,
+  isField,
+  Expression,
+  isExpression,
+  Operators,
+  fieldToQuery,
+  expressionToQuery,
+} from './transforms';
 
-function toQuery (item: SourceClass<any> | Field | Expression) {
+function toQuery(item: SourceClass<any> | Field | Expression) {
   if (item instanceof SourceClass) {
     return item.toQuery();
   } else if (isField(item)) {
@@ -28,11 +36,13 @@ const createField = (name: string, dataType: string, model: string): Field => {
     _datatype: dataType,
     _model: model,
   };
-  (Object.entries(Operators) as any).map(([key, value]: [key: keyof typeof Operators, value: any]) => {
-    out[key] = value.bind(out);
-  });
+  (Object.entries(Operators) as any).map(
+    ([key, value]: [key: keyof typeof Operators, value: any]) => {
+      out[key] = value.bind(out);
+    }
+  );
   return out as Field;
-}
+};
 
 type Model<T> = {
   _type: 'model';
@@ -107,7 +117,6 @@ class SourceClass<ModelType> {
           } catch (e) {
             return a;
           }
-          
         })
         .join(',')})`;
     }
@@ -181,6 +190,6 @@ SourceClass.prototype.filter = function (...args) {
   })
   .toQuery();*/
 
-const out = u.filter(u.name.notEquals('blah')).shape({id: u.id}).toQuery();
+const out = u.filter(u.name.notEquals('blah')).shape({ id: u.id }).toQuery();
 
 console.log(out);

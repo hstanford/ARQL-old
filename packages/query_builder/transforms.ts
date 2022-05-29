@@ -60,7 +60,7 @@ export interface Expression {
 
 export function isExpression(ipt: any): ipt is Expression {
   return !!(ipt?.ops && ipt?.args && ipt?.type);
-};
+}
 
 export const fieldToQuery = (field: Field) => {
   return `${field._model}.${field._name}`;
@@ -68,7 +68,7 @@ export const fieldToQuery = (field: Field) => {
 
 export const expressionToQuery = (expression: Expression) => {
   let out: string = '';
-  const args = expression.args.map(arg => {
+  const args = expression.args.map((arg) => {
     if (isField(arg)) {
       return fieldToQuery(arg);
     } else {
@@ -84,7 +84,7 @@ export const expressionToQuery = (expression: Expression) => {
       break;
     case 'ternary':
       out = `${args[0]} ${expression.ops[0]} ${args[1]} ${expression.ops[1]} ${args[2]}`;
-      break
+      break;
     default:
       throw new Error(`Unexpected expression type ${expression.type}`);
   }
