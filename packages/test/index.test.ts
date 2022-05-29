@@ -417,6 +417,19 @@ describe('can retrieve a join and a reshaping', () => {
       },
     ]);
   });
+
+  it('supports union', async () => {
+    const data = await arql(`
+    (
+      users {id, name},
+      orders {id, name}
+    ) | union {id, name}
+    `);
+    expect(data).to.deep.equal([
+      { id: 1, name: 'hello' },
+      { id: 1, name: 'foo' },
+    ]);
+  });
 });
 
 describe('data modification', () => {

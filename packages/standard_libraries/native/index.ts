@@ -80,6 +80,25 @@ export default function native(source: Native) {
       },
     ],
     [
+      'union',
+      async (
+        modifiers: string[],
+        params: any[],
+        values: Map<any, any> | AnyObj[]
+      ): Promise<AnyObj[]> => {
+        if (Array.isArray(values)) {
+          throw new Error('Unsupported input');
+        }
+        const vals: AnyObj[] = [];
+        for (const [, model] of values.entries()) {
+          for (const row of model) {
+            vals.push(row);
+          }
+        }
+        return vals;
+      },
+    ],
+    [
       'filter',
       async (
         modifiers: string[],

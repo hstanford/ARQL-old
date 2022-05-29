@@ -32,6 +32,11 @@ export const transforms = [
     nArgs: 1,
   },
   {
+    name: 'union',
+    modifiers: [],
+    nArgs: 0,
+  },
+  {
     name: 'first',
     modifiers: [],
     nArgs: 0,
