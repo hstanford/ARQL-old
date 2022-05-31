@@ -437,3 +437,22 @@ export interface DelegatedQuery
   > {}
 
 export type AnyObj = { [key: string]: any };
+
+export type DataTypes = {
+  number: number;
+  string: string;
+  boolean: boolean;
+  json: {[key: string]: any};
+};
+
+export interface BaseDataField {
+  type: 'datafield';
+  datatype: dataType;
+}
+
+export interface BaseDataReference<T> {
+  type: 'datareference';
+  model: keyof T;
+}
+
+export type BaseModel = Record<string, BaseDataField | BaseDataReference<any>>;

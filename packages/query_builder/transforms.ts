@@ -39,13 +39,17 @@ type BaseFieldType = {
 export type Field = BaseFieldType & FieldType;
 
 export function isField(ipt: any): ipt is Field {
-  return !!ipt._name;
+  return ipt?._type !== 'model' && !!ipt?._name;
 }
 
 type Model<T> = {
   _type: 'model';
   _name: string;
 } & FieldMap<T>;
+
+export function isModel(ipt: any): ipt is Model<any> {
+  return ipt?._type === 'model';
+}
 
 interface Transform {
   name: string;
@@ -61,34 +65,5 @@ export interface Expression {
 export function isExpression(ipt: any): ipt is Expression {
   return !!(ipt?.ops && ipt?.args && ipt?.type);
 }
-
-export const fieldToQuery = (field: Field) => {
-  return `${field._model}.${field._name}`;
-};
-
-export const expressionToQuery = (expression: Expression) => {
-  let out: string = '';
-  const args = expression.args.map((arg) => {
-    if (isField(arg)) {
-      return fieldToQuery(arg);
-    } else {
-      return arg;
-    }
-  });
-  switch (expression.type) {
-    case 'prefixUnary':
-      out = `${expression.ops[0]}${args[0]}`;
-      break;
-    case 'binary':
-      out = `${args[0]} ${expression.ops[0]} ${args[1]}`;
-      break;
-    case 'ternary':
-      out = `${args[0]} ${expression.ops[0]} ${args[1]} ${expression.ops[1]} ${args[2]}`;
-      break;
-    default:
-      throw new Error(`Unexpected expression type ${expression.type}`);
-  }
-  return out;
-};
 
 type FieldMap<T> = { [k in keyof T]: Field };

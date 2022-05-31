@@ -1,20 +1,4 @@
-type DataType = 'string' | 'number';
-type DataTypes = {
-  number: number;
-  string: string;
-};
-
-export interface DataField {
-  type: 'datafield';
-  datatype: DataType;
-}
-
-export interface DataReference<T> {
-  type: 'datareference';
-  model: keyof T;
-}
-
-export type Model = Record<string, DataField | DataReference<any>>;
+import type { BaseDataField, DataTypes } from 'arql';
 
 export const Models = {
   elephants: {
@@ -70,7 +54,7 @@ type DataTypeDef<
   T extends keyof typeof Models,
   U extends typeof Models[T],
   V extends keyof U
-> = U[V] extends DataField ? U[V]['datatype'] : never;
+> = U[V] extends BaseDataField ? U[V]['datatype'] : never;
 
 type TypeFor<
   T extends keyof typeof Models,

@@ -1,12 +1,6 @@
-import type { DataModel } from 'arql';
-import { Native } from 'arql';
-import {
-  DataField,
-  DataReference,
-  Models,
-  ModelsTypes,
-  Model as ModelType,
-} from './models';
+import { transforms } from '@arql/stdlib-general';
+import { DataModel } from 'arql';
+import { BaseModel } from 'arql';
 
 import {
   Field,
@@ -14,19 +8,49 @@ import {
   Expression,
   isExpression,
   Operators,
-  fieldToQuery,
-  expressionToQuery,
-} from './transforms';
+  isModel,
+} from './transforms.js';
 
-function toQuery(item: SourceClass<any> | Field | Expression) {
-  if (item instanceof SourceClass) {
-    return item.toQuery();
+const fieldToQuery = (field: Field, params: any[]): [string, any[]] => {
+  return [`${field._model}.${field._name}`, params];
+};
+
+const expressionToQuery = (expression: Expression, params: any[]): [string, any[]] => {
+  let out: string = '';
+  const args: string[] = [];
+  for (const arg of expression.args) {
+    const [str, newParams] = toQuery(arg, params);
+    params = newParams;
+    args.push(str);
+  }
+  switch (expression.type) {
+    case 'prefixUnary':
+      out = `${expression.ops[0]}${args[0]}`;
+      break;
+    case 'binary':
+      out = `${args[0]} ${expression.ops[0]} ${args[1]}`;
+      break;
+    case 'ternary':
+      out = `${args[0]} ${expression.ops[0]} ${args[1]} ${expression.ops[1]} ${args[2]}`;
+      break;
+    default:
+      throw new Error(`Unexpected expression type ${expression.type}`);
+  }
+  return [out, params];
+};
+
+function toQuery(item: Source<any, any> | Model<any> | Field | Expression, params: any[]): [string, any[]] {
+  if (isIntermediate(item)) {
+    return sourceToQuery(item, params);
+  } else if (isModel(item)) {
+    return [item._name, []];
   } else if (isField(item)) {
-    return fieldToQuery(item);
+    return fieldToQuery(item, params);
   } else if (isExpression(item)) {
-    return expressionToQuery(item);
+    return expressionToQuery(item, params);
   } else {
-    throw new Error('Unhandled type');
+    const newParams = params.concat([item]);
+    return [`$${newParams.length}`, newParams];
   }
 }
 
@@ -49,96 +73,140 @@ type Model<T> = {
   _name: string;
 } & FieldMap<T>;
 
-interface Transform {
-  name: string;
+interface Transform<T extends string = string> {
+  name: T;
   args: any[];
 }
 
 type FieldMap<T> = { [k in keyof T]: Field };
 
-type Source<ModelType> = SourceClass<ModelType> & FieldMap<ModelType>;
+export type Source<Transforms extends string, ModelType> = FieldMap<ModelType> &
+  Intermediate<Transforms, ModelType> & {
+    [key in Transforms]: (...args: any[]) => Source<Transforms, ModelType>;
+  } & {
+    toQuery: () => string;
+    shape: (s: any[] | Record<string, any>) => Source<Transforms, ModelType>;
+  };
 
-class SourceClass<ModelType> {
-  _type: 'source' = 'source';
-  private _sources: (Model<ModelType> | Source<ModelType>)[];
-  private _transforms: Transform[];
-  private _shape?: Map<string, any>;
-  constructor(
-    sources: (Model<ModelType> | Source<ModelType>)[] = [],
-    transforms = [],
-    shape = undefined
-  ) {
-    (this._sources = sources), (this._transforms = transforms);
-    this._shape = shape;
-    if (sources.length === 1) {
-      for (const key of Object.keys(sources[0])) {
-        if (key[0] !== '_')
-          (this as any)[key] = (sources[0] as any)[key] as Field;
-      }
-    }
-  }
-
-  transform(tr: Transform): Source<ModelType> {
-    this._transforms.push(tr);
-    return this as any;
-  }
-
-  shape(s: any[] | { [key: string]: any }) {
-    if (!this._shape) this._shape = new Map();
-    if (Array.isArray(s))
-      for (let field of s) {
-        this._shape?.set?.(field.name, field);
-      }
-    else
-      for (let key of Object.keys(s)) {
-        this._shape?.set?.(key, s[key]);
-      }
-    return this;
-  }
-
-  toQuery() {
-    let out = '';
-    const sources = this._sources.map((source) => {
-      if (source._type === 'model') {
-        return source._name;
-      } else return source.toQuery();
-    });
-    if (sources.length > 1) {
-      out += '(' + sources.join(', ') + ')';
-    } else if (sources.length === 1) {
-      out += sources[0];
-    }
-
-    for (const transform of this._transforms) {
-      out += ` | ${transform.name}(${transform.args
-        .map((a) => {
-          try {
-            return toQuery(a);
-          } catch (e) {
-            return a;
-          }
-        })
-        .join(',')})`;
-    }
-
-    if (this._shape) {
-      out +=
-        ' {' +
-        [...this._shape.entries()]
-          .map(([k, v]) => `${k}: ${toQuery(v)}`)
-          .join(', ') +
-        '}';
-    }
-
-    return out;
-  }
+export type Intermediate<Transforms extends string, ModelType> = {
+  _sources: (Model<ModelType> | Source<Transforms, ModelType>)[];
+  _transforms: { name: Transforms; args: any[] }[];
+  _shape: Map<string, any> | undefined;
+};
+function isIntermediate(item: any): item is Intermediate<any, any> {
+  return !!item._sources;
 }
 
-function transformModel<SignatureKey extends keyof ModelsTypes>(
-  model: ModelType,
-  modelName: SignatureKey
-): Source<ModelsTypes[SignatureKey]> {
-  type Signature = ModelsTypes[SignatureKey];
+function initialiseIntermediate<Transforms extends string, ModelType>(
+  sources: (Model<ModelType> | Source<Transforms, ModelType>)[] = [],
+  transforms: { name: Transforms; args: any[] }[] = [],
+  shape: Map<string, any> | undefined = undefined,
+  availableTransforms: Transforms[] = []
+): Source<Transforms, ModelType> {
+  const intermediate: Intermediate<Transforms, ModelType> = {
+    _sources: sources,
+    _transforms: transforms,
+    _shape: shape,
+  };
+  const source: Model<ModelType> | Source<Transforms, ModelType> | undefined =
+    sources[0];
+  const fields: FieldMap<ModelType> = (
+    source
+      ? Object.keys(source).reduce(
+          (acc, key) =>
+            key[0] !== '_' ? { ...acc, [key]: (source as any)[key] } : acc,
+          {}
+        )
+      : {}
+  ) as FieldMap<ModelType>;
+  const out = {
+    ...intermediate,
+    ...fields,
+  } as any;
+
+  out.toQuery = toQuery.bind(null, out);
+  out.shape = applyShape.bind(null, out);
+
+  availableTransforms.forEach(
+    (transform) => {
+      out[transform] = (...args: any[]) => {
+        out._transforms?.push?.({
+          name: transform,
+          args,
+        });
+        return out as Source<Transforms, ModelType>;
+      };
+    },
+    {}
+  );
+
+  return out as Source<Transforms, ModelType>;
+}
+
+function transform<T extends string, U>(intermediate: Source<T, U>, transform: Transform<T>): Source<T, U> {
+  intermediate._transforms.push(transform);
+  return intermediate;
+}
+
+function applyShape<T extends string, U>(intermediate: Source<T, U>, s: any[] | Record<string, any>) {
+  if (!intermediate._shape) intermediate._shape = new Map();
+  if (Array.isArray(s))
+    for (let field of s) {
+      intermediate._shape?.set?.(field.name, field);
+    }
+  else
+    for (let key of Object.keys(s)) {
+      intermediate._shape?.set?.(key, s[key]);
+    }
+  return intermediate;
+}
+
+function sourceToQuery(intermediate: Source<any, any>, params: any[]): [string, any[]] {
+  let out = '';
+  const sources: string[] = [];
+  for (const source of intermediate._sources) {
+    const [str, newParams] = toQuery(source, params);
+    params = newParams;
+    sources.push(str);
+  }
+  if (sources.length > 1) {
+    out += '(' + sources.join(', ') + ')';
+  } else if (sources.length === 1) {
+    out += sources[0];
+  }
+
+  for (const transform of intermediate._transforms) {
+    const args: string[] = [];
+    for (const arg of transform.args) {
+      const [str, newParams] = toQuery(arg, params);
+      params = newParams;
+      args.push(str);
+    }
+    out += ` | ${transform.name}(${args.join(',')})`;
+  }
+
+  if (intermediate._shape) {
+    const fields: string[] = [];
+    for (const [key, value] of intermediate._shape.entries()) {
+      const [str, newParams] = toQuery(value, params);
+      params = newParams;
+      fields.push(`${key}: ${str}`);
+    }
+    out +=
+      ' {' +
+      fields.join(', ') +
+      '}';
+  }
+
+  return [out, params];
+}
+
+export function transformModel<
+  T,
+  SignatureKey extends keyof T,
+  Transforms extends string
+>(model: BaseModel, modelName: SignatureKey, transforms: Transforms[]) {
+  type Signature = T[SignatureKey];
   const fieldObj: Model<Signature> = Object.keys(model).reduce(
     (acc: any, key: keyof typeof model) => {
       const field = model[key];
@@ -147,49 +215,18 @@ function transformModel<SignatureKey extends keyof ModelsTypes>(
       }
       return {
         ...acc,
-        [key]: createField(key, field.datatype, modelName),
+        [key]: createField(key, field.datatype, modelName as string),
       };
     },
     { _type: 'model', _name: modelName } as Model<Signature>
   );
-  return new SourceClass<Signature>([fieldObj]) as Source<Signature>;
+  return initialiseIntermediate([fieldObj], [], undefined, transforms);
 }
 
 // TODO: type overrides
-function multi<T, U>(...args: [Source<T>, Source<U>]): Source<{}> {
-  return new SourceClass<{}>(args);
+export function multi<T, U, Transforms extends string>(
+  args: [Source<Transforms, T>, Source<Transforms, U>],
+  transforms: Transforms[]
+): Source<Transforms, {}> {
+  return initialiseIntermediate<Transforms, {}>(args, [], undefined, transforms);
 }
-
-const u = transformModel(Models['users'], 'users');
-const o = transformModel(Models['orders'], 'orders');
-
-// extend Source with custom transform method
-interface SourceClass<ModelType> {
-  join: (...args: any[]) => Source<ModelType>;
-  filter: (...args: any[]) => Source<ModelType>;
-}
-SourceClass.prototype.join = function (...args) {
-  return this.transform({
-    name: 'join',
-    args,
-  });
-};
-SourceClass.prototype.filter = function (...args) {
-  return this.transform({
-    name: 'filter',
-    args,
-  });
-};
-
-/*const out = multi(u, o)
-  .join(o.userId.equals(u.id))
-  .filter(o.name.equals('foo'))
-  .shape({
-    userId: u.id,
-    orderId: o.id,
-  })
-  .toQuery();*/
-
-const out = u.filter(u.name.notEquals('blah')).shape({ id: u.id }).toQuery();
-
-console.log(out);
