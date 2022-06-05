@@ -1,6 +1,10 @@
 # ARQL
 
-Abstract Relational Query Language
+ARQL (Abstract Relational Query Language) is a query language and data access framework.
+
+It provides a uniform interface to a complex data layer, decoupling the data logic from business logic.
+
+Think GraphQL but with proper relational support, more straightforward syntax, and less development work to adopt.
 
 ## Development
 
@@ -49,7 +53,7 @@ decoupling the data or domain logic from business logic.
 
 The requirements on the interface language this creates are:
 
-- it must be expressive enough to replace arbitrary sql queries in existing coupled code
+- it must be expressive enough to replace sql queries in existing coupled code
 - it must have an outstanding developer UX to differentiate it from the myriad of other solutions
 - it must conform primarily to the relational worldview of domain data
 
@@ -73,8 +77,6 @@ Models are the most simple forms of a _Collection_, which is an intermediate str
 Collections consist of an inner collection (which could be a model or another intermediate collection) and several _Transforms_,
 which are used to transform the data from one collection into another e.g. filter, sort.
 A special kind of transform is the _Reshape_, which can be used to declare the output shape in terms of the input shape.
-Reshapes can also be supplied as arguments to other transforms that need to modify shape as part of their other functionality,
-like aggregations.
 
 ## Definitions
 
