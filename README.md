@@ -6,32 +6,6 @@ It provides a uniform interface to a complex data layer, decoupling the data log
 
 Think GraphQL but with proper relational support, more straightforward syntax, and less development work to adopt.
 
-## Development
-
-To install dependencies and build ARQL:
-
-```
-npm install && npm run install && npm run build
-```
-
-To run the tests:
-
-```
-npm run test
-```
-
-To reinstall dependencies after changes:
-
-```
-npm run build && npm run install
-```
-
-To start the playground:
-
-```
-npm run playground
-```
-
 ## Motivation
 
 - When writing webapps, I want to be able to retrieve my data on both the client side and the server side in whatever format I need

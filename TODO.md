@@ -2,8 +2,12 @@
 
 ## Native source / collector
 
+- Figure out upsert (-+>)
+- Figure out putting some of stdlibs in main
+
 - update from multiple objects
 - plug-in permissioning layer
+- nested json-like field support
 
 ## Contextualiser
 
@@ -14,11 +18,8 @@
 ## Standard transform lib
 
 - sorting to handle expressions
-- add union
 
 ## Client query builder lib
-
-- start writing
 
 ## Other sources
 
