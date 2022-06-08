@@ -5,7 +5,7 @@
   "description": "operations and transforms standard library for arql's native source",
   "main": "dist/main.js",
   "scripts": {
-    "build": "tsc && rollup -c"
+    "disabled:build": "tsc && rollup -c"
   },
   "author": "Henry Stanford",
   "license": "ISC",
