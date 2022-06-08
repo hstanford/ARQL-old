@@ -30,6 +30,8 @@ export default function native(source: Native) {
     ['lte', (a, b) => a <= b],
     ['in', (a, b) => b.includes(a)],
     ['notIn', (a, b) => !b.includes(a)],
+    ['and', (a, b) => a && b],
+    ['or', (a, b) => a || b],
   ]);
 
   // transform definitions:

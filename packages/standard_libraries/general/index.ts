@@ -124,6 +124,16 @@ export const operators = [
     symbols: ['!<@'],
     type: 'binary',
   },
+  {
+    name: 'and',
+    symbols: ['&&'],
+    type: 'binary'
+  },
+  {
+    name: 'or',
+    symbols: ['||'],
+    type: 'binary'
+  }
 ] as const;
 
 // this configuration applies to all data sources:

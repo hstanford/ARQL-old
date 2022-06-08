@@ -12,6 +12,7 @@ export default function pico(source: Pico) {
     ['lte', (a, b) => ({ [a]: { $lte: b } } as any)],
     ['in', (a, b) => ({ [a]: { $in: b } } as any)],
     ['notIn', (a, b) => ({ [a]: { $nin: b } } as any)],
+    ['and', (a, b) => ({ ...a, ...b } as any)],
   ]);
 
   // transform definitions:

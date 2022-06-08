@@ -35,6 +35,8 @@ export default function sql(source: DataSource<any, any>) {
     ['lte', (a, b) => a.lte(b)],
     ['in', (a, b) => a.in(b)],
     ['notIn', (a, b) => a.notIn(b)],
+    ['and', (a, b) => a.and(b)],
+    ['or', (a, b) => a.or(b)],
   ]);
 
   // transform definitions:
