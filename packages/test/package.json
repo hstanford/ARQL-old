@@ -29,7 +29,7 @@
   },
   "scripts": {
     "try": "rimraf dist && tsc && node dist/examples.js",
-    "build": "rimraf dist && tsc",
+    "disabled:build": "rimraf dist && tsc",
     "test": "ts-mocha -n loader=ts-node/esm -p tsconfig.json *.test.ts"
   },
   "author": "",
