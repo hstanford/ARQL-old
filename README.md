@@ -20,25 +20,6 @@ Think GraphQL but with proper relational support, more straightforward syntax, a
 
 REST and GraphQL have both done a lot right. But neither are perfect, and there are areas where there is room to improve on them both.
 
-## What is ARQL?
-
-ARQL is a highly expressive but syntactically simple query language intended to provide a uniform interface to a complex data layer,
-decoupling the data or domain logic from business logic.
-
-The requirements on the interface language this creates are:
-
-- it must be expressive enough to replace sql queries in existing coupled code
-- it must have an outstanding developer UX to differentiate it from the myriad of other solutions
-- it must conform primarily to the relational worldview of domain data
-
-Additionally, several other desirable features have been identified:
-
-- language-specific keywords can be distracting: Cypher has done a great job of demonstrating how ascii art can make queries readable
-- the ability to describe the shape and fields of the data retrieved is critical
-- syntax should be familiar: prefer JavaScript-like
-- the tooling should be very modular: the base software should purely be a text-to-AST (abstract syntax tree) parser. Separately, the client query building library, the server-side AST interpreter and the server side data resolution libraries should share model and type definitions and have ways of constructing compound type definitions in the language of the program that uses them. The query building and data resolution libraries are outside the scope of this specification.
-- the interface should be deliberately resilient to injection, and therefore should not support data that could be influenced by the user (e.g. strings or numbers) directly in the query string, forcing all values to be parameterised. This should also enable easy monitoring of queries without leaking sensitive values, aggregate metrics and caching.
-
 ## Core Concepts
 
 A _Shape_ is a collection of keys and values. Each key-value pair is called a _Field_.
