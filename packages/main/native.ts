@@ -385,15 +385,27 @@ export default class Native extends DataSource<any, any> {
       ) {
         data = data[field.value.from?.name];
       }
+      let source = await this.resolveSources(
+        field,
+        { ...item, ...data },
+        results,
+        params,
+        false
+      );
+
+      // fields of type source need to have a
+      // definitive output shape
+      if (!field.shape) {
+        source = await this.resolveShape(
+          field.availableFields,
+          source,
+          results,
+          params
+        );
+      }
       return [
         key,
-        await this.resolveSources(
-          field,
-          { ...item, ...data },
-          results,
-          params,
-          false
-        ),
+        source,
       ];
     } else if (field.type === 'param') {
       return [field.alias || field.name || '', params[field.index - 1]];
@@ -581,7 +593,7 @@ export default class Native extends DataSource<any, any> {
       if (ast.source) {
         if (ast.source.type === 'delegatedQueryResult')
           source = results[ast.source.index];
-        else
+        else {
           source = await this.resolveSources(
             ast.source,
             data,
@@ -589,6 +601,17 @@ export default class Native extends DataSource<any, any> {
             params,
             !!ast.dest
           );
+          // when queries without a top-level shape
+          // only return whitelisted fields
+          if (!ast.source.shape) {
+            source = await this.resolveShape(
+              ast.source.availableFields,
+              source,
+              results,
+              params
+            );
+          }
+        }
       }
       if (ast.dest) {
         if (ast.dest.type === 'delegatedQueryResult') {
@@ -605,7 +628,18 @@ export default class Native extends DataSource<any, any> {
       }
       return dest || source || [];
     } else if (ast.type === 'source') {
-      return await this.resolveSources(ast, data, results, params, false);
+      let source = await this.resolveSources(ast, data, results, params, false);
+      // only return whitelisted fields from delegated
+      // queries. Perhaps this should be requiredFields?
+      if (!ast.shape) {
+        source = await this.resolveShape(
+          ast.availableFields,
+          source,
+          results,
+          params
+        );
+      }
+      return source;
     } else throw new Error('Not implemented yet');
   }
 }

@@ -410,8 +410,9 @@ export class Contextualiser {
     if (source.shape) {
       out = this.shapeSource(out, source.shape, context);
     } else {
-      // TODO: revise?
-      out.shape = out.availableFields;
+      // shape here can be applied by transform
+      // we don't want it on the output collection
+      delete out.shape;
     }
 
     if (source.alias) {
