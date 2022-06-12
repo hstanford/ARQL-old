@@ -1,3 +1,8 @@
+// @ts-nocheck
+import mocha from 'mocha';
+const { describe, it } = mocha;
+import { expect } from 'chai';
+
 import {
   buildParser,
   opResolver,
@@ -9,7 +14,7 @@ import {
   DataField,
 } from 'arql';
 
-import SQL from './index.js';
+import SQL from '@arql/source-sql';
 
 import { Models, ModelsTypes } from './models.js';
 
@@ -26,17 +31,22 @@ class ExtSQL extends SQL {
   }
   setModel<T extends keyof typeof Models>(key: T) {
     type FieldKey = keyof typeof Models[T] & string;
-    const columnKeys = Object.keys(Models[key]).filter(function (k): k is FieldKey {
+    const columnKeys = Object.keys(Models[key]).filter(function (
+      k
+    ): k is FieldKey {
       return typeof k === 'string';
     }) as FieldKey[];
     const subDef = Models[key];
-    this.baseModels.set(key, this.sql.define<ModelsTypes[T]>({
-      name: key,
-      columns: columnKeys.filter(function (k) {
-        const val = subDef[k] as any;
-        return val.type === 'datafield';
+    this.baseModels.set(
+      key,
+      this.sql.define<ModelsTypes[T]>({
+        name: key,
+        columns: columnKeys.filter(function (k) {
+          const val = subDef[k] as any;
+          return val.type === 'datafield';
+        }),
       })
-    }));
+    );
   }
 }
 
@@ -50,7 +60,7 @@ const s = new ExtSQL({
 
 applyStdlib(s);
 
-(Object.keys(Models) as (keyof typeof Models)[]).forEach(k => s.setModel(k));
+(Object.keys(Models) as (keyof typeof Models)[]).forEach((k) => s.setModel(k));
 
 const models: Map<keyof typeof Models, DataModel> = Object.entries(
   Models
@@ -59,12 +69,14 @@ const models: Map<keyof typeof Models, DataModel> = Object.entries(
     type: 'datamodel',
     name: key,
     source: s,
-    fields: Object.entries(value).filter(([, v]) => v.type === 'datafield').map(([k, v]) => ({
-      type: v.type,
-      name: k,
-      datatype: v.datatype,
-      source: s,
-    })) as DataField[]
+    fields: Object.entries(value)
+      .filter(([, v]) => v.type === 'datafield')
+      .map(([k, v]) => ({
+        type: v.type,
+        name: k,
+        datatype: v.datatype,
+        source: s,
+      })) as DataField[],
   });
   return acc;
 }, new Map());
@@ -92,7 +104,23 @@ async function arql(query: string, params: any[]) {
   return data;
 }
 
-(async () => {
-  const out = await arql('users | filter(id = $1) {blah: id + $1}', [1]);
-  console.log(out);
-})();
+describe('sql', () => {
+  it('can resolve a basic query', async () => {
+    const out = await arql('users | filter(id = $1) {blah: id + $1}', [1]);
+    expect(out).to.deep.equal({
+      query:
+        'SELECT ("users"."id" + 1) AS "blah" FROM "users" WHERE ("users"."id" = 1)',
+    });
+  });
+
+  it('can resolve a basic query', async () => {
+    const out = await arql(
+      '(users, orders) | join(orders.userId = users.id) {ordername: orders.name, username: users.name}',
+      []
+    );
+    expect(out).to.deep.equal({
+      query:
+        'SELECT "users".*, "users"."name" AS "ordername", "users"."name" AS "username" FROM "users" INNER JOIN "orders" ON ("orders"."userId" = "users"."id")',
+    });
+  });
+});

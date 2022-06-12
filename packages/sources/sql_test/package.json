@@ -1,0 +1,30 @@
+{
+  "name": "@arql/source-sql-test",
+  "version": "0.0.1",
+  "description": "raw sql source test project",
+  "type": "module",
+  "main": "dist/main.js",
+  "scripts": {
+    "test": "TS_NODE_FILES=true ts-mocha -n loader=ts-node/esm -p tsconfig.json *.test.ts",
+    "build-ext": "tsc && rollup -c"
+  },
+  "author": "Henry Stanford",
+  "license": "ISC",
+  "dependencies": {
+    "@arql/source-sql": "file:../sql",
+    "arql": "file:../../main",
+    "sql-ts": "^6.1.0"
+  },
+  "devDependencies": {
+    "@arql/stdlib-general": "file:../../standard_libraries/general",
+    "@arql/stdlib-native": "file:../../standard_libraries/native",
+    "@arql/stdlib-sql": "file:../../standard_libraries/sql",
+    "@rollup/plugin-node-resolve": "^13.3.0",
+    "chai": "^4.3.6",
+    "mocha": "^10.0.0",
+    "rollup": "^2.75.0",
+    "ts-mocha": "^10.0.0",
+    "ts-node": "^10.7.0",
+    "typescript": "^4.6.4"
+  }
+}

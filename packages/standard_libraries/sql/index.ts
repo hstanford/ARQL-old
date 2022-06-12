@@ -15,20 +15,26 @@ function getKey(...values: any[]) {
 export default function sql(source: DataSource<any, any>) {
   // basic sql operators
   source.operators = new Map([
-    ['addition', (a, b) => {
-      console.log(a, b);
-      return a.plus(b);
-    }],
+    [
+      'addition',
+      (a, b) => {
+        return a.plus(b);
+      },
+    ],
     ['subtraction', (a, b) => a.minus(b)],
-    ['negation', (a) => (new Sql()).function('NOT')(a)],
+    ['negation', (a) => new Sql().function('NOT')(a)],
     ['ternary', (a, b, c) => a.case([a], [b], c)],
-    ['add', (a, b) => {
-      console.log(a, b);
-      return a.plus(b);
-    }],
+    [
+      'add',
+      (a, b) => {
+        return a.plus(b);
+      },
+    ],
     ['minus', (a, b) => a.minus(b)],
     ['notEquals', (a, b) => a.notEquals(b)],
-    ['equals', (a, b) => a.equals(b)],
+    ['equals', (a, b) => {
+      return a.equals(b);
+    }],
     ['gt', (a, b) => a.gt(b)],
     ['lt', (a, b) => a.lt(b)],
     ['gte', (a, b) => a.gte(b)],
@@ -49,38 +55,44 @@ export default function sql(source: DataSource<any, any>) {
       params: any[],
       query: any,
       ...args: any[]
-    ) => Promise<any>
+    ) => any
   >([
     [
       'join',
-      async (
+      (
         modifiers: string[],
         params: any[],
-        values: Map<any, any> | AnyObj[],
-        condition: ContextualisedField
-      ): Promise<any> => {
-        return;
+        sources: any[],
+        expr
+      ) => {
+        // TODO: handle subqueries properly
+        const origin = sources[0];
+        const target = sources[1];
+        return origin
+          .select()
+          .from(
+            origin
+              .join(target)
+              .on((source as any).resolveExpression([origin, target], expr, params))
+          );
       },
     ],
     [
       'union',
-      async (
+      (
         modifiers: string[],
         params: any[],
         values: Map<any, any> | AnyObj[]
-      ): Promise<any> => {
+      ): any => {
         return;
       },
     ],
     [
       'filter',
-      async (
-        modifiers: string[],
-        params: any[],
-        query,
-        expr
-      ) => {
-        return query.where((source as any).resolveExpression(query, expr, params));
+      (modifiers: string[], params: any[], query, expr) => {
+        return query.where(
+          (source as any).resolveExpression(query, expr, params)
+        );
       },
     ],
     [
@@ -100,8 +112,7 @@ export default function sql(source: DataSource<any, any>) {
         modifiers: string[],
         params: any[],
         values: Map<any, any> | AnyObj[]
-      ) => {
-      },
+      ) => {},
     ],
     [
       'group',
@@ -110,14 +121,9 @@ export default function sql(source: DataSource<any, any>) {
         params: any[],
         values: Map<any, any> | AnyObj[],
         ...groupFields: ContextualisedField[]
-      ) => {
-      },
+      ) => {},
     ],
-    [
-      'count',
-      async (modifiers: string[], params: any[], values: AnyObj) => {
-      },
-    ],
+    ['count', async (modifiers: string[], params: any[], values: AnyObj) => {}],
     [
       'array',
       async (
@@ -125,13 +131,8 @@ export default function sql(source: DataSource<any, any>) {
         params: any[],
         values: AnyObj,
         field: ContextualisedField
-      ) => {
-      },
+      ) => {},
     ],
-    [
-      'uniq',
-      async (modifiers: string[], params: any[], values: any) => {
-      },
-    ],
+    ['uniq', async (modifiers: string[], params: any[], values: any) => {}],
   ]);
 }
