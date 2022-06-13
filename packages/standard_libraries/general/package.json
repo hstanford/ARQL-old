@@ -1,7 +1,6 @@
 {
   "name": "@arql/stdlib-general",
   "version": "0.0.1",
-  "type": "module",
   "description": "operations and transforms general standard library for arql",
   "main": "dist/main.js",
   "scripts": {

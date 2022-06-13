@@ -1,7 +1,6 @@
 {
   "name": "@arql/stdlib-picodb",
   "version": "0.0.1",
-  "type": "module",
   "description": "operations and transforms standard library for arql's native source",
   "main": "dist/main.js",
   "scripts": {
