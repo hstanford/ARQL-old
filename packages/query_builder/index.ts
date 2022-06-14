@@ -9,13 +9,16 @@ import {
   isExpression,
   Operators,
   isModel,
-} from './transforms.js';
+} from './transforms';
 
 const fieldToQuery = (field: Field, params: any[]): [string, any[]] => {
   return [`${field._model}.${field._name}`, params];
 };
 
-const expressionToQuery = (expression: Expression, params: any[]): [string, any[]] => {
+const expressionToQuery = (
+  expression: Expression,
+  params: any[]
+): [string, any[]] => {
   let out: string = '';
   const args: string[] = [];
   for (const arg of expression.args) {
@@ -39,7 +42,10 @@ const expressionToQuery = (expression: Expression, params: any[]): [string, any[
   return [out, params];
 };
 
-function toQuery(item: Source<any, any> | Model<any> | Field | Expression, params: any[]): [string, any[]] {
+function toQuery(
+  item: Source<any, any> | Model<any> | Field | Expression,
+  params: any[] = []
+): [string, any[]] {
   if (isIntermediate(item)) {
     return sourceToQuery(item, params);
   } else if (isModel(item)) {
@@ -84,7 +90,7 @@ export type Source<Transforms extends string, ModelType> = FieldMap<ModelType> &
   Intermediate<Transforms, ModelType> & {
     [key in Transforms]: (...args: any[]) => Source<Transforms, ModelType>;
   } & {
-    toQuery: () => string;
+    toQuery: (params?: any[]) => [string, any[]];
     shape: (s: any[] | Record<string, any>) => Source<Transforms, ModelType>;
   };
 
@@ -95,6 +101,21 @@ export type Intermediate<Transforms extends string, ModelType> = {
 };
 function isIntermediate(item: any): item is Intermediate<any, any> {
   return !!item._sources;
+}
+
+function cloneIntermediate<T extends string, U>(
+  intermediate: Source<T, U>,
+  availableTransforms: T[]
+) {
+  const out = initialiseIntermediate(
+    intermediate._sources,
+    [...intermediate._transforms],
+    intermediate._shape,
+    availableTransforms
+  );
+  out.toQuery = toQuery.bind(null, out);
+  out.shape = applyShape.bind(null, out, availableTransforms) as any;
+  return out;
 }
 
 function initialiseIntermediate<Transforms extends string, ModelType>(
@@ -125,43 +146,53 @@ function initialiseIntermediate<Transforms extends string, ModelType>(
   } as any;
 
   out.toQuery = toQuery.bind(null, out);
-  out.shape = applyShape.bind(null, out);
+  out.shape = applyShape.bind(null, out, availableTransforms);
 
-  availableTransforms.forEach(
-    (transform) => {
-      out[transform] = (...args: any[]) => {
-        out._transforms?.push?.({
-          name: transform,
-          args,
-        });
-        return out as Source<Transforms, ModelType>;
-      };
-    },
-    {}
-  );
+  availableTransforms.forEach((transform) => {
+    out[transform] = (...args: any[]) => {
+      return applyTransform(out, { name: transform, args }, availableTransforms);
+    };
+  }, {});
 
   return out as Source<Transforms, ModelType>;
 }
 
-function transform<T extends string, U>(intermediate: Source<T, U>, transform: Transform<T>): Source<T, U> {
-  intermediate._transforms.push(transform);
-  return intermediate;
+function applyTransform<T extends string, U>(
+  intermediate: Source<T, U>,
+  transform: Transform<T>,
+  availableTransforms: T[]
+): Source<T, U> {
+  const out = cloneIntermediate(intermediate, availableTransforms);
+  out._transforms.push(transform);
+  return out;
 }
 
-function applyShape<T extends string, U>(intermediate: Source<T, U>, s: any[] | Record<string, any>) {
-  if (!intermediate._shape) intermediate._shape = new Map();
+function applyShape<T extends string, U>(
+  intermediate: Source<T, U>,
+  availableTransforms: T[],
+  s: any[] | Record<string, any>,
+) {
+  const out: Source<T, U> = cloneIntermediate(
+    intermediate,
+    availableTransforms
+  );
+  out._shape = new Map();
   if (Array.isArray(s))
     for (let field of s) {
-      intermediate._shape?.set?.(field.name, field);
+      out._shape?.set?.(field.name, field);
     }
-  else
+  else {
     for (let key of Object.keys(s)) {
-      intermediate._shape?.set?.(key, s[key]);
+      out._shape?.set?.(key, s[key]);
     }
-  return intermediate;
+  }
+  return out;
 }
 
-function sourceToQuery(intermediate: Source<any, any>, params: any[]): [string, any[]] {
+function sourceToQuery(
+  intermediate: Source<any, any>,
+  params: any[]
+): [string, any[]] {
   let out = '';
   const sources: string[] = [];
   for (const source of intermediate._sources) {
@@ -192,10 +223,7 @@ function sourceToQuery(intermediate: Source<any, any>, params: any[]): [string, 
       params = newParams;
       fields.push(`${key}: ${str}`);
     }
-    out +=
-      ' {' +
-      fields.join(', ') +
-      '}';
+    out += ' {' + fields.join(', ') + '}';
   }
 
   return [out, params];
@@ -228,5 +256,10 @@ export function multi<T, U, Transforms extends string>(
   args: [Source<Transforms, T>, Source<Transforms, U>],
   transforms: Transforms[]
 ): Source<Transforms, {}> {
-  return initialiseIntermediate<Transforms, {}>(args, [], undefined, transforms);
+  return initialiseIntermediate<Transforms, {}>(
+    args,
+    [],
+    undefined,
+    transforms
+  );
 }
