@@ -378,7 +378,7 @@ test('exprlist should return null for an empty string', () => {
   expect(out).toEqual(null);
 });
 
-test('transformarg should accept an expression, a shape, or a source', () => {
+test('transformarg should accept an expression, a shape, or a collection', () => {
   let out = run('$1', 'transformArg');
   expect(out).toEqual({
     type: 'param',
@@ -400,7 +400,7 @@ test('transformarg should accept an expression, a shape, or a source', () => {
     ],
   });
 
-  // TODO: source test
+  // TODO: collection test
 });
 
 test('transformargs should accept a series of transform args separated by commas', () => {
@@ -528,10 +528,10 @@ test('transforms should match a series of transforms separated by "|"', () => {
   ]);
 });
 
-test('source should consist of "[base source or model] [transforms] [shape]"', () => {
-  let out = run('u: users | filter(u.id = $1) {name}', 'source');
+test('collection should consist of "[base collection or model] [transforms] [shape]"', () => {
+  let out = run('u: users | filter(u.id = $1) {name}', 'collection');
   expect(out).toEqual({
-    type: 'source',
+    type: 'collection',
     alias: 'u',
     value: {
       type: 'alphachain',
@@ -586,17 +586,17 @@ test('source should consist of "[base source or model] [transforms] [shape]"', (
   });
 });
 
-test('sourcelist should handle a comma-separated list of basic sources', () => {
+test('collectionlist should handle a comma-separated list of basic collections', () => {
   let out = run(
     `(
     u: users,
     o: orders
   )`,
-    'sourcelist'
+    'collectionlist'
   );
   expect(out).toEqual([
     {
-      type: 'source',
+      type: 'collection',
       alias: 'u',
       value: {
         type: 'alphachain',
@@ -607,7 +607,7 @@ test('sourcelist should handle a comma-separated list of basic sources', () => {
       shape: null,
     },
     {
-      type: 'source',
+      type: 'collection',
       alias: 'o',
       value: {
         type: 'alphachain',
@@ -687,12 +687,12 @@ test('complex query', () => {
   );
   expect(out).toEqual({
     type: 'query',
-    source: {
-      type: 'source',
+    sourceCollection: {
+      type: 'collection',
       alias: undefined,
       value: [
         {
-          type: 'source',
+          type: 'collection',
           alias: 'u',
           value: {
             type: 'alphachain',
@@ -703,7 +703,7 @@ test('complex query', () => {
           shape: null,
         },
         {
-          type: 'source',
+          type: 'collection',
           alias: 'o',
           value: {
             type: 'alphachain',
@@ -775,10 +775,10 @@ test('complex query', () => {
   });
 });
 
-test('sourceWithShape should match a simple field in curly braces', () => {
-  let out = run('{name: $1}', 'sourceWithShape');
+test('collectionWithShape should match a simple field in curly braces', () => {
+  let out = run('{name: $1}', 'collectionWithShape');
   expect(out).toEqual({
-    type: 'source',
+    type: 'collection',
     alias: undefined,
     transforms: [],
     value: null,

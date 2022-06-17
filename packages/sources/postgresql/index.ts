@@ -2,7 +2,7 @@ import {
   AnyObj,
   DataSourceOpts,
   DelegatedQuery,
-  DelegatedSource,
+  DelegatedCollection,
 } from '@arql/core';
 
 import SQL from '@arql/source-sql';
@@ -24,7 +24,7 @@ export default class PostgresSQL extends SQL {
 
   supportsExpressions: boolean = true;
   supportsSubExpressions: boolean = false;
-  supportsSubSources: boolean = false;
+  supportsSubCollections: boolean = false;
   supportsShaping: boolean = true;
   supportsFieldAliasing: boolean = false;
   supportsExpressionFields: boolean = false;
@@ -62,7 +62,7 @@ export default class PostgresSQL extends SQL {
   }
 
   async resolve(
-    ast: DelegatedQuery | DelegatedSource,
+    ast: DelegatedQuery | DelegatedCollection,
     data: AnyObj[] | null,
     results: AnyObj[][],
     params: any[]

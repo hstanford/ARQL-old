@@ -1,6 +1,6 @@
 import type {
   Alphachain,
-  ContextualisedSource,
+  ContextualisedCollection,
   ModelsDeclarationTypes,
   DataSource,
   DataModel,
@@ -32,14 +32,14 @@ export function getAlias(ipt: string | Alphachain | null | undefined) {
   return alias;
 }
 
-export function getSourceName(source: ContextualisedSource): string {
+export function getCollectionName(collection: ContextualisedCollection): string {
   let name = '';
-  if (source.alias) {
-    name = source.alias;
-  } else if (Array.isArray(source.value)) {
+  if (collection.alias) {
+    name = collection.alias;
+  } else if (Array.isArray(collection.value)) {
     name = '';
   } else {
-    name = getAlias(source.value.alias || source.value.name);
+    name = getAlias(collection.value.alias || collection.value.name);
   }
   return name;
 }

@@ -12,19 +12,19 @@
  */
 import {
   ContextualisedQuery,
-  ContextualisedSource,
+  ContextualisedCollection,
   DataModel,
   DataField,
   DelegatedQueryResult,
   DelegatedField,
   ResolutionTree,
-  DelegatedSource,
+  DelegatedCollection,
   DelegatedQuery,
   ContextualisedField,
   isMultiShape,
   isDataModel,
   isDataField,
-  isSource,
+  isCollection,
   isExpr,
   isParam,
   isQuery,
@@ -32,7 +32,7 @@ import {
 } from './types.js';
 
 import { combine } from './sources.js';
-import { getSourceName, uniq } from './util.js';
+import { getCollectionName, uniq } from './util.js';
 
 /**
  * needs a bit of a redesign? Needs to support:
@@ -51,8 +51,8 @@ import { getSourceName, uniq } from './util.js';
  */
 
 function findSplitShapeMulti(
-  ast: DataModel | ContextualisedSource | DataField,
-  queries: (ContextualisedQuery | ContextualisedSource)[],
+  ast: DataModel | ContextualisedCollection | DataField,
+  queries: (ContextualisedQuery | ContextualisedCollection)[],
   inShape: ContextualisedField[] | ContextualisedField[][]
 ) {
   if (isMultiShape(inShape)) {
@@ -67,11 +67,11 @@ function findSplitShapeMulti(
 }
 
 function findSplitShape(
-  ast: DataModel | ContextualisedSource | DataField,
-  queries: (ContextualisedQuery | ContextualisedSource)[],
+  ast: DataModel | ContextualisedCollection | DataField,
+  queries: (ContextualisedQuery | ContextualisedCollection)[],
   inShape: ContextualisedField[]
 ) {
-  if (ast.type !== 'source') {
+  if (ast.type !== 'collection') {
     throw new Error('cannot find shape split for non-source');
   }
   let shape: DelegatedField[] = inShape;
@@ -83,7 +83,7 @@ function findSplitShape(
 
   if (inShapeNotInSource.length) {
     shape = inShape.map((field) => {
-      if (isSource(field)) {
+      if (isCollection(field)) {
         if (
           field.sources.every((source) => inShapeNotInSource.includes(source))
         ) {
@@ -101,7 +101,7 @@ function findSplitShape(
           if (
             Array.isArray(field.value) &&
             field.value?.length === 1 &&
-            isSource(field.value[0])
+            isCollection(field.value[0])
           ) {
             queries.push(field.value[0]);
             return {
@@ -110,7 +110,7 @@ function findSplitShape(
                 {
                   type: 'delegatedQueryResult',
                   index: queries.length - 1,
-                  alias: getSourceName(field.value[0]),
+                  alias: getCollectionName(field.value[0]),
                 },
               ],
             };
@@ -156,13 +156,13 @@ function findSplitShape(
 }
 
 function findSplit(
-  ast: DataModel | ContextualisedSource | DataField,
-  queries: (ContextualisedQuery | ContextualisedSource)[]
-): DelegatedSource | DelegatedQueryResult {
+  ast: DataModel | ContextualisedCollection | DataField,
+  queries: (ContextualisedQuery | ContextualisedCollection)[]
+): DelegatedCollection | DelegatedQueryResult {
   // if the ast only has one data source, add that
   if (isDataModel(ast)) {
     queries.push({
-      type: 'source',
+      type: 'collection',
       value: ast,
       availableFields: ast.fields,
       requiredFields: [],
@@ -193,8 +193,8 @@ function findSplit(
   // work out the split of subModel origins based on the sources of the fields in the shape
   let value:
     | DelegatedQueryResult
-    | DelegatedSource
-    | (DelegatedQueryResult | DelegatedSource)[] = [];
+    | DelegatedCollection
+    | (DelegatedQueryResult | DelegatedCollection)[] = [];
   if (!Array.isArray(ast.value)) {
     value = findSplit(ast.value, queries);
   } else if (ast.value.length === 1) {
@@ -212,7 +212,7 @@ function findSplit(
 
 export default function delegator(ast: ContextualisedQuery): ResolutionTree {
   let tree: DelegatedQuery | DelegatedQueryResult | undefined;
-  const queries: (ContextualisedQuery | ContextualisedSource)[] = [];
+  const queries: (ContextualisedQuery | ContextualisedCollection)[] = [];
   if (ast.sources.length === 1) {
     tree = {
       type: 'delegatedQueryResult',
@@ -221,10 +221,10 @@ export default function delegator(ast: ContextualisedQuery): ResolutionTree {
     queries.push(ast);
   } else if (ast.sources.length > 1) {
     // TODO: can this not mutate ast?
-    if (ast.source && isQuery(ast))
+    if (ast.sourceCollection && isQuery(ast))
       tree = {
         ...(tree || ast),
-        source: findSplit(ast.source, queries),
+        sourceCollection: findSplit(ast.sourceCollection, queries),
       } as DelegatedQuery;
     if (ast.dest && isQuery(ast))
       tree = {

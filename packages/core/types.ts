@@ -44,7 +44,7 @@ export function isOp(ipt: any): ipt is Op {
   return ipt?.type === 'op';
 }
 
-export type Expr = ExprTree | Param | Alphachain | Source;
+export type Expr = ExprTree | Param | Alphachain | Collection;
 export type ExprUnary = SubExpr | FunctionCall | Op;
 
 export type SubExpr = Expr | Param | Alphachain;
@@ -68,13 +68,13 @@ export function isFunction(ipt: any): ipt is FunctionCall {
 export interface Transform {
   type: 'transform';
   description: Alphachain;
-  args: (Expr | Shape | Source)[];
+  args: (Expr | Shape | Collection)[];
 }
 
-export interface Source {
-  type: 'source';
+export interface Collection {
+  type: 'collection';
   alias: string | undefined;
-  value: Alphachain | Source[] | Source | null;
+  value: Alphachain | Collection[] | Collection | null;
   transforms: Transform[];
   shape: Shape | Shape[] | null;
 }
@@ -104,7 +104,7 @@ export function isDest(ipt: any): ipt is Dest {
 export interface Field {
   type: 'field';
   alias: string | null;
-  value: Source | Expr;
+  value: Collection | Expr;
 }
 
 export function isField(ipt: any): ipt is Field {
@@ -139,14 +139,14 @@ export function isMultiShape(
 
 export interface Query {
   type: 'query';
-  source: Source | null;
+  sourceCollection: Collection | null;
   modifier: Modifier | undefined;
   dest: Dest | undefined;
 }
 
 export type Modifier = '->' | '-+' | '-x';
 
-export class MultiSource extends Map {}
+export class MultiCollection extends Map {}
 
 // contextualiser
 
@@ -165,7 +165,7 @@ export abstract class DataSource<ModelType, FieldType> {
   // as a delegated query we can definitely resolve
   supportsExpressions: boolean = false;
   supportsSubExpressions: boolean = false;
-  supportsSubSources: boolean = false;
+  supportsSubCollections: boolean = false;
   supportsShaping: boolean = false;
   supportsFieldAliasing: boolean = false;
   supportsExpressionFields: boolean = false;
@@ -189,7 +189,7 @@ export abstract class DataSource<ModelType, FieldType> {
   }
 
   async resolve(
-    subquery: ContextualisedQuery | ContextualisedSource,
+    subquery: ContextualisedQuery | ContextualisedCollection,
     data: AnyObj[] | null,
     results: AnyObj[][],
     params: any[]
@@ -210,7 +210,7 @@ export type dataType = 'string' | 'number' | 'boolean' | 'json' | 'date';
 export type ContextualisedField =
   | DataField
   | DataModel
-  | ContextualisedSource
+  | ContextualisedCollection
   | ContextualisedExpr
   | ContextualisedParam
   | DataReference
@@ -223,7 +223,7 @@ export interface DataField {
   fields?: DataField[];
   source: DataSource<any, any> | DataSource<any, any>[];
   model?: DataModel;
-  from?: ContextualisedSource;
+  from?: ContextualisedCollection;
   alias?: string;
 }
 
@@ -281,13 +281,13 @@ export function isTransformDef(ipt: any): ipt is TransformDef {
 }
 
 export interface ContextualiserState {
-  aliases: Map<string, ContextualisedSource | DataModel | DataField>;
+  aliases: Map<string, ContextualisedCollection | DataModel | DataField>;
 }
 
 export interface ContextualisedQuery {
   type: 'query';
-  source?: ContextualisedSource;
-  dest?: ContextualisedSource;
+  sourceCollection?: ContextualisedCollection;
+  dest?: ContextualisedCollection;
   modifier?: Modifier;
   sources: DataSource<any, any>[];
 }
@@ -298,28 +298,28 @@ export function isQuery<T>(
   return (ipt as any)?.type === 'query';
 }
 
-export type ContextualisedSourceValue =
+export type ContextualisedCollectionValue =
   | DataField
   | DataModel
-  | ContextualisedSource;
+  | ContextualisedCollection;
 
-export interface ContextualisedSource {
-  type: 'source';
-  value: ContextualisedSourceValue[] | ContextualisedSourceValue;
+export interface ContextualisedCollection {
+  type: 'collection';
+  value: ContextualisedCollectionValue[] | ContextualisedCollectionValue;
   availableFields: ContextualisedField[];
   requiredFields: ContextualisedField[];
   name?: Alphachain | string;
-  subModels?: ContextualisedSourceValue[];
+  subModels?: ContextualisedCollectionValue[];
   shape?: ContextualisedField[] | ContextualisedField[][];
   sources: DataSource<any, any>[];
   transform?: ContextualisedTransform;
   alias?: string;
 }
 
-export function isSource<T>(
+export function isCollection<T>(
   ipt: T
-): ipt is Extract<T, Source | ContextualisedSource | DelegatedSource> {
-  return (ipt as any)?.type === 'source';
+): ipt is Extract<T, Collection | ContextualisedCollection | DelegatedCollection> {
+  return (ipt as any)?.type === 'collection';
 }
 
 export interface ContextualisedTransform {
@@ -384,8 +384,8 @@ export function isDelegatedQueryResult(ipt: any): ipt is DelegatedQueryResult {
 export type DelegatedField =
   | DataField
   | DataModel
-  | ContextualisedSource
-  | DelegatedSource
+  | ContextualisedCollection
+  | DelegatedCollection
   | ContextualisedExpr
   | ContextualisedParam
   | DelegatedQueryResult
@@ -394,29 +394,29 @@ export type DelegatedField =
 
 export interface ResolutionTree {
   tree: DelegatedQuery | DelegatedQueryResult;
-  queries: (ContextualisedQuery | ContextualisedSource)[];
+  queries: (ContextualisedQuery | ContextualisedCollection)[];
 }
 
-export interface DelegatedSource
+export interface DelegatedCollection
   extends Modify<
-    ContextualisedSource,
+    ContextualisedCollection,
     {
       subModels?: (
-        | DelegatedSource
-        | ContextualisedSource
+        | DelegatedCollection
+        | ContextualisedCollection
         | DataModel
         | DataField
       )[];
       value:
-        | DelegatedSource
+        | DelegatedCollection
         | DelegatedQueryResult
-        | ContextualisedSource
+        | ContextualisedCollection
         | DataModel
         | DataField
         | (
-            | DelegatedSource
+            | DelegatedCollection
             | DelegatedQueryResult
-            | ContextualisedSource
+            | ContextualisedCollection
             | DataModel
             | DataField
           )[];
@@ -428,8 +428,8 @@ export interface DelegatedQuery
   extends Modify<
     ContextualisedQuery,
     {
-      source?: DelegatedSource | DelegatedQueryResult;
-      dest?: DelegatedSource | DelegatedQueryResult;
+      sourceCollection?: DelegatedCollection | DelegatedQueryResult;
+      dest?: DelegatedCollection | DelegatedQueryResult;
     }
   > {}
 

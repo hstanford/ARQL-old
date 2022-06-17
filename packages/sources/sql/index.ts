@@ -5,8 +5,8 @@ import {
   AnyObj,
   DataSourceOpts,
   DelegatedQuery,
-  DelegatedSource,
-  isSource,
+  DelegatedCollection,
+  isCollection,
   DataModel,
   isDataModel,
   isDataField,
@@ -36,7 +36,7 @@ export default class SQL extends DataSource<any, any> {
 
   supportsExpressions: boolean = true;
   supportsSubExpressions: boolean = false;
-  supportsSubSources: boolean = false;
+  supportsSubCollections: boolean = false;
   supportsShaping: boolean = true;
   supportsFieldAliasing: boolean = false;
   supportsExpressionFields: boolean = false;
@@ -82,7 +82,7 @@ export default class SQL extends DataSource<any, any> {
   }
 
   async resolve(
-    ast: DelegatedQuery | DelegatedSource,
+    ast: DelegatedQuery | DelegatedCollection,
     data: AnyObj[] | null,
     results: AnyObj[][],
     params: any[]
@@ -93,19 +93,19 @@ export default class SQL extends DataSource<any, any> {
   }
 
   async resolveQueryObject(
-    ast: DelegatedQuery | DelegatedSource,
+    ast: DelegatedQuery | DelegatedCollection,
     data: AnyObj[] | null,
     results: AnyObj[][],
     params: any[]
   ) {
     let sourceQuery: Intermediate, destQuery: AnyObj | AnyObj[] | undefined;
     if (ast.type === 'query') {
-      if (ast.source) {
-        if (ast.source.type === 'delegatedQueryResult')
+      if (ast.sourceCollection) {
+        if (ast.sourceCollection.type === 'delegatedQueryResult')
           throw new Error('Not supported');
         else
-          sourceQuery = this.resolveSources(
-            ast.source,
+          sourceQuery = this.resolveCollections(
+            ast.sourceCollection,
             data,
             results,
             params
@@ -117,23 +117,23 @@ export default class SQL extends DataSource<any, any> {
         }
         destQuery = await this.resolveDest(ast.dest);
       }
-    } else if (ast.type === 'source') {
-      sourceQuery = this.resolveSources(ast, data, results, params);
+    } else if (isCollection(ast)) {
+      sourceQuery = this.resolveCollections(ast, data, results, params);
     } else throw new Error('Not implemented yet');
 
     return sourceQuery;
   }
 
-  resolveSourceValue(
-    value: DelegatedSource["value"],
+  resolveCollectionValue(
+    value: DelegatedCollection["value"],
     data: any,
     results: any[],
     params: any[],
     baseQuery?: Intermediate,
   ): Intermediate {
     let query: Intermediate = baseQuery;
-    if (isSource(value)) {
-      query = this.resolveSources(value, data, results, params, query);
+    if (isCollection(value)) {
+      query = this.resolveCollections(value, data, results, params, query);
     } else if (isDataModel(value)) {
       const model = this.baseModels.get(value.name);
       if (!model) {
@@ -141,7 +141,7 @@ export default class SQL extends DataSource<any, any> {
       }
       if (query) {
         if (Array.isArray(query)) {
-          throw new Error('Multi sources are not supported for subselects');
+          throw new Error('Multi collections are not supported for subselects');
         }
         query = query.from(model);
       } else {
@@ -151,45 +151,45 @@ export default class SQL extends DataSource<any, any> {
     return query;
   }
 
-  resolveSources(
-    source: DelegatedSource,
+  resolveCollections(
+    collection: DelegatedCollection,
     data: any,
     results: any[],
     params: any[],
     baseQuery?: Intermediate,
   ): Intermediate {
     let query: Intermediate = baseQuery;
-    if (Array.isArray(source.value)) {
-      query = source.value.map(v => {
-        const resolved = this.resolveSourceValue(v, data, results, params, baseQuery);
+    if (Array.isArray(collection.value)) {
+      query = collection.value.map(v => {
+        const resolved = this.resolveCollectionValue(v, data, results, params, baseQuery);
         if (Array.isArray(resolved)) {
           throw new Error('Nested array source values are unsupported');
         }
         return resolved;
       });
     } else {
-      query = this.resolveSourceValue(source.value, data, results, params, baseQuery);
+      query = this.resolveCollectionValue(collection.value, data, results, params, baseQuery);
     }
-    if (source.transform) {
-      const transform = this.transforms.get(source.transform.name);
+    if (collection.transform) {
+      const transform = this.transforms.get(collection.transform.name);
       if (!transform) {
         throw new Error(
-          `Couldn't resolve transform "${source.transform.name}"`
+          `Couldn't resolve transform "${collection.transform.name}"`
         );
       }
       query = transform(
-        source.transform.modifier,
+        collection.transform.modifier,
         params,
         query,
-        ...source.transform.args
+        ...collection.transform.args
       );
     }
-    if (source.shape) {
+    if (collection.shape) {
       if (Array.isArray(query)) {
-        throw new Error('Multi sources must be transformed before shaping');
+        throw new Error('Multi collections must be transformed before shaping');
       }
       const fields = [];
-      for (let field of source.shape) {
+      for (let field of collection.shape) {
         if (Array.isArray(field)) {
           throw new Error('Array shapes are not supported');
         }
@@ -202,14 +202,14 @@ export default class SQL extends DataSource<any, any> {
 
   resolveField(query: Intermediate, field: DelegatedField, params: any[]) {
     let out: any;
-    if (field.type === 'source') {
+    if (isCollection(field)) {
       if (!query) {
-        throw new Error('Subsources without query not supported');
+        throw new Error('Subcollections without query not supported');
       }
       if (Array.isArray(query)) {
-        throw new Error('Subsources from multi source are not supported');
+        throw new Error('Subcollections from multi collection are not supported');
       }
-      return this.resolveSources(field, [], [], params, query.table.subQuery(field.alias));
+      return this.resolveCollections(field, [], [], params, query.table.subQuery(field.alias));
     } else if (field.type === 'exprtree') {
       out = this.resolveExpression(query, field, params);
     } else if (isDataField(field)) {
@@ -241,8 +241,8 @@ export default class SQL extends DataSource<any, any> {
   ) {
     let resolvedArgs: any[] = [];
     for (let arg of expression.args) {
-      if (arg.type === 'source') {
-        resolvedArgs.push(this.resolveSources(arg, [], [], params));
+      if (isCollection(arg)) {
+        resolvedArgs.push(this.resolveCollections(arg, [], [], params));
       } else if (arg.type === 'exprtree') {
         resolvedArgs.push(this.resolveExpression(query, arg, params));
       } else if (arg.type === 'datamodel') {
@@ -263,7 +263,7 @@ export default class SQL extends DataSource<any, any> {
     return op(...resolvedArgs);
   }
 
-  resolveDest(dest: DelegatedSource): any {
+  resolveDest(dest: DelegatedCollection): any {
     throw new Error('Not implemented');
   }
 }

@@ -5,8 +5,8 @@ import {
   AnyObj,
   DataSourceOpts,
   DelegatedQuery,
-  DelegatedSource,
-  isSource,
+  DelegatedCollection,
+  isCollection,
   ContextualisedExpr,
   DelegatedField,
 } from '@arql/core';
@@ -42,7 +42,7 @@ export default class Pico extends DataSource<any, any> {
   }
 
   async resolve(
-    ast: DelegatedQuery | DelegatedSource,
+    ast: DelegatedQuery | DelegatedCollection,
     data: AnyObj[] | null,
     results: AnyObj[][],
     params: any[]
@@ -51,12 +51,12 @@ export default class Pico extends DataSource<any, any> {
       sourceShape: any,
       destQuery: AnyObj | AnyObj[] | undefined;
     if (ast.type === 'query') {
-      if (ast.source) {
-        if (ast.source.type === 'delegatedQueryResult')
-          sourceQuery = results[ast.source.index];
+      if (ast.sourceCollection) {
+        if (ast.sourceCollection.type === 'delegatedQueryResult')
+          sourceQuery = results[ast.sourceCollection.index];
         else
           [sourceQuery, sourceShape] = await this.resolveSources(
-            ast.source,
+            ast.sourceCollection,
             data,
             results,
             params
@@ -68,7 +68,7 @@ export default class Pico extends DataSource<any, any> {
         }
         destQuery = await this.resolveDest(ast.dest);
       }
-    } else if (ast.type === 'source') {
+    } else if (isCollection(ast)) {
       [sourceQuery, sourceShape] = await this.resolveSources(
         ast,
         data,
@@ -88,14 +88,14 @@ export default class Pico extends DataSource<any, any> {
   }
 
   async resolveSources(
-    source: DelegatedSource,
+    source: DelegatedCollection,
     data: any,
     results: any[],
     params: any[]
   ): Promise<any> {
     let shape: any = {};
     let query: any = {};
-    if (isSource(source.value)) {
+    if (isCollection(source.value)) {
       [query, shape] = await this.resolveSources(
         source.value,
         data,
@@ -129,7 +129,7 @@ export default class Pico extends DataSource<any, any> {
   }
 
   resolveField(field: DelegatedField, params: any[]) {
-    if (field.type === 'source') {
+    if (isCollection(field)) {
       throw new Error('Subsources not supported');
     } else if (field.type === 'exprtree') {
       return this.resolveExpression(field, params);
@@ -144,7 +144,7 @@ export default class Pico extends DataSource<any, any> {
     let field: string = '';
     let value: any;
     for (let arg of expression.args) {
-      if (arg.type === 'source') {
+      if (isCollection(arg)) {
         throw new Error('Subsources not supported');
       } else if (arg.type === 'exprtree') {
         throw new Error('Subexpressions not supported');
@@ -166,7 +166,7 @@ export default class Pico extends DataSource<any, any> {
     return op(field, value);
   }
 
-  resolveDest(dest: DelegatedSource): any {
+  resolveDest(dest: DelegatedCollection): any {
     throw new Error('Not implemented');
   }
 }

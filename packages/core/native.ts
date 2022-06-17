@@ -12,7 +12,7 @@ import {
   ContextualisedExpr,
   DataField,
   DataSourceOpts,
-  DelegatedSource,
+  DelegatedCollection,
   DelegatedField,
   DelegatedQuery,
   DelegatedQueryResult,
@@ -20,6 +20,9 @@ import {
   transformFn,
   isDataReference,
   isTransform,
+  isCollection,
+  isDataModel,
+  isParam,
 } from './types.js';
 import { DataSource } from './types.js';
 import { v4 as uuid } from 'uuid';
@@ -33,7 +36,7 @@ export default class Native extends DataSource<any, any> {
 
   supportsExpressions: boolean = true;
   supportsSubExpressions: boolean = true;
-  supportsSubSources: boolean = true;
+  supportsSubCollections: boolean = true;
   supportsShaping: boolean = true;
   supportsFieldAliasing: boolean = true;
   supportsExpressionFields: boolean = true;
@@ -72,7 +75,7 @@ export default class Native extends DataSource<any, any> {
       } else if (arg.type === 'param') {
         return params[arg.index - 1];
       } else throw new Error('Not implemented');
-      // TODO: handle DataModel and ContextualisedSource
+      // TODO: handle DataModel and ContextualisedCollection
     });
     const opFn = this.operators.get(expr.op);
     if (!opFn) throw new Error(`Couldn't find operator ${expr.op}`);
@@ -87,65 +90,65 @@ export default class Native extends DataSource<any, any> {
     return field;
   }
 
-  async resolveSource(
-    source: DelegatedSource | DataModel | DataField | DelegatedQueryResult,
+  async resolveCollection(
+    collection: DelegatedCollection | DataModel | DataField | DelegatedQueryResult,
     data: AnyObj,
     results: any[],
     params: any[]
   ): Promise<[string, any]> {
-    if (source.type === 'source') {
-      if (typeof source.name !== 'string')
+    if (isCollection(collection)) {
+      if (typeof collection.name !== 'string')
         throw new Error(
-          `No support for ${JSON.stringify(source.name)} as a source name yet`
+          `No support for ${JSON.stringify(collection.name)} as a collection name yet`
         );
-      const subVals = await this.resolveSources(
-        source,
+      const subVals = await this.resolveCollections(
+        collection,
         data,
         results,
         params,
         false
       );
-      return [source.name, subVals];
-    } else if (source.type === 'datafield') {
+      return [collection.name, subVals];
+    } else if (collection.type === 'datafield') {
       if (!data) throw new Error('Not yet implemented...');
-      return [source.name, data[source.name]];
-    } else if (source.type === 'datamodel') {
+      return [collection.name, data[collection.name]];
+    } else if (collection.type === 'datamodel') {
       return [
-        source.name,
-        this.data[source.name].map((item: AnyObj) => {
+        collection.name,
+        this.data[collection.name].map((item: AnyObj) => {
           const merged = { ...data, ...item };
-          merged[source.name] = merged;
+          merged[collection.name] = merged;
           return merged;
         }),
       ];
-    } else if (source.type === 'delegatedQueryResult') {
+    } else if (collection.type === 'delegatedQueryResult') {
       return [
-        source.alias || '',
-        results[source.index].map((item: AnyObj) => {
+        collection.alias || '',
+        results[collection.index].map((item: AnyObj) => {
           const merged = { ...data, ...item };
-          merged[source.alias || ''] = merged;
+          merged[collection.alias || ''] = merged;
           return merged;
         }),
       ];
     }
-    throw new Error(`Unsupported source type ${(source as any)?.type}`);
+    throw new Error(`Unsupported collection type ${(collection as any)?.type}`);
   }
 
-  async resolveSources(
-    source: DelegatedSource,
+  async resolveCollections(
+    collection: DelegatedCollection,
     data: any,
     results: any[],
     params: any[],
     exposeAlias: boolean
   ): Promise<AnyObj[] | AnyObj> {
     const intermediate = await this.resolveIntermediate(
-      source,
+      collection,
       data,
       results,
       params
     );
     return await this.applyTransformsAndShape(
-      source,
+      collection,
       intermediate || data,
       results,
       params,
@@ -154,7 +157,7 @@ export default class Native extends DataSource<any, any> {
   }
 
   async applyTransformsAndShape(
-    source: DelegatedSource,
+    collection: DelegatedCollection,
     intermediate: Map<string, AnyObj[]> | AnyObj[] | AnyObj | undefined,
     results: any[],
     params: any[],
@@ -169,36 +172,36 @@ export default class Native extends DataSource<any, any> {
     }
     let resolved: AnyObj[] | AnyObj | undefined;
 
-    if (source.transform) {
-      const transform = this.transforms.get(source.transform.name);
+    if (collection.transform) {
+      const transform = this.transforms.get(collection.transform.name);
       if (!transform) {
         throw new Error(
-          `Couldn't resolve transform "${source.transform.name}"`
+          `Couldn't resolve transform "${collection.transform.name}"`
         );
       }
       resolved = await transform(
-        source.transform.modifier,
+        collection.transform.modifier,
         params,
         intermediate,
-        ...source.transform.args
+        ...collection.transform.args
       );
     } else if (Array.isArray(intermediate)) {
       resolved = intermediate;
     }
 
-    if (source.shape?.length) {
+    if (collection.shape?.length) {
       resolved = await this.resolveShape(
-        source.shape,
+        collection.shape,
         resolved,
         results,
         params
       );
     }
     if (!resolved) {
-      throw new Error(`Couldn't resolve source`);
+      throw new Error(`Couldn't resolve collection`);
     }
     if (exposeAlias) {
-      const alias = getAlias(source.alias || source.name);
+      const alias = getAlias(collection.alias || collection.name);
       if (Array.isArray(resolved)) {
         for (let item of resolved) {
           item[alias] = item;
@@ -211,22 +214,22 @@ export default class Native extends DataSource<any, any> {
   }
 
   async resolveIntermediate(
-    source: DelegatedSource,
+    collection: DelegatedCollection,
     data: any,
     results: any[],
     params: any[]
   ): Promise<Map<string, AnyObj[]> | AnyObj[] | undefined> {
-    // resolveSources should only ever produce an anyobj array
-    // there's an intermediate point that for value type ContextualisedSource[]
+    // resolveCollections should only ever produce an anyobj array
+    // there's an intermediate point that for value type ContextualisedCollection[]
     // you'll have a Map<string, AnyObj[]>, that will be passed into some kind of join
     let intermediate: Map<string, AnyObj[]> | AnyObj[] | undefined;
-    if (Array.isArray(source.value)) {
-      if (source.value.length) {
-        // ContextualisedSourceArray, instanceof doesn't narrow here
+    if (Array.isArray(collection.value)) {
+      if (collection.value.length) {
+        // ContextualisedCollectionArray, instanceof doesn't narrow here
         intermediate = new Map<string, AnyObj[]>();
-        for (const sourceValue of source.value) {
-          const [key, value] = await this.resolveSource(
-            sourceValue,
+        for (const collectionValue of collection.value) {
+          const [key, value] = await this.resolveCollection(
+            collectionValue,
             data,
             results,
             params
@@ -234,24 +237,24 @@ export default class Native extends DataSource<any, any> {
           intermediate.set(key, value);
         }
       }
-    } else if (source.value) {
-      [, intermediate] = await this.resolveSource(
-        source.value,
+    } else if (collection.value) {
+      [, intermediate] = await this.resolveCollection(
+        collection.value,
         data,
         results,
         params
       );
-      if (typeof source.name === 'string' && Array.isArray(intermediate)) {
+      if (typeof collection.name === 'string' && Array.isArray(intermediate)) {
         for (const obj of intermediate) {
           if (typeof obj === 'object') {
-            obj[source.name] = obj;
+            obj[collection.name] = obj;
           }
         }
       }
       // attempt to only hold onto the required fields
       if (Array.isArray(intermediate)) {
         const filtered = await this.resolveShape(
-          source.requiredFields,
+          collection.requiredFields,
           intermediate,
           results,
           params
@@ -260,8 +263,8 @@ export default class Native extends DataSource<any, any> {
           throw new Error('Unexpected non-array filtering keys');
         }
         // keep all nested objects. TODO: don't keep them except
-        // - sources selected on their own in a shape
-        // - filter the keys of other sources to only what's required
+        // - collections selected on their own in a shape
+        // - filter the keys of other collections to only what's required
         for (let key in intermediate) {
           if (typeof intermediate[key] === 'object') {
             filtered[key] = intermediate[key];
@@ -275,18 +278,18 @@ export default class Native extends DataSource<any, any> {
 
   async resolveShape(
     shape: DelegatedField[] | DelegatedField[][],
-    source: AnyObj[] | AnyObj | undefined,
+    collection: AnyObj[] | AnyObj | undefined,
     results: any[],
     params: any[]
   ): Promise<AnyObj | AnyObj[]> {
     if (Array.isArray(shape[0])) {
       const multi = [];
       for (const subShape of shape as DelegatedField[][]) {
-        multi.push(await this.resolveShape(subShape, source, results, params));
+        multi.push(await this.resolveShape(subShape, collection, results, params));
       }
       return multi;
     }
-    if (!source) {
+    if (!collection) {
       const shaped: AnyObj = {};
       for (let field of shape as DelegatedField[]) {
         if (isDataReference(field)) continue;
@@ -314,14 +317,14 @@ export default class Native extends DataSource<any, any> {
       }
       return shaped;
     };
-    if (Array.isArray(source)) {
+    if (Array.isArray(collection)) {
       const out: AnyObj[] = [];
-      for (let item of source) {
+      for (let item of collection) {
         out.push(await reShape(item));
       }
       return out;
     } else {
-      return await reShape(source);
+      return await reShape(collection);
     }
   }
 
@@ -348,7 +351,7 @@ export default class Native extends DataSource<any, any> {
         if (key in value) value = value[key];
       }
       return [field.alias || field.name, value[field.name]];
-    } else if (field.type === 'source') {
+    } else if (isCollection(field)) {
       // TODO: review this section
       let data;
       if (
@@ -381,7 +384,7 @@ export default class Native extends DataSource<any, any> {
       ) {
         data = data[field.value.from?.name];
       }
-      let source = await this.resolveSources(
+      let collection = await this.resolveCollections(
         field,
         { ...item, ...data },
         results,
@@ -389,21 +392,21 @@ export default class Native extends DataSource<any, any> {
         false
       );
 
-      // fields of type source need to have a
+      // fields of type collection need to have a
       // definitive output shape
       if (!field.shape) {
-        source = await this.resolveShape(
+        collection = await this.resolveShape(
           field.availableFields,
-          source,
+          collection,
           results,
           params
         );
       }
       return [
         key,
-        source,
+        collection,
       ];
-    } else if (field.type === 'param') {
+    } else if (isParam(field)) {
       return [field.alias || field.name || '', params[field.index - 1]];
     } else if (field.type === 'exprtree') {
       const op = this.operators.get(field.op);
@@ -419,8 +422,8 @@ export default class Native extends DataSource<any, any> {
         args.push(resolved);
       }
       return [field.alias || '', op(...args)];
-    } else if (field.type === 'datamodel') {
-      const [key, out] = await this.resolveSource(field, item, results, params);
+    } else if (isDataModel(field)) {
+      const [key, out] = await this.resolveCollection(field, item, results, params);
       return [
         key,
         out.map((obj: AnyObj) => {
@@ -448,9 +451,9 @@ export default class Native extends DataSource<any, any> {
   }
 
   async resolveDest(
-    dest: DelegatedSource,
+    dest: DelegatedCollection,
     modifier: string | undefined,
-    source: AnyObj | AnyObj[] | undefined,
+    sourceCollection: AnyObj | AnyObj[] | undefined,
     data: any,
     results: any[],
     params: any[]
@@ -459,18 +462,18 @@ export default class Native extends DataSource<any, any> {
       if (Array.isArray(dest.value) || dest.value.type !== 'datamodel') {
         throw new Error('Not supported');
       }
-      if (source === undefined) {
+      if (sourceCollection === undefined) {
         throw new Error('Cannot insert undefined');
       }
       this.data[dest.value.name].push(
-        ...(Array.isArray(source) ? source : [source]).map((item) => ({
+        ...(Array.isArray(sourceCollection) ? sourceCollection : [sourceCollection]).map((item) => ({
           ...item,
           _id: uuid(),
         }))
       );
       return await this.applyTransformsAndShape(
         dest,
-        source,
+        sourceCollection,
         results,
         params,
         false
@@ -483,8 +486,8 @@ export default class Native extends DataSource<any, any> {
         params
       );
 
-      if (source !== undefined) {
-        const sourceArr = Array.isArray(source) ? source : [source];
+      if (sourceCollection !== undefined) {
+        const sourceArr = Array.isArray(sourceCollection) ? sourceCollection : [sourceCollection];
         if (Array.isArray(intermediate)) {
           const out = [];
           for (let item of intermediate) {
@@ -530,9 +533,9 @@ export default class Native extends DataSource<any, any> {
         false
       );
     } else if (modifier === '->') {
-      if (Array.isArray(source) || !source) {
+      if (Array.isArray(sourceCollection) || !sourceCollection) {
         throw new Error(
-          'Collection or absent sources are not yet supported for updates'
+          'Collection or absent collections are not yet supported for updates'
         );
       }
       const intermediate = await this.resolveIntermediate(
@@ -554,7 +557,7 @@ export default class Native extends DataSource<any, any> {
         throw new Error('Unsupported destination model');
       }
       const arrToUpdate = Array.isArray(toUpdate) ? toUpdate : [toUpdate];
-      arrToUpdate.forEach((item: AnyObj) => Object.assign(item, source));
+      arrToUpdate.forEach((item: AnyObj) => Object.assign(item, sourceCollection));
       // TODO: do this comparison for hidden internal UUIDs for native
       this.data[dest.name].forEach((item: AnyObj) => {
         const matching = arrToUpdate.find(
@@ -578,20 +581,20 @@ export default class Native extends DataSource<any, any> {
   }
 
   async resolve(
-    ast: DelegatedQuery | DelegatedSource,
+    ast: DelegatedQuery | DelegatedCollection,
     data: AnyObj[] | null,
     results: AnyObj[][],
     params: any[]
   ) {
     if (ast.type === 'query') {
-      let source: AnyObj | AnyObj[] | undefined,
+      let collection: AnyObj | AnyObj[] | undefined,
         dest: AnyObj | AnyObj[] | undefined;
-      if (ast.source) {
-        if (ast.source.type === 'delegatedQueryResult')
-          source = results[ast.source.index];
+      if (ast.sourceCollection) {
+        if (ast.sourceCollection.type === 'delegatedQueryResult')
+          collection = results[ast.sourceCollection.index];
         else {
-          source = await this.resolveSources(
-            ast.source,
+          collection = await this.resolveCollections(
+            ast.sourceCollection,
             data,
             results,
             params,
@@ -599,10 +602,10 @@ export default class Native extends DataSource<any, any> {
           );
           // when queries without a top-level shape
           // only return whitelisted fields
-          if (!ast.source.shape) {
-            source = await this.resolveShape(
-              ast.source.availableFields,
-              source,
+          if (!ast.sourceCollection.shape) {
+            collection = await this.resolveShape(
+              ast.sourceCollection.availableFields,
+              collection,
               results,
               params
             );
@@ -616,26 +619,26 @@ export default class Native extends DataSource<any, any> {
         dest = await this.resolveDest(
           ast.dest,
           ast.modifier,
-          source,
+          collection,
           data,
           results,
           params
         );
       }
-      return dest || source || [];
-    } else if (ast.type === 'source') {
-      let source = await this.resolveSources(ast, data, results, params, false);
+      return dest || collection || [];
+    } else if (ast.type === 'collection') {
+      let collection = await this.resolveCollections(ast, data, results, params, false);
       // only return whitelisted fields from delegated
       // queries. Perhaps this should be requiredFields?
       if (!ast.shape) {
-        source = await this.resolveShape(
+        collection = await this.resolveShape(
           ast.availableFields,
-          source,
+          collection,
           results,
           params
         );
       }
-      return source;
+      return collection;
     } else throw new Error('Not implemented yet');
   }
 }

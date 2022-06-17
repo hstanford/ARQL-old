@@ -42,11 +42,11 @@ const expressionToQuery = (
 };
 
 function toQuery(
-  item: Source<any, any> | Model<any> | Field | Expression,
+  item: Collection<any, any> | Model<any> | Field | Expression,
   params: any[] = []
 ): [string, any[]] {
   if (isIntermediate(item)) {
-    return sourceToQuery(item, params);
+    return collectionToQuery(item, params);
   } else if (isModel(item)) {
     return [item._name, []];
   } else if (isField(item)) {
@@ -85,29 +85,29 @@ interface Transform<T extends string = string> {
 
 type FieldMap<T> = { [k in keyof T]: Field };
 
-export type Source<Transforms extends string, ModelType> = FieldMap<ModelType> &
+export type Collection<Transforms extends string, ModelType> = FieldMap<ModelType> &
   Intermediate<Transforms, ModelType> & {
-    [key in Transforms]: (...args: any[]) => Source<Transforms, ModelType>;
+    [key in Transforms]: (...args: any[]) => Collection<Transforms, ModelType>;
   } & {
     toQuery: (params?: any[]) => [string, any[]];
-    shape: (s: any[] | Record<string, any>) => Source<Transforms, ModelType>;
+    shape: (s: any[] | Record<string, any>) => Collection<Transforms, ModelType>;
   };
 
 export type Intermediate<Transforms extends string, ModelType> = {
-  _sources: (Model<ModelType> | Source<Transforms, ModelType>)[];
+  _collections: (Model<ModelType> | Collection<Transforms, ModelType>)[];
   _transforms: { name: Transforms; args: any[] }[];
   _shape: Map<string, any> | undefined;
 };
 function isIntermediate(item: any): item is Intermediate<any, any> {
-  return !!item._sources;
+  return !!item._collections;
 }
 
 function cloneIntermediate<T extends string, U>(
-  intermediate: Source<T, U>,
+  intermediate: Collection<T, U>,
   availableTransforms: T[]
 ) {
   const out = initialiseIntermediate(
-    intermediate._sources,
+    intermediate._collections,
     [...intermediate._transforms],
     intermediate._shape,
     availableTransforms
@@ -118,23 +118,23 @@ function cloneIntermediate<T extends string, U>(
 }
 
 function initialiseIntermediate<Transforms extends string, ModelType>(
-  sources: (Model<ModelType> | Source<Transforms, ModelType>)[] = [],
+  collections: (Model<ModelType> | Collection<Transforms, ModelType>)[] = [],
   transforms: { name: Transforms; args: any[] }[] = [],
   shape: Map<string, any> | undefined = undefined,
   availableTransforms: Transforms[] = []
-): Source<Transforms, ModelType> {
+): Collection<Transforms, ModelType> {
   const intermediate: Intermediate<Transforms, ModelType> = {
-    _sources: sources,
+    _collections: collections,
     _transforms: transforms,
     _shape: shape,
   };
-  const source: Model<ModelType> | Source<Transforms, ModelType> | undefined =
-    sources[0];
+  const collection: Model<ModelType> | Collection<Transforms, ModelType> | undefined =
+    collections[0];
   const fields: FieldMap<ModelType> = (
-    source
-      ? Object.keys(source).reduce(
+    collection
+      ? Object.keys(collection).reduce(
           (acc, key) =>
-            key[0] !== '_' ? { ...acc, [key]: (source as any)[key] } : acc,
+            key[0] !== '_' ? { ...acc, [key]: (collection as any)[key] } : acc,
           {}
         )
       : {}
@@ -153,25 +153,25 @@ function initialiseIntermediate<Transforms extends string, ModelType>(
     };
   }, {});
 
-  return out as Source<Transforms, ModelType>;
+  return out as Collection<Transforms, ModelType>;
 }
 
 function applyTransform<T extends string, U>(
-  intermediate: Source<T, U>,
+  intermediate: Collection<T, U>,
   transform: Transform<T>,
   availableTransforms: T[]
-): Source<T, U> {
+): Collection<T, U> {
   const out = cloneIntermediate(intermediate, availableTransforms);
   out._transforms.push(transform);
   return out;
 }
 
 function applyShape<T extends string, U>(
-  intermediate: Source<T, U>,
+  intermediate: Collection<T, U>,
   availableTransforms: T[],
   s: any[] | Record<string, any>,
 ) {
-  const out: Source<T, U> = cloneIntermediate(
+  const out: Collection<T, U> = cloneIntermediate(
     intermediate,
     availableTransforms
   );
@@ -188,21 +188,21 @@ function applyShape<T extends string, U>(
   return out;
 }
 
-function sourceToQuery(
-  intermediate: Source<any, any>,
+function collectionToQuery(
+  intermediate: Collection<any, any>,
   params: any[]
 ): [string, any[]] {
   let out = '';
-  const sources: string[] = [];
-  for (const source of intermediate._sources) {
-    const [str, newParams] = toQuery(source, params);
+  const collections: string[] = [];
+  for (const collection of intermediate._collections) {
+    const [str, newParams] = toQuery(collection, params);
     params = newParams;
-    sources.push(str);
+    collections.push(str);
   }
-  if (sources.length > 1) {
-    out += '(' + sources.join(', ') + ')';
-  } else if (sources.length === 1) {
-    out += sources[0];
+  if (collections.length > 1) {
+    out += '(' + collections.join(', ') + ')';
+  } else if (collections.length === 1) {
+    out += collections[0];
   }
 
   for (const transform of intermediate._transforms) {
@@ -252,9 +252,9 @@ export function transformModel<
 
 // TODO: type overrides
 export function multi<T, U, Transforms extends string>(
-  args: [Source<Transforms, T>, Source<Transforms, U>],
+  args: [Collection<Transforms, T>, Collection<Transforms, U>],
   transforms: Transforms[]
-): Source<Transforms, {}> {
+): Collection<Transforms, {}> {
   return initialiseIntermediate<Transforms, {}>(
     args,
     [],

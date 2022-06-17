@@ -2,7 +2,7 @@ import {
   Models,
   ModelsTypes,
 } from './models'
-import { transformModel, Source, multi } from './index';
+import { transformModel, Collection, multi } from './index';
 import { transforms } from '@arql/stdlib-general';
 
 type ArrayElement<ArrayType extends readonly unknown[]> = 
@@ -10,7 +10,7 @@ type ArrayElement<ArrayType extends readonly unknown[]> =
 
 type Transforms = ArrayElement<typeof transforms>['name'];
 
-type TransformMethod<T> = (...args: any[]) => Source<Transforms, T>;
+type TransformMethod<T> = (...args: any[]) => Collection<Transforms, T>;
 
 export type SourceClassMethods<ModelType> = {
   [key in Transforms]: TransformMethod<ModelType>;

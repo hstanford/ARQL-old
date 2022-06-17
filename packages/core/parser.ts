@@ -24,7 +24,6 @@ import {
   sequenceOf,
   Parser,
   sepBy,
-  Ok,
 } from 'arcsecond';
 
 import type {
@@ -39,7 +38,7 @@ import type {
   Expr,
   ExprTree,
   Shape,
-  Source,
+  Collection,
   Transform,
   Dest,
   Field,
@@ -71,7 +70,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     parts: parts[2],
   }));
 
-  // change the name used for field or source down the data pipeline
+  // change the name used for field or collection down the data pipeline
   // by using ":" e.g. "u: users" allows "users" to be referred to as
   // "u" later on
   const alias: Parser<string, string, any> = sequenceOf([
@@ -108,7 +107,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     choice([char('>'), char('+'), char('x')]),
   ]).map((parts) => parts.join('') as Modifier);
 
-  // an expression is a series of parameters, fields, or sources transformed
+  // an expression is a series of parameters, fields, or collections transformed
   // in some way by operators and functions. Parentheses group sections of the
   // expression and can be used to subvert or clarify operator precedence.
   const exprNoOp: Parser<SubExpr, string, any> = recursiveParser(function () {
@@ -122,7 +121,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
       ]).map((parts) => parts[2]),
       param,
       alphachain,
-      source, // TODO: this will get messed up by alphachain: fix
+      collection, // TODO: this will get messed up by alphachain: fix
     ]);
   });
 
@@ -192,7 +191,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
   });
 
   const expr: Parser<Expr, string, any> = recursiveParser(() =>
-    choice([sourceWithTransforms, sourceWithShape, exprOp, exprNoOp])
+    choice([collectionWithTransforms, collectionWithShape, exprOp, exprNoOp])
   );
 
   // a comma-separated list of expressions form function arguments
@@ -212,14 +211,14 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     ]).map((parts) => [parts[0], ...parts[2]].filter((p) => p !== null))
   );
 
-  // transforms are functions applied to sources. Examples include filters,
+  // transforms are functions applied to collections. Examples include filters,
   // sorts, limits/offsets, joins, unions, and aggregate functions.
   // They are invoked like functions, e.g. filter(users.id = orders.userId)
-  const transformArg: Parser<Expr | Shape | Source> = recursiveParser(() =>
-    choice([shape, expr, source])
+  const transformArg: Parser<Expr | Shape | Collection> = recursiveParser(() =>
+    choice([shape, expr, collection])
   );
 
-  const transformArgs: Parser<(Expr | Shape | Source)[] | null> = possibly(
+  const transformArgs: Parser<(Expr | Shape | Collection)[] | null> = possibly(
     sequenceOf([
       transformArg,
       optionalWhitespace,
@@ -262,7 +261,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     ]).map((parts) => parts[2])
   );
 
-  // transforms are applied to a data source using a vertical bar, conceptually
+  // transforms are applied to a collection using a vertical bar, conceptually
   // similar to the "pipe" in unix.
   const transforms: Parser<Transform[], string, any> = many1(
     sequenceOf([
@@ -273,19 +272,19 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     ]).map((parts) => parts[2])
   );
 
-  // a source corresponds to another source or data model providing
+  // a collection corresponds to another collection or data model providing
   // the incoming data, 0 or more transforms, and then finally an
   // optional "shape"
-  const source: Parser<Source, string, any> = recursiveParser(() =>
+  const collection: Parser<Collection, string, any> = recursiveParser(() =>
     sequenceOf([
       possibly(alias),
       optionalWhitespace,
-      choice([sourcelist, alphachain]),
+      choice([collectionlist, alphachain]),
       optionalWhitespace,
       possiblyTransforms,
       possibly(shape),
     ]).map((parts) => ({
-      type: 'source',
+      type: 'collection',
       alias:
         parts[0] ||
         (typeof parts[2] === 'string' && parts[2]) ||
@@ -299,17 +298,17 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     }))
   );
 
-  const sourceWithTransforms: Parser<Source, string, any> = recursiveParser(
+  const collectionWithTransforms: Parser<Collection, string, any> = recursiveParser(
     () =>
       sequenceOf([
         possibly(alias),
         optionalWhitespace,
-        choice([sourcelist, alphachain]),
+        choice([collectionlist, alphachain]),
         optionalWhitespace,
         transforms,
         possibly(shape),
       ]).map((parts) => ({
-        type: 'source',
+        type: 'collection',
         alias:
           parts[0] ||
           (typeof parts[2] === 'string' && parts[2]) ||
@@ -323,16 +322,16 @@ export default function buildParser(opResolver = (expr: any) => expr) {
       }))
   );
 
-  const sourceWithShape: Parser<Source, string, any> = recursiveParser(() =>
+  const collectionWithShape: Parser<Collection, string, any> = recursiveParser(() =>
     sequenceOf([
       possibly(alias),
       optionalWhitespace,
-      possibly(choice([sourcelist, alphachain])),
+      possibly(choice([collectionlist, alphachain])),
       optionalWhitespace,
       possiblyTransforms,
       choice([shape, multiShape]),
     ]).map((parts) => ({
-      type: 'source',
+      type: 'collection',
       alias:
         parts[0] ||
         (typeof parts[2] === 'string' && parts[2]) ||
@@ -346,19 +345,19 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     }))
   );
 
-  // when you want to combine data from different sources, you can collect
-  // them in parentheses as a sourcelist before applying a transform to combine
+  // when you want to combine data from different collections, you can collect
+  // them in parentheses as a collectionlist before applying a transform to combine
   // e.g. ( users, orders ) | join(users.id = orders.userId)
-  const sourcelist: Parser<Source | Source[], string, any> = sequenceOf([
+  const collectionlist: Parser<Collection | Collection[], string, any> = sequenceOf([
     char('('),
     optionalWhitespace,
-    source,
+    collection,
     optionalWhitespace,
     many(
       sequenceOf([
         char(','),
         optionalWhitespace,
-        source,
+        collection,
         optionalWhitespace,
       ]).map((parts) => parts[2])
     ),
@@ -397,7 +396,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     type: 'field',
     alias:
       parts[0] ||
-      (parts[2].type === 'source' && parts[2].alias) ||
+      (parts[2].type === 'collection' && parts[2].alias) ||
       (parts[2].type === 'alphachain' &&
         [parts[2].root, ...parts[2].parts].pop()) ||
       null,
@@ -435,7 +434,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
   ]).map((parts) => parts[1].filter((i) => !!i) as (Field | Wildcard)[]);
 
   // the shape is effectively a very powerful transform function. You specify the
-  // structure of the data you want out of the source in json-like syntax. If you
+  // structure of the data you want out of the collection in json-like syntax. If you
   // want graphical data access you can use the shape for this e.g.
   // users {                                                 [{
   //   userId: users.id,                                ->     "userId": 1,
@@ -467,7 +466,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
   // the query parser is used to parse all forms of queries
   const query: Parser<Query, string, any> = sequenceOf([
     optionalWhitespace,
-    possibly(choice([source, sourceWithShape])),
+    possibly(choice([collection, collectionWithShape])),
     optionalWhitespace,
     possibly(
       sequenceOf([modifier, optionalWhitespace, dest]).map((parts) => ({
@@ -478,7 +477,7 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     optionalWhitespace,
   ]).map((parts) => ({
     type: 'query',
-    source: parts[1],
+    sourceCollection: parts[1],
     modifier: parts[3]?.modifier,
     dest: parts[3]?.dest,
   }));
@@ -501,10 +500,10 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     transformArgs,
     transform,
     transforms,
-    source,
-    sourceWithTransforms,
-    sourceWithShape,
-    sourcelist,
+    collection,
+    collectionWithTransforms,
+    collectionWithShape,
+    collectionlist,
     dest,
     field,
     fieldList,

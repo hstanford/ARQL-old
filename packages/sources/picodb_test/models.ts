@@ -2,8 +2,7 @@
  * A models/data setup for tests, using multiple
  * native data sources.
  */
-import { Native, DataModel, DataField } from '@arql/core';
-import { v4 as uuid } from 'uuid';
+import { DataModel, DataField } from '@arql/core';
 import picoConfigurer from '@arql/stdlib-picodb';
 import Pico from '@arql/source-picodb';
 
@@ -11,8 +10,6 @@ import PicoDb from 'picodb';
 
 export const mainDb = new Pico({
   db: (PicoDb as any)(),
-  operators: new Map(),
-  transforms: new Map(),
 });
 picoConfigurer(mainDb);
 

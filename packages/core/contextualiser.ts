@@ -8,7 +8,7 @@
  */
 
 /* TODO:
-- Fields of type source should remove required fields that are available in that source
+- Fields of type collection should remove required fields that are available in that collection
 */
 
 import {
@@ -18,8 +18,8 @@ import {
   ContextualisedFunction,
   ContextualisedParam,
   ContextualisedQuery,
-  ContextualisedSource,
-  ContextualisedSourceValue,
+  ContextualisedCollection,
+  ContextualisedCollectionValue,
   ContextualisedTransform,
   ContextualiserState,
   DataField,
@@ -38,12 +38,12 @@ import {
   isMultiShape,
   isParam,
   isShape,
-  isSource,
+  isCollection,
   isTransform,
   isWildcard,
   Query,
   Shape,
-  Source,
+  Collection,
   Transform,
   TransformDef,
 } from './types.js';
@@ -52,13 +52,13 @@ import type { ARQLParser } from './parser';
 
 import { combine } from './sources.js';
 
-import { uniq, uniqBy, getAlias, getSourceName } from './util.js';
+import { uniq, uniqBy, getAlias, getCollectionName } from './util.js';
 
 function combineFields(subFields: ContextualisedField[]) {
   const fields = [];
   for (const subField of subFields) {
-    if (isSource(subField)) {
-      // a source requires all the data that it mentions
+    if (isCollection(subField)) {
+      // a collection requires all the data that it mentions
       // but can't provide itself
       fields.push(...subField.requiredFields);
     } else if (isDataField(subField)) {
@@ -93,12 +93,12 @@ function combineFields(subFields: ContextualisedField[]) {
 
 function shapeToAvailableFields(
   shape: ContextualisedField[] | ContextualisedField[][],
-  source: ContextualisedSourceValue
+  collection: ContextualisedCollectionValue
 ): DataField[] {
   if (isMultiShape(shape)) {
     const fields: DataField[] = [];
     for (const f of shape) {
-      fields.push(...shapeToAvailableFields(f, source));
+      fields.push(...shapeToAvailableFields(f, collection));
     }
     return uniq(fields);
   }
@@ -106,52 +106,52 @@ function shapeToAvailableFields(
     (f) =>
       ({
         type: 'datafield',
-        from: source,
+        from: collection,
         name: f.alias,
         source: getSourcesFromContextualisedField(f),
       } as DataField)
   );
 }
 
-function getAvailableFieldsFromSource(
-  source: ContextualisedSourceValue
+function getAvailableFieldsFromCollection(
+  collectionValue: ContextualisedCollectionValue
 ): ContextualisedField[] {
   let fields = [];
-  if (isSource(source)) {
-    fields = source.availableFields;
-    if (source.shape) {
-      fields = shapeToAvailableFields(source.shape, source);
+  if (isCollection(collectionValue)) {
+    fields = collectionValue.availableFields;
+    if (collectionValue.shape) {
+      fields = shapeToAvailableFields(collectionValue.shape, collectionValue);
     }
-  } else if (isDataModel(source)) {
-    fields = source.fields.filter(isDataField);
+  } else if (isDataModel(collectionValue)) {
+    fields = collectionValue.fields.filter(isDataField);
   } else {
     throw new Error(
-      `Unsupported source type ${source.type} for extracting fields`
+      `Unsupported collectionValue type ${collectionValue.type} for extracting fields`
     );
   }
   return fields;
 }
 
-function getSubmodels(source: ContextualisedSourceValue) {
-  let subModels: ContextualisedSourceValue[] = [];
-  if (isSource(source)) {
-    subModels = source.subModels || [];
-  } else if (isDataModel(source)) {
-    return [source];
+function getSubmodels(collectionValue: ContextualisedCollectionValue) {
+  let subModels: ContextualisedCollectionValue[] = [];
+  if (isCollection(collectionValue)) {
+    subModels = collectionValue.subModels || [];
+  } else if (isDataModel(collectionValue)) {
+    return [collectionValue];
   } else {
     throw new Error(
-      `Unsupported source type ${source.type} for extracting subModels`
+      `Unsupported collectionValue type ${collectionValue.type} for extracting subModels`
     );
   }
   return subModels;
 }
 
-function getSourcesFromSourceValue(source: ContextualisedSourceValue) {
-  const firstField = isSource(source)
-    ? source?.availableFields?.[0]
-    : source?.fields?.[0];
-  if (isSource(source)) {
-    return source.sources;
+function getSourcesFromCollectionValue(collectionValue: ContextualisedCollectionValue) {
+  const firstField = isCollection(collectionValue)
+    ? collectionValue?.availableFields?.[0]
+    : collectionValue?.fields?.[0];
+  if (isCollection(collectionValue)) {
+    return collectionValue.sources;
   } else if (isDataField(firstField)) {
     return getSourcesFromDataField(firstField);
   } else {
@@ -171,7 +171,7 @@ function getSourcesFromContextualisedField(field: ContextualisedField) {
   if (isDataField(field)) {
     return getSourcesFromDataField(field);
   } else if (isDataModel(field)) {
-    return getSourcesFromSourceValue(field);
+    return getSourcesFromCollectionValue(field);
   } else if (isParam(field)) {
     return [];
   } else if (isDataReference(field)) {
@@ -183,32 +183,32 @@ function getSourcesFromContextualisedField(field: ContextualisedField) {
 }
 
 function aggregateQuerySources(query: ContextualisedQuery) {
-  return uniq(query?.source?.sources || []).concat(query?.dest?.sources || []);
+  return uniq(query?.sourceCollection?.sources || []).concat(query?.dest?.sources || []);
 }
 
 function applyRequiredFields(
-  source: ContextualisedSource,
+  collection: ContextualisedCollection,
   requiredFields: ContextualisedField[]
 ) {
   let required = requiredFields;
-  if (source.transform) {
-    required = required.concat(source.transform.requiredFields);
+  if (collection.transform) {
+    required = required.concat(collection.transform.requiredFields);
   }
-  source.requiredFields = uniq([...source.requiredFields, ...requiredFields]);
-  if (Array.isArray(source.value)) {
+  collection.requiredFields = uniq([...collection.requiredFields, ...requiredFields]);
+  if (Array.isArray(collection.value)) {
     // divide required fields by source
-    for (let subSource of source.value) {
-      if (!isSource(subSource)) return;
+    for (let collectionValue of collection.value) {
+      if (!isCollection(collectionValue)) return;
       const subFields = [];
       for (let field of requiredFields) {
-        if (isDataField(field) && field.from === subSource) {
+        if (isDataField(field) && field.from === collectionValue) {
           subFields.push(field);
         }
       }
-      applyRequiredFields(subSource, subFields);
+      applyRequiredFields(collectionValue, subFields);
     }
-  } else if (isSource(source.value)) {
-    applyRequiredFields(source.value, source.requiredFields);
+  } else if (isCollection(collection.value)) {
+    applyRequiredFields(collection.value, collection.requiredFields);
   }
 }
 
@@ -235,12 +235,12 @@ export class Contextualiser {
     const context: ContextualiserState = {
       aliases: new Map(),
     };
-    if (ast.source) {
-      contextualisedQuery.source = this.handleSource(ast.source, context);
-      const source = contextualisedQuery.source;
+    if (ast.sourceCollection) {
+      contextualisedQuery.sourceCollection = this.handleCollection(ast.sourceCollection, context);
+      const collection = contextualisedQuery.sourceCollection;
       // implicit wildcard
-      if (!source.requiredFields.length && source.availableFields.length) {
-        applyRequiredFields(source, combineFields(source.availableFields));
+      if (!collection.requiredFields.length && collection.availableFields.length) {
+        applyRequiredFields(collection, combineFields(collection.availableFields));
       }
     }
     if (ast.dest) {
@@ -250,34 +250,34 @@ export class Contextualiser {
     return contextualisedQuery;
   }
 
-  aggregateSources(contSource: ContextualisedSource) {
-    if (Array.isArray(contSource.value)) {
-      contSource.availableFields = [];
-      contSource.subModels = [];
-      for (let source of contSource.value) {
-        contSource.availableFields.push(
-          ...getAvailableFieldsFromSource(source)
+  aggregateCollections(collection: ContextualisedCollection) {
+    if (Array.isArray(collection.value)) {
+      collection.availableFields = [];
+      collection.subModels = [];
+      for (let source of collection.value) {
+        collection.availableFields.push(
+          ...getAvailableFieldsFromCollection(source)
         );
-        contSource.subModels.push(...getSubmodels(source));
+        collection.subModels.push(...getSubmodels(source));
       }
-      contSource.availableFields = uniqBy(contSource.availableFields, 'name');
-      contSource.subModels = uniqBy(contSource.subModels, 'name');
+      collection.availableFields = uniqBy(collection.availableFields, 'name');
+      collection.subModels = uniqBy(collection.subModels, 'name');
     } else {
-      contSource.availableFields = getAvailableFieldsFromSource(
-        contSource.value
+      collection.availableFields = getAvailableFieldsFromCollection(
+        collection.value
       );
-      contSource.subModels = getSubmodels(contSource.value);
+      collection.subModels = getSubmodels(collection.value);
     }
-    contSource.name = getSourceName(contSource);
-    contSource.sources = uniq(combine(contSource.subModels || []));
+    collection.name = getCollectionName(collection);
+    collection.sources = uniq(combine(collection.subModels || []));
   }
 
-  transformSource(
-    source: ContextualisedSource,
+  transformCollection(
+    collection: ContextualisedCollection,
     transform: Transform,
     context: ContextualiserState
-  ): ContextualisedSource {
-    const outTransform = this.getTransform(transform, source, context);
+  ): ContextualisedCollection {
+    const outTransform = this.getTransform(transform, collection, context);
     const outShape = outTransform.args
       .reverse()
       .find(function (arg): arg is ContextualisedField[] {
@@ -286,41 +286,41 @@ export class Contextualiser {
     if (outShape) {
       outTransform.args = outTransform.args.filter((arg) => arg !== outShape);
     }
-    const outSource: ContextualisedSource = {
-      type: 'source',
+    const outCollection: ContextualisedCollection = {
+      type: 'collection',
       transform: outTransform,
       value:
-        Array.isArray(source.value) && !source.transform
-          ? source.value
-          : source,
-      availableFields: source.availableFields,
+        Array.isArray(collection.value) && !collection.transform
+          ? collection.value
+          : collection,
+      availableFields: collection.availableFields,
       requiredFields: [],
-      name: getAlias(source.alias || source.name),
-      subModels: source.subModels,
-      sources: uniq(source.sources.concat(outTransform.sources)),
+      name: getAlias(collection.alias || collection.name),
+      subModels: collection.subModels,
+      sources: uniq(collection.sources.concat(outTransform.sources)),
       shape: outShape,
     };
     if (outShape) {
-      return this.applySourceShape(outSource, outShape, context);
+      return this.applySourceShape(outCollection, outShape, context);
     } else {
-      return outSource;
+      return outCollection;
     }
   }
 
   shapeSource(
-    source: ContextualisedSource,
+    source: ContextualisedCollection,
     shape: Shape | Shape[],
     context: ContextualiserState
-  ): ContextualisedSource {
+  ): ContextualisedCollection {
     const outShape = this.getShape(shape, source, context);
     return this.applySourceShape(source, outShape, context);
   }
 
   applySourceShape(
-    source: ContextualisedSource,
+    collection: ContextualisedCollection,
     shape: ContextualisedField[] | ContextualisedField[][],
     context: ContextualiserState
-  ): ContextualisedSource {
+  ): ContextualisedCollection {
     const sources = isMultiShape(shape) ? shape.map(combine) : [combine(shape)];
     const requiredFields = isMultiShape(shape)
       ? combineFields(
@@ -331,14 +331,14 @@ export class Contextualiser {
         )
       : combineFields(shape);
 
-    const out: ContextualisedSource = {
-      type: 'source',
-      value: Array.isArray(source.value) && !source.value.length ? [] : source,
+    const out: ContextualisedCollection = {
+      type: 'collection',
+      value: Array.isArray(collection.value) && !collection.value.length ? [] : collection,
       availableFields: [],
       requiredFields: [],
-      name: getAlias(source.alias || source.name),
-      subModels: source.subModels,
-      sources: uniq(source.sources.concat(...sources)),
+      name: getAlias(collection.alias || collection.name),
+      subModels: collection.subModels,
+      sources: uniq(collection.sources.concat(...sources)),
       shape,
     };
     out.availableFields = shapeToAvailableFields(shape, out);
@@ -346,60 +346,60 @@ export class Contextualiser {
     return out;
   }
 
-  handleSource(source: Source, context: ContextualiserState) {
-    const contextualisedSource: ContextualisedSource = {
-      type: 'source',
+  handleCollection(collection: Collection, context: ContextualiserState) {
+    const ContextualisedCollection: ContextualisedCollection = {
+      type: 'collection',
       availableFields: [],
       requiredFields: [],
       value: [],
       sources: [],
     };
-    if (Array.isArray(source.value)) {
-      contextualisedSource.value = source.value.map((s) =>
-        this.handleSource(s, context)
+    if (Array.isArray(collection.value)) {
+      ContextualisedCollection.value = collection.value.map((s) =>
+        this.handleCollection(s, context)
       );
-      this.aggregateSources(contextualisedSource);
-    } else if (isSource(source.value)) {
-      contextualisedSource.value = this.handleSource(source.value, context);
-      this.aggregateSources(contextualisedSource);
-    } else if (isAlphachain(source.value)) {
-      const model = this.getModel(source.value, context);
+      this.aggregateCollections(ContextualisedCollection);
+    } else if (isCollection(collection.value)) {
+      ContextualisedCollection.value = this.handleCollection(collection.value, context);
+      this.aggregateCollections(ContextualisedCollection);
+    } else if (isAlphachain(collection.value)) {
+      const model = this.getModel(collection.value, context);
 
-      contextualisedSource.value = model;
-      contextualisedSource.subModels = [model];
-      const availableFields = isSource(model)
+      ContextualisedCollection.value = model;
+      ContextualisedCollection.subModels = [model];
+      const availableFields = isCollection(model)
         ? model.availableFields
         : model.fields;
       if (availableFields)
-        contextualisedSource.availableFields = availableFields; // need contextualising?
+        ContextualisedCollection.availableFields = availableFields; // need contextualising?
       // TODO: fix this hack by passing required fields back down
       const firstField = availableFields?.[0];
-      contextualisedSource.sources = getSourcesFromSourceValue(model);
+      ContextualisedCollection.sources = getSourcesFromCollectionValue(model);
       // TODO: sources independent from shape if inner join?
     }
 
     if (
-      !Array.isArray(contextualisedSource.value) &&
-      isDataField(contextualisedSource.value)
+      !Array.isArray(ContextualisedCollection.value) &&
+      isDataField(ContextualisedCollection.value)
     ) {
-      contextualisedSource.sources.push(
-        ...getSourcesFromSourceValue(contextualisedSource.value)
+      ContextualisedCollection.sources.push(
+        ...getSourcesFromCollectionValue(ContextualisedCollection.value)
       );
     }
 
-    contextualisedSource.name = getSourceName(contextualisedSource);
+    ContextualisedCollection.name = getCollectionName(ContextualisedCollection);
 
-    if (source.alias) {
-      context.aliases.set(source.alias, contextualisedSource);
-      contextualisedSource.alias = source.alias;
-    } else if (contextualisedSource.name) {
-      context.aliases.set(contextualisedSource.name, contextualisedSource);
+    if (collection.alias) {
+      context.aliases.set(collection.alias, ContextualisedCollection);
+      ContextualisedCollection.alias = collection.alias;
+    } else if (ContextualisedCollection.name) {
+      context.aliases.set(ContextualisedCollection.name, ContextualisedCollection);
     }
 
-    let out = contextualisedSource;
-    if (source.transforms.length) {
-      for (const transform of source.transforms) {
-        out = this.transformSource(out, transform, context);
+    let out = ContextualisedCollection;
+    if (collection.transforms.length) {
+      for (const transform of collection.transforms) {
+        out = this.transformCollection(out, transform, context);
       }
     }
 
@@ -407,16 +407,16 @@ export class Contextualiser {
       if (isDataField(field)) context.aliases.set(field.name, field);
     }
 
-    if (source.shape) {
-      out = this.shapeSource(out, source.shape, context);
+    if (collection.shape) {
+      out = this.shapeSource(out, collection.shape, context);
     } else {
       // shape here can be applied by transform
       // we don't want it on the output collection
       delete out.shape;
     }
 
-    if (source.alias) {
-      context.aliases.set(source.alias, out);
+    if (collection.alias) {
+      context.aliases.set(collection.alias, out);
     }
     if (out.name) context.aliases.set(getAlias(out.name), out);
 
@@ -433,13 +433,13 @@ export class Contextualiser {
       context
     );
 
-    const availableFields = isSource(model)
+    const availableFields = isCollection(model)
       ? model.availableFields
       : model.fields;
     const firstField = availableFields?.[0];
 
-    let out: ContextualisedSource = {
-      type: 'source',
+    let out: ContextualisedCollection = {
+      type: 'collection',
       availableFields: availableFields || [],
       requiredFields: [],
       value: model,
@@ -452,7 +452,7 @@ export class Contextualiser {
 
     if (dest.transforms.length) {
       for (const transform of dest.transforms) {
-        out = this.transformSource(out, transform, context);
+        out = this.transformCollection(out, transform, context);
       }
     }
     if (dest.shape) {
@@ -469,30 +469,30 @@ export class Contextualiser {
   }
 
   getDataReference(
-    model: ContextualisedSource | DataModel,
+    model: ContextualisedCollection | DataModel,
     dataReference: DataReference,
     context: ContextualiserState
-  ): ContextualisedSource {
+  ): ContextualisedCollection {
     const name = getAlias(model.alias || model.name);
     const trfms = this.parser(
       dataReference.join(name, dataReference.other.name),
       'transforms'
     );
-    const availableFields = isSource(model)
+    const availableFields = isCollection(model)
       ? model.availableFields
       : model.fields;
-    const source: ContextualisedSource = {
-      type: 'source',
+    const collection: ContextualisedCollection = {
+      type: 'collection',
       name,
       value: model,
       availableFields,
       requiredFields: [],
-      sources: getSourcesFromSourceValue(model),
+      sources: getSourcesFromCollectionValue(model),
     };
 
     const firstOtherField = dataReference.other.fields?.[0];
-    let out: ContextualisedSource = {
-      type: 'source',
+    let out: ContextualisedCollection = {
+      type: 'collection',
       name: dataReference.other.name,
       value: dataReference.other,
       availableFields: dataReference.other.fields,
@@ -501,12 +501,12 @@ export class Contextualiser {
         (isDataField(firstOtherField)
           ? getSourcesFromDataField(firstOtherField)
           : []
-        ).concat(source.sources)
+        ).concat(collection.sources)
       ),
     };
 
     for (const trfm of trfms) {
-      out = this.transformSource(out, trfm, context);
+      out = this.transformCollection(out, trfm, context);
     }
     if (!out) {
       throw new Error('Datareference without a transform');
@@ -515,7 +515,7 @@ export class Contextualiser {
   }
 
   getModel(alphachain: Alphachain, context: ContextualiserState) {
-    let model: ContextualisedSource | DataModel | DataField | undefined;
+    let model: ContextualisedCollection | DataModel | DataField | undefined;
     if (context.aliases.has(alphachain.root)) {
       model = context.aliases.get(alphachain.root);
     } else if (this.models.has(alphachain.root)) {
@@ -530,7 +530,7 @@ export class Contextualiser {
 
     for (let part of alphachain.parts) {
       const fields: ContextualisedField[] =
-        (isSource(model) ? model.availableFields : model?.fields) || [];
+        (isCollection(model) ? model.availableFields : model?.fields) || [];
       for (let subModel of fields) {
         if (
           subModel.name === part ||
@@ -558,12 +558,12 @@ export class Contextualiser {
         throw new Error(
           `Failed to find model ${JSON.stringify(alphachain)} at part "${part}"`
         );
-      if (isDataModel(model) || isSource(model)) {
+      if (isDataModel(model) || isCollection(model)) {
         prevModel = model;
       } else {
         model = {
           ...model,
-          from: isSource(prevModel) ? prevModel : undefined,
+          from: isCollection(prevModel) ? prevModel : undefined,
         };
         prevModel = model;
       }
@@ -573,7 +573,7 @@ export class Contextualiser {
 
   getTransform(
     transform: Transform,
-    model: ContextualisedSource,
+    model: ContextualisedCollection,
     context: ContextualiserState
   ): ContextualisedTransform {
     const match = this.transforms.find(
@@ -586,7 +586,7 @@ export class Contextualiser {
       (arg): ContextualisedField | ContextualisedField[] => {
         if (isExpr(arg) || isAlphachain(arg))
           return this.getExpression(arg, model, context);
-        if (isSource(arg)) return this.handleSource(arg, context);
+        if (isCollection(arg)) return this.handleCollection(arg, context);
         if (isShape(arg)) {
           const shape = this.getShape(arg, model, context);
           if (isMultiShape(shape)) {
@@ -631,7 +631,7 @@ export class Contextualiser {
 
   getShape(
     shape: Shape | Shape[],
-    model: ContextualisedSource,
+    model: ContextualisedCollection,
     context: ContextualiserState
   ): ContextualisedField[] | ContextualisedField[][] {
     if (Array.isArray(shape)) {
@@ -652,7 +652,7 @@ export class Contextualiser {
         if (field.root) {
           if (Array.isArray(model.value)) {
             for (let val of model.value) {
-              const availableFields = isSource(val)
+              const availableFields = isCollection(val)
                 ? val.availableFields
                 : val.fields;
               if (
@@ -680,12 +680,12 @@ export class Contextualiser {
 
   getField(
     field: Field,
-    model: ContextualisedSource,
+    model: ContextualisedCollection,
     context: ContextualiserState
   ): ContextualisedField {
     let contextualisedField: ContextualisedField;
-    if (isSource(field.value)) {
-      contextualisedField = this.handleSource(field.value, context);
+    if (isCollection(field.value)) {
+      contextualisedField = this.handleCollection(field.value, context);
       // implicit wildcard
       if (
         !contextualisedField.requiredFields.length &&
@@ -709,7 +709,7 @@ export class Contextualiser {
 
   getExpression(
     expr: ExprUnary,
-    model: ContextualisedSource,
+    model: ContextualisedCollection,
     context: ContextualiserState
   ): ContextualisedField | ContextualisedExpr {
     if (isAlphachain(expr)) {
@@ -725,7 +725,7 @@ export class Contextualiser {
               isExpr(field) ? 'expr' : 'param'
             }`
           );
-        } else if (isSource(field)) {
+        } else if (isCollection(field)) {
           fields = field.availableFields;
         } else if (isDataField(field)) {
           if (!field.fields) {
@@ -749,7 +749,7 @@ export class Contextualiser {
         if (!subField) {
           throw new Error(`Can't find subfield for ${part}`);
         }
-        if (isDataField(subField) && isSource(field)) subField.from = field;
+        if (isDataField(subField) && isCollection(field)) subField.from = field;
         field = subField;
       }
       return field;
