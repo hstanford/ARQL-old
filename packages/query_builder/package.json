@@ -1,5 +1,5 @@
 {
-  "name": "arql-query-builder",
+  "name": "@arql/query-builder",
   "version": "0.0.1",
   "description": "Abstract Relational Query Language",
   "main": "dist/index.js",
@@ -24,7 +24,7 @@
     "typescript": "^4.5.5"
   },
   "dependencies": {
-    "@arql/stdlib-general": "file:../standard_libraries/general",
-    "arql": "file:../main"
+    "@arql/core": "file:../core",
+    "@arql/stdlib-general": "file:../standard_libraries/general"
   }
 }

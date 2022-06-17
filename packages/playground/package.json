@@ -1,5 +1,5 @@
 {
-  "name": "arql-playground",
+  "name": "@arql/playground",
   "version": "1.0.0",
   "description": "",
   "main": "src/index.tsx",
@@ -13,6 +13,7 @@
   "author": "Henry Stanford",
   "license": "MIT",
   "devDependencies": {
+    "@arql/core": "file:../core",
     "@arql/stdlib-general": "file:../standard_libraries/general",
     "@arql/stdlib-native": "file:../standard_libraries/native",
     "@emotion/react": "^11.8.1",
@@ -25,7 +26,6 @@
     "@types/react": "^17.0.39",
     "@types/react-dom": "^17.0.13",
     "@types/uuid": "^8.3.4",
-    "arql": "file:../main",
     "css-loader": "^6.7.1",
     "d3": "^7.4.4",
     "d3-force": "^3.0.0",

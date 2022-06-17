@@ -1,4 +1,4 @@
-import type { TransformDef } from 'arql';
+import type { TransformDef } from '@arql/core';
 
 const EXPR = Symbol.for('EXPR');
 

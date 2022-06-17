@@ -1,5 +1,4 @@
-import type { ContextualisedField, AnyObj, DataSource } from 'arql';
-import { getAlias } from 'arql';
+import { ContextualisedField, AnyObj, DataSource, getAlias } from '@arql/core';
 import { Sql } from 'sql-ts';
 //import { Knex } from 'knex';
 

@@ -7,8 +7,9 @@ import {
   DelegatedQuery,
   DelegatedSource,
   isSource,
-} from 'arql';
-import { ContextualisedExpr, DelegatedField } from 'arql/types';
+  ContextualisedExpr,
+  DelegatedField,
+} from '@arql/core';
 
 interface PicoSourceOpts extends DataSourceOpts {
   db: any;

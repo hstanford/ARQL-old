@@ -11,8 +11,8 @@
   "author": "Henry Stanford",
   "license": "ISC",
   "dependencies": {
+    "@arql/core": "file:../../core",
     "@arql/source-picodb": "file:../picodb",
-    "arql": "file:../../main",
     "picodb": "^1.0.4"
   },
   "devDependencies": {

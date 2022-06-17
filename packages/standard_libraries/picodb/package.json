@@ -15,6 +15,6 @@
   },
   "dependencies": {
     "@arql/source-picodb": "file:../../sources/picodb",
-    "arql": "file:../../main"
+    "@arql/core": "file:../../core"
   }
 }

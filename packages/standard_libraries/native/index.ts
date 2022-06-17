@@ -1,5 +1,4 @@
-import type { ContextualisedField, Native, AnyObj } from 'arql';
-import { getAlias } from 'arql';
+import { ContextualisedField, Native, AnyObj, getAlias } from '@arql/core';
 
 // TODO: make this better
 function getKey(...values: any[]) {

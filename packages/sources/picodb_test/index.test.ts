@@ -10,7 +10,7 @@ import {
   getOperatorLookup,
   delegator,
   Collector,
-} from 'arql';
+} from '@arql/core';
 
 import models, { mainDb } from './models.js';
 import generic from '@arql/stdlib-general';

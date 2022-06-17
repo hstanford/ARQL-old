@@ -10,8 +10,8 @@
   "author": "Henry Stanford",
   "license": "ISC",
   "dependencies": {
+    "@arql/core": "file:../../core",
     "@arql/stdlib-general": "file:../../standard_libraries/general",
-    "arql": "file:../../main",
     "picodb": "^1.0.4",
     "sql-ts": "^6.2.0"
   },

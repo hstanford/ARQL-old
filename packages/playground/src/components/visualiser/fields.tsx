@@ -1,4 +1,4 @@
-import { DataModel, DataField, isDataField } from 'arql';
+import { DataModel, DataField, isDataField } from '@arql/core';
 import React from 'react';
 import {
   Box,

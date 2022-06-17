@@ -2,7 +2,7 @@ import { Dialog, Box, Button, Stack, Typography } from '@mui/material';
 import { DataObject as DataObjectIcon } from '@mui/icons-material';
 import React from 'react';
 import { Data, getColourForSource } from '../../models';
-import { DataModel } from 'arql';
+import { DataModel } from '@arql/core';
 import Fields from './fields';
 import Relationships from './relationships';
 

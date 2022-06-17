@@ -8,7 +8,7 @@ import {
   Collector,
   getSourcedModels,
   DataModel,
-} from 'arql';
+} from '@arql/core';
 
 // standard libraries
 import generic from '@arql/stdlib-general';

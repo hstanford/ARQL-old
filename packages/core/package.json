@@ -1,5 +1,5 @@
 {
-  "name": "arql",
+  "name": "@arql/core",
   "version": "0.0.1",
   "description": "Abstract Relational Query Language",
   "main": "dist/main.js",

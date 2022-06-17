@@ -10,10 +10,8 @@ import {
   getOperatorLookup,
   delegator,
   Collector,
-  DataModel,
-  DataField,
   getSourcedModels,
-} from 'arql';
+} from '@arql/core';
 
 import SQL from '@arql/source-sql';
 

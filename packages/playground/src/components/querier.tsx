@@ -8,7 +8,7 @@ import {
   getOperatorLookup,
   delegator,
   Collector,
-} from 'arql';
+} from '@arql/core';
 
 import dataInstance from '../models';
 import generic from '@arql/stdlib-general';

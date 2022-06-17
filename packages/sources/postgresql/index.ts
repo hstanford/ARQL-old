@@ -3,7 +3,7 @@ import {
   DataSourceOpts,
   DelegatedQuery,
   DelegatedSource,
-} from 'arql';
+} from '@arql/core';
 
 import SQL from '@arql/source-sql';
 import Pg, {ClientConfig} from 'pg';

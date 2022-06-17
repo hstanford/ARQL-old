@@ -11,8 +11,9 @@ import {
   isDataModel,
   isDataField,
   BaseModel,
-} from 'arql';
-import { ContextualisedExpr, DelegatedField } from 'arql/types';
+  ContextualisedExpr,
+  DelegatedField,
+} from '@arql/core';
 
 import { Query, Sql, TableWithColumns } from 'sql-ts';
 

@@ -11,8 +11,8 @@
   "author": "Henry Stanford",
   "license": "ISC",
   "dependencies": {
+    "@arql/core": "file:../../core",
     "@arql/source-sql": "file:../sql",
-    "arql": "file:../../main",
     "sql-ts": "^6.1.0"
   },
   "devDependencies": {

@@ -1,4 +1,4 @@
-import type { ContextualisedField, TransformDef, Native, AnyObj } from 'arql';
+import type { ContextualisedField, TransformDef, Native, AnyObj } from '@arql/core';
 import Pico from '@arql/source-picodb';
 
 // this configuration applies to all data sources:
