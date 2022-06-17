@@ -153,10 +153,7 @@ export class MultiSource extends Map {}
 export type operatorOp = (...args: any[]) => any;
 export type transformFn = (...args: any[]) => any;
 
-export interface DataSourceOpts {
-  operators: Map<string, (...args: any[]) => any>;
-  transforms: Map<string, (...args: any[]) => any>;
-}
+export interface DataSourceOpts {}
 
 export abstract class DataSource<ModelType, FieldType> {
   models: Map<string, ModelType> = new Map();
@@ -209,7 +206,7 @@ export abstract class DataSource<ModelType, FieldType> {
   }
 }
 
-export type dataType = 'string' | 'number' | 'boolean' | 'json';
+export type dataType = 'string' | 'number' | 'boolean' | 'json' | 'date';
 export type ContextualisedField =
   | DataField
   | DataModel
@@ -443,6 +440,7 @@ export type DataTypes = {
   string: string;
   boolean: boolean;
   json: {[key: string]: any};
+  date: Date;
 };
 
 export interface BaseDataField {
@@ -453,6 +451,42 @@ export interface BaseDataField {
 export interface BaseDataReference<T> {
   type: 'datareference';
   model: keyof T;
+  join: (self: string, other: string) => string;
 }
 
-export type BaseModel = Record<string, BaseDataField | BaseDataReference<any>>;
+export interface BaseModel<T=any> {
+  [key: string]: BaseDataField | BaseDataReference<T>;
+};
+
+export type ModelsDeclaration = {
+  [key: string]: BaseModel;
+}
+
+export type PickByNotValue<T, ValueType> = Pick<
+  T,
+  { [Key in keyof T]-?: T[Key] extends ValueType ? never : Key }[keyof T]
+>;
+
+export type DataTypeDef<
+  M extends ModelsDeclaration,
+  T extends keyof M,
+  U extends M[T],
+  V extends keyof U
+> = U[V] extends BaseDataField ? U[V]['datatype'] : never;
+
+export type TypeFor<
+  M extends ModelsDeclaration,
+  T extends keyof M,
+  U extends keyof M[T]
+> = DataTypes[DataTypeDef<M, T, M[T], U>];
+
+export type ModelType<M extends ModelsDeclaration, T extends keyof M> = PickByNotValue<
+  {
+    [U in keyof M[T]]: TypeFor<M, T, U>;
+  },
+  never
+>;
+
+export type ModelsDeclarationTypes<M extends ModelsDeclaration> = {
+  [T in keyof M]: ModelType<M, T>;
+}

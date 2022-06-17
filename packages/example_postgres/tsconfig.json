@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "module": "esnext",
+    "moduleResolution": "node",
+    //"noEmitOnError": true,
+    "lib": ["es2017", "DOM"],
+    "strict": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "outDir": "dist",
+    "rootDir": "./"
+  },
+  "include": ["./**/*.ts", "*.ts"]
+}

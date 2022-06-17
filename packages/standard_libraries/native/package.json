@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "operations and transforms standard library for arql's native source",
   "main": "dist/main.js",
+  "type": "module",
   "scripts": {
     "build": "tsc && rollup -c"
   },

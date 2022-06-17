@@ -12,45 +12,18 @@ import {
   Collector,
   DataModel,
   DataField,
+  getSourcedModels,
 } from 'arql';
 
 import SQL from '@arql/source-sql';
 
-import { Models, ModelsTypes } from './models.js';
+import { Models } from './models.js';
 
 import generic from '@arql/stdlib-general';
 import applyStdlib from '@arql/stdlib-sql';
-import { Sql, TableWithColumns } from 'sql-ts';
+import { Sql } from 'sql-ts';
 
-type MT<T extends keyof typeof Models> = ModelsTypes[T];
-class ExtSQL extends SQL {
-  getModel<T extends keyof typeof Models>(key: T): TableWithColumns<MT<T>> {
-    const out = this.baseModels.get(key);
-    if (!out) throw new Error('Could not find model');
-    return out as any;
-  }
-  setModel<T extends keyof typeof Models>(key: T) {
-    type FieldKey = keyof typeof Models[T] & string;
-    const columnKeys = Object.keys(Models[key]).filter(function (
-      k
-    ): k is FieldKey {
-      return typeof k === 'string';
-    }) as FieldKey[];
-    const subDef = Models[key];
-    this.baseModels.set(
-      key,
-      this.sql.define<ModelsTypes[T]>({
-        name: key,
-        columns: columnKeys.filter(function (k) {
-          const val = subDef[k] as any;
-          return val.type === 'datafield';
-        }),
-      })
-    );
-  }
-}
-
-const s = new ExtSQL({
+const s = new SQL({
   db: {},
   sql: new Sql(),
   models: [],
@@ -60,26 +33,17 @@ const s = new ExtSQL({
 
 applyStdlib(s);
 
-(Object.keys(Models) as (keyof typeof Models)[]).forEach((k) => s.setModel(k));
+s.setModel('elephants', Models.elephants);
+s.setModel('users', Models.users);
+s.setModel('orders', Models.orders);
 
-const models: Map<keyof typeof Models, DataModel> = Object.entries(
-  Models
-).reduce<Map<keyof typeof Models, DataModel>>((acc, [key, value]) => {
-  acc.set(key as keyof typeof Models, {
-    type: 'datamodel',
-    name: key,
-    source: s,
-    fields: Object.entries(value)
-      .filter(([, v]) => v.type === 'datafield')
-      .map(([k, v]) => ({
-        type: v.type,
-        name: k,
-        datatype: v.datatype,
-        source: s,
-      })) as DataField[],
-  });
-  return acc;
-}, new Map());
+const sourceLookup = {
+  elephants: s,
+  users: s,
+  orders: s,
+}
+
+const models = new Map(Object.entries(getSourcedModels(Models, sourceLookup)));
 
 const { transforms, operators } = generic();
 const opMap = getOperatorLookup(operators);

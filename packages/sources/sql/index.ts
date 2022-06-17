@@ -10,13 +10,13 @@ import {
   DataModel,
   isDataModel,
   isDataField,
+  BaseModel,
 } from 'arql';
 import { ContextualisedExpr, DelegatedField } from 'arql/types';
 
 import { Query, Sql, TableWithColumns } from 'sql-ts';
 
 interface SQLSourceOpts extends DataSourceOpts {
-  db: any;
   models: any;
   sql: Sql;
 }
@@ -51,10 +51,33 @@ export default class SQL extends DataSource<any, any> {
   constructor(opts: SQLSourceOpts) {
     super();
     this.sql = opts.sql;
-    this.operators = opts.operators;
-    this.transforms = opts.transforms;
     this.models = new Map();
     this.baseModels = new Map();
+  }
+
+  getModel<T extends string, U extends {}>(key: T): TableWithColumns<U> {
+    const out = this.baseModels.get(key);
+    if (!out) throw new Error('Could not find model');
+    return out as any;
+  }
+  setModel<T extends string, U extends BaseModel, V extends {}>(key: T, definition: U) {
+    type FieldKey = keyof U & string;
+    const columnKeys = Object.keys(definition).filter(function (
+      k
+    ): k is FieldKey {
+      return typeof k === 'string';
+    }) as FieldKey[];
+    const subDef = definition;
+    this.baseModels.set(
+      key,
+      this.sql.define<V>({
+        name: key,
+        columns: columnKeys.filter(function (k) {
+          const val = subDef[k] as any;
+          return val.type === 'datafield';
+        }),
+      })
+    );
   }
 
   async resolve(
@@ -62,7 +85,7 @@ export default class SQL extends DataSource<any, any> {
     data: AnyObj[] | null,
     results: AnyObj[][],
     params: any[]
-  ) {
+  ): Promise<any> {
     const query = await this.resolveQueryObject(ast, data, results, params);
     // TODO: overrides to return db execute
     return query ? {query: query.toString()} : {};

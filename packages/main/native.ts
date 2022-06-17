@@ -49,10 +49,6 @@ export default class Native extends DataSource<any, any> {
   constructor(data: any, opts?: DataSourceOpts) {
     super();
     this.data = data;
-    if (opts) {
-      this.operators = opts.operators;
-      this.transforms = opts.transforms;
-    }
   }
 
   add(def: DataModel) {

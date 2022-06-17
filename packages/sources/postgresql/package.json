@@ -1,7 +1,7 @@
 {
-  "name": "@arql/source-sql",
+  "name": "@arql/source-postgresql",
   "version": "0.0.1",
-  "description": "arql source for https://github.com/jclo/picodb",
+  "description": "arql source for PostgreSQL",
   "type": "module",
   "main": "dist/main.js",
   "scripts": {
@@ -10,8 +10,10 @@
   "author": "Henry Stanford",
   "license": "ISC",
   "dependencies": {
+    "@arql/source-sql": "file:../sql",
     "@arql/stdlib-general": "file:../../standard_libraries/general",
     "arql": "file:../../main",
+    "pg": "^8.7.3",
     "picodb": "^1.0.4",
     "sql-ts": "^6.2.0"
   },
@@ -19,6 +21,7 @@
     "@arql/stdlib-sql": "file:../../standard_libraries/sql",
     "@rollup/plugin-node-resolve": "^13.3.0",
     "@types/knex": "^0.16.1",
+    "@types/pg": "^8.6.5",
     "chai": "^4.3.6",
     "mocha": "^10.0.0",
     "rollup": "^2.75.0",

@@ -4,6 +4,7 @@
   "description": "Abstract Relational Query Language",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "type": "module",
   "scripts": {
     "build": "rimraf dist && tsc && rollup -c rollup.config.js",
     "run": "node dist/main.js"

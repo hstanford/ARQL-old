@@ -37,8 +37,6 @@ export default class Pico extends DataSource<any, any> {
 
   constructor(opts: PicoSourceOpts) {
     super();
-    this.operators = opts.operators;
-    this.transforms = opts.transforms;
     this.db = opts.db;
   }
 

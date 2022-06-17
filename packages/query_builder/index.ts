@@ -236,7 +236,7 @@ export function transformModel<
 >(model: BaseModel, modelName: SignatureKey, transforms: Transforms[]) {
   type Signature = T[SignatureKey];
   const fieldObj: Model<Signature> = Object.keys(model).reduce(
-    (acc: any, key: keyof typeof model) => {
+    (acc: any, key: string) => {
       const field = model[key];
       if (field.type === 'datareference') {
         return acc;

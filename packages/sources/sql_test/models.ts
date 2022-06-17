@@ -1,4 +1,4 @@
-import type { BaseDataField, DataTypes } from 'arql';
+import type { ModelsDeclarationTypes } from 'arql';
 
 export const Models = {
   elephants: {
@@ -23,6 +23,7 @@ export const Models = {
     orders: {
       type: 'datareference',
       model: 'orders',
+      join: (self: string, other: string) => `| filter(${self}.id = ${other}.userId)`,
     },
   },
   orders: {
@@ -41,33 +42,10 @@ export const Models = {
     user: {
       type: 'datareference',
       model: 'users',
+      join: (self: string, other: string) => `| filter(${self}.userId = ${other}.id) | first()`,
     },
   },
 } as const;
 
-type PickByNotValue<T, ValueType> = Pick<
-  T,
-  { [Key in keyof T]-?: T[Key] extends ValueType ? never : Key }[keyof T]
->;
 
-type DataTypeDef<
-  T extends keyof typeof Models,
-  U extends typeof Models[T],
-  V extends keyof U
-> = U[V] extends BaseDataField ? U[V]['datatype'] : never;
-
-type TypeFor<
-  T extends keyof typeof Models,
-  U extends keyof typeof Models[T]
-> = DataTypes[DataTypeDef<T, typeof Models[T], U>];
-
-type ModelType<T extends keyof typeof Models> = PickByNotValue<
-  {
-    [U in keyof typeof Models[T]]: TypeFor<T, U>;
-  },
-  never
->;
-
-export type ModelsTypes = {
-  [T in keyof typeof Models]: ModelType<T>;
-};
+export type ModelsTypes = ModelsDeclarationTypes<typeof Models>;
