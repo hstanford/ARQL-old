@@ -200,6 +200,10 @@ export default class SQL extends DataSource<any, any> {
       );
     }
     if (collection.shape) {
+      // if query already shaped (through join etc), remove existing shape
+      if (query && ('_select' in query)) {
+        (query as any)._select.nodes = [];
+      }
       if (Array.isArray(query)) {
         throw new Error('Multi collections must be transformed before shaping');
       }

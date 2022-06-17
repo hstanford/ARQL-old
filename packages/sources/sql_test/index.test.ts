@@ -82,7 +82,60 @@ describe('sql', () => {
     );
     expect(out).to.deep.equal({
       query:
-        'SELECT "users".*, "users"."name" AS "ordername", "users"."name" AS "username" FROM "users" INNER JOIN "orders" ON ("orders"."userId" = "users"."id")',
+        'SELECT "users"."name" AS "ordername", "users"."name" AS "username" FROM "users" INNER JOIN "orders" ON ("orders"."userId" = "users"."id")',
     });
+  });
+});
+
+describe('basic sql tests', () => {
+  it('Basic name from users', async () => {
+    const data = await arql('users {name}', []);
+
+    expect(data).to.deep.equal({ query: 'SELECT "users"."name" FROM "users"' });
+  });
+
+  it('Basic aliased name from users', async () => {
+    const data = await arql('users {foo: name}', []);
+
+    expect(data).to.deep.equal({ query: 'SELECT "users"."name" AS "foo" FROM "users"' });
+  });
+
+  it('Join and reshaping', async () => {
+    const data = await arql(
+      `
+    (
+      u: users,
+      o: orders,
+    ) | join(o.userId = u.id) {
+      username: u.name,
+      ordername: o.name,
+    }
+    `,
+      []
+    );
+
+    expect(data).to.deep.equal({ query: 'SELECT "users"."name" AS "username", "users"."name" AS "ordername" FROM "users" INNER JOIN "orders" ON ("orders"."userId" = "users"."id")' });
+  });
+
+  it('Basic filtering', async () => {
+    const data = await arql(
+      `
+      elephants | filter(age = $1)
+    `,
+      [39]
+    );
+
+    expect(data).to.deep.equal({ query: 'SELECT * FROM "elephants" WHERE ("elephants"."age" = 39)' });
+  });
+
+  it('Basic reshaping with no aliasing', async () => {
+    const data = await arql(
+      `
+      elephants { elephantAge: age }
+    `,
+      [39]
+    );
+
+    expect(data).to.deep.equal({ query: 'SELECT "elephants"."age" AS "elephantAge" FROM "elephants"' });
   });
 });
