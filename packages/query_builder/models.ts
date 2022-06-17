@@ -23,7 +23,8 @@ export const Models = {
     orders: {
       type: 'datareference',
       model: 'orders',
-      join: (self: string, other: string) => `| filter(${self}.id = ${other}.userId)`,
+      join: (self: string, other: string) =>
+        `| filter(${self}.id = ${other}.userId)`,
     },
   },
   orders: {
@@ -42,7 +43,8 @@ export const Models = {
     user: {
       type: 'datareference',
       model: 'users',
-      join: (self: string, other: string) => `| filter(${self}.userId = ${other}.id) | first()`,
+      join: (self: string, other: string) =>
+        `| filter(${self}.userId = ${other}.id) | first()`,
     },
   },
 } as const;

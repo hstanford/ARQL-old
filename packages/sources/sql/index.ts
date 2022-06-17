@@ -61,7 +61,10 @@ export default class SQL extends DataSource<any, any> {
     if (!out) throw new Error('Could not find model');
     return out as any;
   }
-  setModel<T extends string, U extends BaseModel, V extends {}>(key: T, definition: U) {
+  setModel<T extends string, U extends BaseModel, V extends {}>(
+    key: T,
+    definition: U
+  ) {
     type FieldKey = keyof U & string;
     const columnKeys = Object.keys(definition).filter(function (
       k
@@ -89,7 +92,7 @@ export default class SQL extends DataSource<any, any> {
   ): Promise<any> {
     const query = await this.resolveQueryObject(ast, data, results, params);
     // TODO: overrides to return db execute
-    return query ? {query: query.toString()} : {};
+    return query ? { query: query.toString() } : {};
   }
 
   async resolveQueryObject(
@@ -125,11 +128,11 @@ export default class SQL extends DataSource<any, any> {
   }
 
   resolveCollectionValue(
-    value: DelegatedCollection["value"],
+    value: DelegatedCollection['value'],
     data: any,
     results: any[],
     params: any[],
-    baseQuery?: Intermediate,
+    baseQuery?: Intermediate
   ): Intermediate {
     let query: Intermediate = baseQuery;
     if (isCollection(value)) {
@@ -156,19 +159,31 @@ export default class SQL extends DataSource<any, any> {
     data: any,
     results: any[],
     params: any[],
-    baseQuery?: Intermediate,
+    baseQuery?: Intermediate
   ): Intermediate {
     let query: Intermediate = baseQuery;
     if (Array.isArray(collection.value)) {
-      query = collection.value.map(v => {
-        const resolved = this.resolveCollectionValue(v, data, results, params, baseQuery);
+      query = collection.value.map((v) => {
+        const resolved = this.resolveCollectionValue(
+          v,
+          data,
+          results,
+          params,
+          baseQuery
+        );
         if (Array.isArray(resolved)) {
           throw new Error('Nested array source values are unsupported');
         }
         return resolved;
       });
     } else {
-      query = this.resolveCollectionValue(collection.value, data, results, params, baseQuery);
+      query = this.resolveCollectionValue(
+        collection.value,
+        data,
+        results,
+        params,
+        baseQuery
+      );
     }
     if (collection.transform) {
       const transform = this.transforms.get(collection.transform.name);
@@ -207,9 +222,17 @@ export default class SQL extends DataSource<any, any> {
         throw new Error('Subcollections without query not supported');
       }
       if (Array.isArray(query)) {
-        throw new Error('Subcollections from multi collection are not supported');
+        throw new Error(
+          'Subcollections from multi collection are not supported'
+        );
       }
-      return this.resolveCollections(field, [], [], params, query.table.subQuery(field.alias));
+      return this.resolveCollections(
+        field,
+        [],
+        [],
+        params,
+        query.table.subQuery(field.alias)
+      );
     } else if (field.type === 'exprtree') {
       out = this.resolveExpression(query, field, params);
     } else if (isDataField(field)) {
@@ -229,8 +252,7 @@ export default class SQL extends DataSource<any, any> {
     } else {
       throw new Error(`${field.type} not supported`);
     }
-    if (field.alias && field.alias !== field.name)
-      out = out.as(field.alias);
+    if (field.alias && field.alias !== field.name) out = out.as(field.alias);
     return out;
   }
 

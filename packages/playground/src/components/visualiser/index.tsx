@@ -1,4 +1,9 @@
-import { DataModel, isDataReference, DataField, DataReference } from '@arql/core';
+import {
+  DataModel,
+  isDataReference,
+  DataField,
+  DataReference,
+} from '@arql/core';
 import * as d3 from 'd3';
 import React, { useEffect, useRef } from 'react';
 import ForceGraph from '../forceGraph';

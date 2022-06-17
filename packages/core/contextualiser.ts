@@ -146,7 +146,9 @@ function getSubmodels(collectionValue: ContextualisedCollectionValue) {
   return subModels;
 }
 
-function getSourcesFromCollectionValue(collectionValue: ContextualisedCollectionValue) {
+function getSourcesFromCollectionValue(
+  collectionValue: ContextualisedCollectionValue
+) {
   const firstField = isCollection(collectionValue)
     ? collectionValue?.availableFields?.[0]
     : collectionValue?.fields?.[0];
@@ -183,7 +185,9 @@ function getSourcesFromContextualisedField(field: ContextualisedField) {
 }
 
 function aggregateQuerySources(query: ContextualisedQuery) {
-  return uniq(query?.sourceCollection?.sources || []).concat(query?.dest?.sources || []);
+  return uniq(query?.sourceCollection?.sources || []).concat(
+    query?.dest?.sources || []
+  );
 }
 
 function applyRequiredFields(
@@ -194,7 +198,10 @@ function applyRequiredFields(
   if (collection.transform) {
     required = required.concat(collection.transform.requiredFields);
   }
-  collection.requiredFields = uniq([...collection.requiredFields, ...requiredFields]);
+  collection.requiredFields = uniq([
+    ...collection.requiredFields,
+    ...requiredFields,
+  ]);
   if (Array.isArray(collection.value)) {
     // divide required fields by source
     for (let collectionValue of collection.value) {
@@ -236,11 +243,20 @@ export class Contextualiser {
       aliases: new Map(),
     };
     if (ast.sourceCollection) {
-      contextualisedQuery.sourceCollection = this.handleCollection(ast.sourceCollection, context);
+      contextualisedQuery.sourceCollection = this.handleCollection(
+        ast.sourceCollection,
+        context
+      );
       const collection = contextualisedQuery.sourceCollection;
       // implicit wildcard
-      if (!collection.requiredFields.length && collection.availableFields.length) {
-        applyRequiredFields(collection, combineFields(collection.availableFields));
+      if (
+        !collection.requiredFields.length &&
+        collection.availableFields.length
+      ) {
+        applyRequiredFields(
+          collection,
+          combineFields(collection.availableFields)
+        );
       }
     }
     if (ast.dest) {
@@ -333,7 +349,10 @@ export class Contextualiser {
 
     const out: ContextualisedCollection = {
       type: 'collection',
-      value: Array.isArray(collection.value) && !collection.value.length ? [] : collection,
+      value:
+        Array.isArray(collection.value) && !collection.value.length
+          ? []
+          : collection,
       availableFields: [],
       requiredFields: [],
       name: getAlias(collection.alias || collection.name),
@@ -360,7 +379,10 @@ export class Contextualiser {
       );
       this.aggregateCollections(ContextualisedCollection);
     } else if (isCollection(collection.value)) {
-      ContextualisedCollection.value = this.handleCollection(collection.value, context);
+      ContextualisedCollection.value = this.handleCollection(
+        collection.value,
+        context
+      );
       this.aggregateCollections(ContextualisedCollection);
     } else if (isAlphachain(collection.value)) {
       const model = this.getModel(collection.value, context);
@@ -393,7 +415,10 @@ export class Contextualiser {
       context.aliases.set(collection.alias, ContextualisedCollection);
       ContextualisedCollection.alias = collection.alias;
     } else if (ContextualisedCollection.name) {
-      context.aliases.set(ContextualisedCollection.name, ContextualisedCollection);
+      context.aliases.set(
+        ContextualisedCollection.name,
+        ContextualisedCollection
+      );
     }
 
     let out = ContextualisedCollection;

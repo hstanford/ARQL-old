@@ -298,8 +298,8 @@ export default function buildParser(opResolver = (expr: any) => expr) {
     }))
   );
 
-  const collectionWithTransforms: Parser<Collection, string, any> = recursiveParser(
-    () =>
+  const collectionWithTransforms: Parser<Collection, string, any> =
+    recursiveParser(() =>
       sequenceOf([
         possibly(alias),
         optionalWhitespace,
@@ -320,53 +320,55 @@ export default function buildParser(opResolver = (expr: any) => expr) {
         transforms: parts[4],
         shape: parts[5],
       }))
-  );
+    );
 
-  const collectionWithShape: Parser<Collection, string, any> = recursiveParser(() =>
-    sequenceOf([
-      possibly(alias),
-      optionalWhitespace,
-      possibly(choice([collectionlist, alphachain])),
-      optionalWhitespace,
-      possiblyTransforms,
-      choice([shape, multiShape]),
-    ]).map((parts) => ({
-      type: 'collection',
-      alias:
-        parts[0] ||
-        (typeof parts[2] === 'string' && parts[2]) ||
-        (!Array.isArray(parts[2]) &&
-          parts[2]?.type === 'alphachain' &&
-          [parts[2].root, ...parts[2].parts].pop()) ||
-        undefined,
-      value: parts[2],
-      transforms: parts[4],
-      shape: parts[5],
-    }))
+  const collectionWithShape: Parser<Collection, string, any> = recursiveParser(
+    () =>
+      sequenceOf([
+        possibly(alias),
+        optionalWhitespace,
+        possibly(choice([collectionlist, alphachain])),
+        optionalWhitespace,
+        possiblyTransforms,
+        choice([shape, multiShape]),
+      ]).map((parts) => ({
+        type: 'collection',
+        alias:
+          parts[0] ||
+          (typeof parts[2] === 'string' && parts[2]) ||
+          (!Array.isArray(parts[2]) &&
+            parts[2]?.type === 'alphachain' &&
+            [parts[2].root, ...parts[2].parts].pop()) ||
+          undefined,
+        value: parts[2],
+        transforms: parts[4],
+        shape: parts[5],
+      }))
   );
 
   // when you want to combine data from different collections, you can collect
   // them in parentheses as a collectionlist before applying a transform to combine
   // e.g. ( users, orders ) | join(users.id = orders.userId)
-  const collectionlist: Parser<Collection | Collection[], string, any> = sequenceOf([
-    char('('),
-    optionalWhitespace,
-    collection,
-    optionalWhitespace,
-    many(
-      sequenceOf([
-        char(','),
-        optionalWhitespace,
-        collection,
-        optionalWhitespace,
-      ]).map((parts) => parts[2])
-    ),
-    possibly(char(',')),
-    optionalWhitespace,
-    char(')'),
-  ]).map((parts) => {
-    return parts[4].length ? [parts[2]].concat(parts[4]) : parts[2];
-  });
+  const collectionlist: Parser<Collection | Collection[], string, any> =
+    sequenceOf([
+      char('('),
+      optionalWhitespace,
+      collection,
+      optionalWhitespace,
+      many(
+        sequenceOf([
+          char(','),
+          optionalWhitespace,
+          collection,
+          optionalWhitespace,
+        ]).map((parts) => parts[2])
+      ),
+      possibly(char(',')),
+      optionalWhitespace,
+      char(')'),
+    ]).map((parts) => {
+      return parts[4].length ? [parts[2]].concat(parts[4]) : parts[2];
+    });
 
   // when applying a modifier, you're writing data somewhere. That somewhere
   // is the destination "dest". e.g. "-x users | filter(id = $1)" means

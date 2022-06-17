@@ -85,12 +85,17 @@ interface Transform<T extends string = string> {
 
 type FieldMap<T> = { [k in keyof T]: Field };
 
-export type Collection<Transforms extends string, ModelType> = FieldMap<ModelType> &
+export type Collection<
+  Transforms extends string,
+  ModelType
+> = FieldMap<ModelType> &
   Intermediate<Transforms, ModelType> & {
     [key in Transforms]: (...args: any[]) => Collection<Transforms, ModelType>;
   } & {
     toQuery: (params?: any[]) => [string, any[]];
-    shape: (s: any[] | Record<string, any>) => Collection<Transforms, ModelType>;
+    shape: (
+      s: any[] | Record<string, any>
+    ) => Collection<Transforms, ModelType>;
   };
 
 export type Intermediate<Transforms extends string, ModelType> = {
@@ -128,8 +133,10 @@ function initialiseIntermediate<Transforms extends string, ModelType>(
     _transforms: transforms,
     _shape: shape,
   };
-  const collection: Model<ModelType> | Collection<Transforms, ModelType> | undefined =
-    collections[0];
+  const collection:
+    | Model<ModelType>
+    | Collection<Transforms, ModelType>
+    | undefined = collections[0];
   const fields: FieldMap<ModelType> = (
     collection
       ? Object.keys(collection).reduce(
@@ -149,7 +156,11 @@ function initialiseIntermediate<Transforms extends string, ModelType>(
 
   availableTransforms.forEach((transform) => {
     out[transform] = (...args: any[]) => {
-      return applyTransform(out, { name: transform, args }, availableTransforms);
+      return applyTransform(
+        out,
+        { name: transform, args },
+        availableTransforms
+      );
     };
   }, {});
 
@@ -169,7 +180,7 @@ function applyTransform<T extends string, U>(
 function applyShape<T extends string, U>(
   intermediate: Collection<T, U>,
   availableTransforms: T[],
-  s: any[] | Record<string, any>,
+  s: any[] | Record<string, any>
 ) {
   const out: Collection<T, U> = cloneIntermediate(
     intermediate,

@@ -6,7 +6,7 @@ import {
 } from '@arql/core';
 
 import SQL from '@arql/source-sql';
-import Pg, {ClientConfig} from 'pg';
+import Pg, { ClientConfig } from 'pg';
 
 import { Sql } from 'sql-ts';
 
@@ -48,7 +48,7 @@ export default class PostgresSQL extends SQL {
         throw err;
       } else {
         this.ready = true;
-        this.readyListeners.forEach(listener => listener());
+        this.readyListeners.forEach((listener) => listener());
         this.readyListeners = [];
       }
     });
@@ -69,7 +69,10 @@ export default class PostgresSQL extends SQL {
   ) {
     await this.untilReady();
     const query = await this.resolveQueryObject(ast, data, results, params);
-    if (!query || !('toQuery' in query && typeof query.toQuery === 'function')) {
+    if (
+      !query ||
+      !('toQuery' in query && typeof query.toQuery === 'function')
+    ) {
       throw new Error("Couldn't resolve query");
     }
     const { rows: out } = await this.db.query(query.toQuery());

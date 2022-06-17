@@ -91,7 +91,11 @@ export default class Native extends DataSource<any, any> {
   }
 
   async resolveCollection(
-    collection: DelegatedCollection | DataModel | DataField | DelegatedQueryResult,
+    collection:
+      | DelegatedCollection
+      | DataModel
+      | DataField
+      | DelegatedQueryResult,
     data: AnyObj,
     results: any[],
     params: any[]
@@ -99,7 +103,9 @@ export default class Native extends DataSource<any, any> {
     if (isCollection(collection)) {
       if (typeof collection.name !== 'string')
         throw new Error(
-          `No support for ${JSON.stringify(collection.name)} as a collection name yet`
+          `No support for ${JSON.stringify(
+            collection.name
+          )} as a collection name yet`
         );
       const subVals = await this.resolveCollections(
         collection,
@@ -285,7 +291,9 @@ export default class Native extends DataSource<any, any> {
     if (Array.isArray(shape[0])) {
       const multi = [];
       for (const subShape of shape as DelegatedField[][]) {
-        multi.push(await this.resolveShape(subShape, collection, results, params));
+        multi.push(
+          await this.resolveShape(subShape, collection, results, params)
+        );
       }
       return multi;
     }
@@ -402,10 +410,7 @@ export default class Native extends DataSource<any, any> {
           params
         );
       }
-      return [
-        key,
-        collection,
-      ];
+      return [key, collection];
     } else if (isParam(field)) {
       return [field.alias || field.name || '', params[field.index - 1]];
     } else if (field.type === 'exprtree') {
@@ -423,7 +428,12 @@ export default class Native extends DataSource<any, any> {
       }
       return [field.alias || '', op(...args)];
     } else if (isDataModel(field)) {
-      const [key, out] = await this.resolveCollection(field, item, results, params);
+      const [key, out] = await this.resolveCollection(
+        field,
+        item,
+        results,
+        params
+      );
       return [
         key,
         out.map((obj: AnyObj) => {
@@ -466,7 +476,10 @@ export default class Native extends DataSource<any, any> {
         throw new Error('Cannot insert undefined');
       }
       this.data[dest.value.name].push(
-        ...(Array.isArray(sourceCollection) ? sourceCollection : [sourceCollection]).map((item) => ({
+        ...(Array.isArray(sourceCollection)
+          ? sourceCollection
+          : [sourceCollection]
+        ).map((item) => ({
           ...item,
           _id: uuid(),
         }))
@@ -487,7 +500,9 @@ export default class Native extends DataSource<any, any> {
       );
 
       if (sourceCollection !== undefined) {
-        const sourceArr = Array.isArray(sourceCollection) ? sourceCollection : [sourceCollection];
+        const sourceArr = Array.isArray(sourceCollection)
+          ? sourceCollection
+          : [sourceCollection];
         if (Array.isArray(intermediate)) {
           const out = [];
           for (let item of intermediate) {
@@ -557,7 +572,9 @@ export default class Native extends DataSource<any, any> {
         throw new Error('Unsupported destination model');
       }
       const arrToUpdate = Array.isArray(toUpdate) ? toUpdate : [toUpdate];
-      arrToUpdate.forEach((item: AnyObj) => Object.assign(item, sourceCollection));
+      arrToUpdate.forEach((item: AnyObj) =>
+        Object.assign(item, sourceCollection)
+      );
       // TODO: do this comparison for hidden internal UUIDs for native
       this.data[dest.name].forEach((item: AnyObj) => {
         const matching = arrToUpdate.find(
@@ -627,7 +644,13 @@ export default class Native extends DataSource<any, any> {
       }
       return dest || collection || [];
     } else if (ast.type === 'collection') {
-      let collection = await this.resolveCollections(ast, data, results, params, false);
+      let collection = await this.resolveCollections(
+        ast,
+        data,
+        results,
+        params,
+        false
+      );
       // only return whitelisted fields from delegated
       // queries. Perhaps this should be requiredFields?
       if (!ast.shape) {

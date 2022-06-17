@@ -318,7 +318,10 @@ export interface ContextualisedCollection {
 
 export function isCollection<T>(
   ipt: T
-): ipt is Extract<T, Collection | ContextualisedCollection | DelegatedCollection> {
+): ipt is Extract<
+  T,
+  Collection | ContextualisedCollection | DelegatedCollection
+> {
   return (ipt as any)?.type === 'collection';
 }
 
@@ -439,7 +442,7 @@ export type DataTypes = {
   number: number;
   string: string;
   boolean: boolean;
-  json: {[key: string]: any};
+  json: { [key: string]: any };
   date: Date;
 };
 
@@ -454,13 +457,13 @@ export interface BaseDataReference<T> {
   join: (self: string, other: string) => string;
 }
 
-export interface BaseModel<T=any> {
+export interface BaseModel<T = any> {
   [key: string]: BaseDataField | BaseDataReference<T>;
-};
+}
 
 export type ModelsDeclaration = {
   [key: string]: BaseModel;
-}
+};
 
 export type PickByNotValue<T, ValueType> = Pick<
   T,
@@ -480,7 +483,10 @@ export type TypeFor<
   U extends keyof M[T]
 > = DataTypes[DataTypeDef<M, T, M[T], U>];
 
-export type ModelType<M extends ModelsDeclaration, T extends keyof M> = PickByNotValue<
+export type ModelType<
+  M extends ModelsDeclaration,
+  T extends keyof M
+> = PickByNotValue<
   {
     [U in keyof M[T]]: TypeFor<M, T, U>;
   },
@@ -489,4 +495,4 @@ export type ModelType<M extends ModelsDeclaration, T extends keyof M> = PickByNo
 
 export type ModelsDeclarationTypes<M extends ModelsDeclaration> = {
   [T in keyof M]: ModelType<M, T>;
-}
+};

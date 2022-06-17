@@ -39,7 +39,7 @@ const sourceLookup = {
   elephants: s,
   users: s,
   orders: s,
-}
+};
 
 const models = new Map(Object.entries(getSourcedModels(Models, sourceLookup)));
 

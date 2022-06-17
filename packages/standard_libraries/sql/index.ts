@@ -31,9 +31,12 @@ export default function sql(source: DataSource<any, any>) {
     ],
     ['minus', (a, b) => a.minus(b)],
     ['notEquals', (a, b) => a.notEquals(b)],
-    ['equals', (a, b) => {
-      return a.equals(b);
-    }],
+    [
+      'equals',
+      (a, b) => {
+        return a.equals(b);
+      },
+    ],
     ['gt', (a, b) => a.gt(b)],
     ['lt', (a, b) => a.lt(b)],
     ['gte', (a, b) => a.gte(b)],
@@ -49,21 +52,11 @@ export default function sql(source: DataSource<any, any>) {
   // anything else will recieve an array
   source.transforms = new Map<
     string,
-    (
-      modifiers: string[],
-      params: any[],
-      query: any,
-      ...args: any[]
-    ) => any
+    (modifiers: string[], params: any[], query: any, ...args: any[]) => any
   >([
     [
       'join',
-      (
-        modifiers: string[],
-        params: any[],
-        sources: any[],
-        expr
-      ) => {
+      (modifiers: string[], params: any[], sources: any[], expr) => {
         // TODO: handle subqueries properly
         const origin = sources[0];
         const target = sources[1];
@@ -72,7 +65,13 @@ export default function sql(source: DataSource<any, any>) {
           .from(
             origin
               .join(target)
-              .on((source as any).resolveExpression([origin, target], expr, params))
+              .on(
+                (source as any).resolveExpression(
+                  [origin, target],
+                  expr,
+                  params
+                )
+              )
           );
       },
     ],

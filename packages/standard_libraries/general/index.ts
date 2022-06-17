@@ -127,13 +127,13 @@ export const operators = [
   {
     name: 'and',
     symbols: ['&&'],
-    type: 'binary'
+    type: 'binary',
   },
   {
     name: 'or',
     symbols: ['||'],
-    type: 'binary'
-  }
+    type: 'binary',
+  },
 ] as const;
 
 // this configuration applies to all data sources:
