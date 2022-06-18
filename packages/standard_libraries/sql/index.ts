@@ -95,13 +95,23 @@ export default function sql(source: DataSource<any, any>) {
     ],
     [
       'sort',
-      async (
+      (
         modifiers: string[],
         params: any[],
-        values: Map<any, any> | AnyObj[],
+        query,
         ...fields: ContextualisedField[]
       ) => {
-        return;
+        let mapper = function (field: ContextualisedField) {
+          return (source as any).resolveField(query, field, params);
+        };
+        if (modifiers.includes('desc')) {
+          mapper = function (field: ContextualisedField) {
+            return (source as any)
+              .resolveField(query, field, params)
+              .descending();
+          };
+        }
+        return query.order(...fields.map(mapper));
       },
     ],
     [

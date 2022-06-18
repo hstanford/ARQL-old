@@ -138,4 +138,27 @@ describe('basic sql tests', () => {
 
     expect(data).to.deep.equal({ query: 'SELECT "elephants"."age" AS "elephantAge" FROM "elephants"' });
   });
+
+  it('Basic sort with modifier', async () => {
+    const data = await arql(
+      `
+      elephants | sort.desc(age) { age }
+    `,
+      []
+    );
+
+    expect(data).to.deep.equal({ query: 'SELECT "elephants"."age" FROM "elephants" ORDER BY "elephants"."age" DESC' });
+  });
+
+  it('Basic sort with opposite modifier', async () => {
+    const data = await arql(
+      `
+      elephants | sort.asc(age) { age }
+    `,
+      []
+    );
+
+    // default sort direction is asc
+    expect(data).to.deep.equal({ query: 'SELECT "elephants"."age" FROM "elephants" ORDER BY "elephants"."age"' });
+  });
 });
