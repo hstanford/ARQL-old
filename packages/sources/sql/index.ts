@@ -15,7 +15,7 @@ import {
   DelegatedField,
 } from '@arql/core';
 
-import { Query, Sql, TableWithColumns } from 'sql-ts';
+import { FromNode, Query, Sql, TableWithColumns, Node } from 'sql-ts';
 
 interface SQLSourceOpts extends DataSourceOpts {
   models: any;
@@ -111,7 +111,8 @@ export default class SQL extends DataSource<any, any> {
             ast.sourceCollection,
             data,
             results,
-            params
+            params,
+            []
           );
       }
       if (ast.dest) {
@@ -121,7 +122,7 @@ export default class SQL extends DataSource<any, any> {
         destQuery = await this.resolveDest(ast.dest);
       }
     } else if (isCollection(ast)) {
-      sourceQuery = this.resolveCollections(ast, data, results, params);
+      sourceQuery = this.resolveCollections(ast, data, results, params, []);
     } else throw new Error('Not implemented yet');
 
     return sourceQuery;
@@ -132,11 +133,12 @@ export default class SQL extends DataSource<any, any> {
     data: any,
     results: any[],
     params: any[],
+    contextQueries: Intermediate[],
     baseQuery?: Intermediate
   ): Intermediate {
     let query: Intermediate = baseQuery;
     if (isCollection(value)) {
-      query = this.resolveCollections(value, data, results, params, query);
+      query = this.resolveCollections(value, data, results, params, contextQueries, query);
     } else if (isDataModel(value)) {
       const model = this.baseModels.get(value.name);
       if (!model) {
@@ -159,7 +161,8 @@ export default class SQL extends DataSource<any, any> {
     data: any,
     results: any[],
     params: any[],
-    baseQuery?: Intermediate
+    contextQueries: Intermediate[],
+    baseQuery?: Intermediate,
   ): Intermediate {
     let query: Intermediate = baseQuery;
     if (Array.isArray(collection.value)) {
@@ -169,6 +172,7 @@ export default class SQL extends DataSource<any, any> {
           data,
           results,
           params,
+          contextQueries,
           baseQuery
         );
         if (Array.isArray(resolved)) {
@@ -182,6 +186,7 @@ export default class SQL extends DataSource<any, any> {
         data,
         results,
         params,
+        contextQueries,
         baseQuery
       );
     }
@@ -195,7 +200,7 @@ export default class SQL extends DataSource<any, any> {
       query = transform(
         collection.transform.modifier,
         params,
-        query,
+        [query].concat(contextQueries),
         ...collection.transform.args
       );
     }
@@ -212,20 +217,20 @@ export default class SQL extends DataSource<any, any> {
         if (Array.isArray(field)) {
           throw new Error('Array shapes are not supported');
         }
-        fields.push(this.resolveField(query, field, params));
+        fields.push(this.resolveField([query as Intermediate].concat(contextQueries), field, params));
       }
       query = (query || this.sql).select(fields);
     }
     return query;
   }
 
-  resolveField(query: Intermediate, field: DelegatedField, params: any[]) {
+  resolveField(contextQueries: Intermediate[], field: DelegatedField, params: any[]) {
     let out: any;
     if (isCollection(field)) {
-      if (!query) {
+      if (!contextQueries?.length) {
         throw new Error('Subcollections without query not supported');
       }
-      if (Array.isArray(query)) {
+      if (Array.isArray(contextQueries[0])) {
         throw new Error(
           'Subcollections from multi collection are not supported'
         );
@@ -235,22 +240,35 @@ export default class SQL extends DataSource<any, any> {
         [],
         [],
         params,
-        query.table.subQuery(field.alias)
+        contextQueries,
+        contextQueries[0]?.table.subQuery(field.alias)
       );
     } else if (field.type === 'exprtree') {
-      out = this.resolveExpression(query, field, params);
+      out = this.resolveExpression(contextQueries, field, params);
     } else if (isDataField(field)) {
-      if (Array.isArray(query)) {
-        let i = 0;
-        while (!out && i < query.length) {
-          const val = query[i++] as any;
-          out = val[field.name] || val.table?.[field.name];
+      // TODO: can this be typed better?
+      function isFrom(node: any): node is FromNode {
+        return node.type === 'FROM';
+      };
+      for (let val of contextQueries.flat(1)) {
+        // try looking at the constituent tables
+        // TODO: make this more robust
+        for (const node of val?.nodes.filter(isFrom).map(node => node.nodes)[0] || []) {
+          const table = (node as any)?.table;
+          if (!out && field?.from?.name === table?.tableName) {
+            out = table?.[field.name];
+          }
         }
-      } else {
-        out = (query as any)[field.name] || (query as any).table?.[field.name];
+        // if not found try looking at the query itself
+        if (!out) {
+          out = (val as any)[field.name] || (val as any).table?.[field.name];
+        }
+        if (out) {
+          break;
+        }
       }
       if (!out) {
-        console.log(query, field.name);
+        //console.log(contextQueries, field.name);
         throw new Error('MISSING');
       }
     } else {
@@ -261,22 +279,22 @@ export default class SQL extends DataSource<any, any> {
   }
 
   resolveExpression(
-    query: Intermediate,
+    contextQueries: Intermediate[],
     expression: ContextualisedExpr,
     params: any[]
   ) {
     let resolvedArgs: any[] = [];
     for (let arg of expression.args) {
       if (isCollection(arg)) {
-        resolvedArgs.push(this.resolveCollections(arg, [], [], params));
+        resolvedArgs.push(this.resolveCollections(arg, [], [], params, contextQueries));
       } else if (arg.type === 'exprtree') {
-        resolvedArgs.push(this.resolveExpression(query, arg, params));
+        resolvedArgs.push(this.resolveExpression(contextQueries, arg, params));
       } else if (arg.type === 'datamodel') {
         throw new Error('Datamodels not supported in expressions');
       } else if (arg.type === 'param') {
         resolvedArgs.push(params[arg.index - 1]);
       } else if (isDataField(arg)) {
-        resolvedArgs.push(this.resolveField(query, arg, params));
+        resolvedArgs.push(this.resolveField(contextQueries, arg, params));
       } else {
         throw new Error(`Expression type ${arg.type} is not supported`);
       }

@@ -161,4 +161,20 @@ describe('basic sql tests', () => {
     // default sort direction is asc
     expect(data).to.deep.equal({ query: 'SELECT "elephants"."age" FROM "elephants" ORDER BY "elephants"."age"' });
   });
+
+  it('Join in shape', async () => {
+    const data = await arql(
+      `
+      u: users {
+        id,
+        orders | filter(u.id = orders.userId) {
+          name
+        }
+      }
+    `,
+      []
+    );
+
+    expect(data).to.deep.equal({ 'query': 'SELECT "users"."id", (SELECT "orders"."name" FROM "orders" WHERE ("users"."id" = "orders"."userId")) "orders" FROM "users"' });
+  });
 });

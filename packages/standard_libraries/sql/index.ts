@@ -56,7 +56,8 @@ export default function sql(source: DataSource<any, any>) {
   >([
     [
       'join',
-      (modifiers: string[], params: any[], sources: any[], expr) => {
+      (modifiers: string[], params: any[], contextQueries: any[], expr) => {
+        const sources = contextQueries[0];
         // TODO: handle subqueries properly
         const origin = sources[0];
         const target = sources[1];
@@ -67,7 +68,7 @@ export default function sql(source: DataSource<any, any>) {
               .join(target)
               .on(
                 (source as any).resolveExpression(
-                  [origin, target],
+                  contextQueries,
                   expr,
                   params
                 )
@@ -87,9 +88,9 @@ export default function sql(source: DataSource<any, any>) {
     ],
     [
       'filter',
-      (modifiers: string[], params: any[], query, expr) => {
-        return query.where(
-          (source as any).resolveExpression(query, expr, params)
+      (modifiers: string[], params: any[], contextQueries, expr) => {
+        return contextQueries[0].where(
+          (source as any).resolveExpression(contextQueries, expr, params)
         );
       },
     ],
@@ -98,20 +99,20 @@ export default function sql(source: DataSource<any, any>) {
       (
         modifiers: string[],
         params: any[],
-        query,
+        contextQueries,
         ...fields: ContextualisedField[]
       ) => {
         let mapper = function (field: ContextualisedField) {
-          return (source as any).resolveField(query, field, params);
+          return (source as any).resolveField(contextQueries, field, params);
         };
         if (modifiers.includes('desc')) {
           mapper = function (field: ContextualisedField) {
             return (source as any)
-              .resolveField(query, field, params)
+              .resolveField(contextQueries, field, params)
               .descending();
           };
         }
-        return query.order(...fields.map(mapper));
+        return contextQueries[0].order(...fields.map(mapper));
       },
     ],
     [
