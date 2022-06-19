@@ -13,6 +13,7 @@ import {
   BaseModel,
   ContextualisedExpr,
   DelegatedField,
+  isParam,
 } from '@arql/core';
 
 import { FromNode, Query, Sql, TableWithColumns, Node } from 'sql-ts';
@@ -271,6 +272,8 @@ export default class SQL extends DataSource<any, any> {
         //console.log(contextQueries, field.name);
         throw new Error('MISSING');
       }
+    } else if (isParam(field)) {
+      out = this.sql.constant(params[field.index - 1]);
     } else {
       throw new Error(`${field.type} not supported`);
     }

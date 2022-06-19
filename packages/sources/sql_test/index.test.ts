@@ -177,4 +177,15 @@ describe('basic sql tests', () => {
 
     expect(data).to.deep.equal({ 'query': 'SELECT "users"."id", (SELECT "orders"."name" FROM "orders" WHERE ("users"."id" = "orders"."userId")) "orders" FROM "users"' });
   });
+
+  it('param in shape', async () => {
+    const data = await arql(
+      `
+      users {id: $1}
+    `,
+      ['hi']
+    );
+
+    expect(data).to.deep.equal({ 'query': 'SELECT \'hi\' AS "id" FROM "users"' });
+  });
 });
