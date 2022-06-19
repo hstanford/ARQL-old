@@ -193,7 +193,7 @@ describe('basic sql tests', () => {
 
     expect(data).to.deep.equal({
       query:
-        'SELECT "users"."id", (SELECT ROW_TO_JSON(ROW("orders"."name")) FROM "orders" WHERE ("users"."id" = "orders"."userId")) "orders" FROM "users"',
+        'SELECT "users"."id", (SELECT JSON_BUILD_OBJECT(\'name\', "orders"."name") FROM "orders" WHERE ("users"."id" = "orders"."userId")) "orders" FROM "users"',
     });
   });
 
@@ -259,7 +259,64 @@ describe('basic sql tests', () => {
 
     expect(data).to.deep.equal({
       query:
-        'SELECT (SELECT ROW_TO_JSON(ROW("elephants"."id", "elephants"."age")) FROM "elephants" WHERE ("elephants"."id" = "users"."id")) "elephants" FROM "users"',
+        'SELECT (SELECT JSON_BUILD_OBJECT(\'id\', "elephants"."id", \'age\', "elephants"."age") FROM "elephants" WHERE ("elephants"."id" = "users"."id")) "elephants" FROM "users"',
+    });
+  });
+
+  it('field names in shape default to the underlying field name rather than model name', async () => {
+    const data = await arql(
+      `
+      (
+        u: users,
+        o: orders
+      ) | join(u.id = o.userId) {
+        u.id,
+        orderId: o.id,
+      }
+    `,
+      []
+    );
+
+    expect(data).to.deep.equal({
+      query:
+        'SELECT "users"."id", "orders"."id" AS "orderId" FROM (SELECT "users"."id", "users"."name" FROM "users") "users" INNER JOIN (SELECT "orders"."id", "orders"."userId", "orders"."name" FROM "orders") "orders" ON ("users"."id" = "orders"."userId")',
+    });
+  });
+
+  it('sort after a filter definitely sorts', async () => {
+    const data = await arql(
+      `
+      (
+        u: users,
+        o: orders
+      ) | join(u.id = o.userId) | sort(o.id) {
+        u.id,
+        orderId: o.id,
+        o.name,
+      }
+    `,
+      []
+    );
+
+    expect(data).to.deep.equal({
+      query:
+        'SELECT "users"."id", "orders"."id" AS "orderId", "orders"."name" FROM (SELECT "users"."id", "users"."name" FROM "users") "users" INNER JOIN (SELECT "orders"."id", "orders"."userId", "orders"."name" FROM "orders") "orders" ON ("users"."id" = "orders"."userId") ORDER BY "orders"."id"',
+    });
+  });
+
+  it('does nice inner shape selects', async () => {
+    const data = await arql(
+      `users {
+      user: {
+        name: users.name
+      }
+    }`,
+      []
+    );
+
+    expect(data).to.deep.equal({
+      query:
+        'SELECT (SELECT JSON_BUILD_OBJECT(\'name\', "users"."name")) FROM "users"',
     });
   });
 });

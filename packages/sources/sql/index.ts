@@ -186,21 +186,25 @@ export default class SQL extends DataSource<any, any> {
   ): Intermediate {
     let query: Intermediate = baseQuery;
     if (Array.isArray(collection.value)) {
-      query = collection.value.map((v) => {
-        const resolved = this.resolveCollectionValue(
-          v,
-          data,
-          results,
-          params,
-          contextQueries,
-          baseQuery,
-          true
-        );
-        if (Array.isArray(resolved)) {
-          throw new Error('Nested array source values are unsupported');
-        }
-        return resolved;
-      });
+      if (collection.value.length) {
+        query = collection.value.map((v) => {
+          const resolved = this.resolveCollectionValue(
+            v,
+            data,
+            results,
+            params,
+            contextQueries,
+            baseQuery,
+            true
+          );
+          if (Array.isArray(resolved)) {
+            throw new Error('Nested array source values are unsupported');
+          }
+          return resolved;
+        });
+      } else {
+        query = undefined;
+      }
     } else {
       query = this.resolveCollectionValue(
         collection.value,
@@ -235,23 +239,18 @@ export default class SQL extends DataSource<any, any> {
         throw new Error('Multi collections must be transformed before shaping');
       }
       const fields = [];
+      const queries = query
+        ? [query as Intermediate].concat(contextQueries)
+        : contextQueries;
       for (let field of collection.shape) {
         if (Array.isArray(field)) {
           throw new Error('Array shapes are not supported');
         }
-        fields.push(
-          this.resolveField(
-            [query as Intermediate].concat(contextQueries),
-            field,
-            params
-          )
-        );
+        fields.push(this.resolveField(queries, field, params));
       }
       query = (query || this.sql).select(
         baseQuery
-          ? this.sql.function('ROW_TO_JSON')(
-              this.sql.function('ROW')(...fields)
-            )
+          ? this.sql.function('JSON_BUILD_OBJECT')(...fields.map(f => [f.alias || f.name, f]).flat(1))
           : fields
       );
     } else {
@@ -277,9 +276,7 @@ export default class SQL extends DataSource<any, any> {
         }
         query = (query || this.sql).select(
           baseQuery
-            ? this.sql.function('ROW_TO_JSON')(
-                this.sql.function('ROW')(...fields)
-              )
+            ? this.sql.function('JSON_BUILD_OBJECT')(...fields.map(f => [f.alias || f.name, f]).flat(1))
             : fields
         );
       } else {
