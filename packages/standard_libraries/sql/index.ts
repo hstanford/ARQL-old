@@ -86,7 +86,7 @@ export default function sql(source: DataSource<any, any>) {
       'filter',
       (modifiers: string[], params: any[], contextQueries, expr) => {
         return contextQueries[0].where(
-          (source as any).resolveExpression(contextQueries, expr, params)
+          (source as any).resolveField(contextQueries, expr, params)
         );
       },
     ],

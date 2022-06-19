@@ -319,4 +319,19 @@ describe('basic sql tests', () => {
         'SELECT (SELECT JSON_BUILD_OBJECT(\'name\', "users"."name")) FROM "users"',
     });
   });
+
+  it('supports any type of field in a filter', async () => {
+    const data = await arql(
+      `(users, elephants) | join(users.id = elephants.id){
+      users.id,
+      elephants.age,
+      orders | filter(orders.id)
+    }`,
+      []
+    );
+    expect(data).to.deep.equal({
+      query:
+        'SELECT "users"."id", "elephants"."age", (SELECT JSON_BUILD_OBJECT(\'id\', "orders"."id", \'userId\', "orders"."userId", \'name\', "orders"."name") FROM "orders" WHERE "orders"."id") "orders" FROM (SELECT "users"."id", "users"."name" FROM "users") "users" INNER JOIN (SELECT "elephants"."id", "elephants"."age" FROM "elephants") "elephants" ON ("users"."id" = "elephants"."id")',
+    });
+  });
 });

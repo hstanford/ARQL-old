@@ -25,6 +25,7 @@ import {
   TableWithColumns,
   Node,
   ColumnNode,
+  Table,
 } from 'sql-ts';
 
 interface SQLSourceOpts extends DataSourceOpts {
@@ -288,6 +289,7 @@ export default class SQL extends DataSource<any, any> {
 
   findColumn(contextQueries: Intermediate[], field: DataField) {
     let out: any;
+    let backupOut: any;
     // TODO: can this be typed better?
     function isFrom(node: any): node is FromNode {
       return node.type === 'FROM';
@@ -315,13 +317,19 @@ export default class SQL extends DataSource<any, any> {
           break;
         }
       }
+      if (!out && (val as any).table?.tableName === field.from?.name) {
+        out = (val as any).table?.[field.name];
+      }
       // if not found try looking at the query itself
       if (!out) {
-        out = (val as any)[field.name] || (val as any).table?.[field.name];
+        backupOut = (val as any)[field.name] || (val as any).table?.[field.name];
       }
       if (out) {
         break;
       }
+    }
+    if (!out) {
+      out = backupOut;
     }
     if (!out) {
       throw new Error(`Could not find ${field.name}`);
@@ -344,13 +352,14 @@ export default class SQL extends DataSource<any, any> {
           'Subcollections from multi collection are not supported'
         );
       }
+      const baseTable = contextQueries[0]?.table;
       return this.resolveCollections(
         field,
         [],
         [],
         params,
         contextQueries,
-        contextQueries[0]?.table.subQuery(field.alias)
+        Table.prototype.subQuery.apply(baseTable || this.sql, [field.alias])
       );
     } else if (field.type === 'exprtree') {
       out = this.resolveExpression(contextQueries, field, params);
