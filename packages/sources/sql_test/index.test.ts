@@ -82,7 +82,7 @@ describe('sql', () => {
     );
     expect(out).to.deep.equal({
       query:
-        'SELECT "users"."name" AS "ordername", "users"."name" AS "username" FROM "users" INNER JOIN "orders" ON ("orders"."userId" = "users"."id")',
+        'SELECT "orders"."name" AS "ordername", "users"."name" AS "username" FROM (SELECT "users"."id", "users"."name" FROM "users") "users" INNER JOIN (SELECT "orders"."id", "orders"."userId", "orders"."name" FROM "orders") "orders" ON ("orders"."userId" = "users"."id")',
     });
   });
 });
@@ -118,7 +118,7 @@ describe('basic sql tests', () => {
 
     expect(data).to.deep.equal({
       query:
-        'SELECT "users"."name" AS "username", "users"."name" AS "ordername" FROM "users" INNER JOIN "orders" ON ("orders"."userId" = "users"."id")',
+        'SELECT "users"."name" AS "username", "orders"."name" AS "ordername" FROM (SELECT "users"."id", "users"."name" FROM "users") "users" INNER JOIN (SELECT "orders"."id", "orders"."userId", "orders"."name" FROM "orders") "orders" ON ("orders"."userId" = "users"."id")',
     });
   });
 
@@ -131,7 +131,8 @@ describe('basic sql tests', () => {
     );
 
     expect(data).to.deep.equal({
-      query: 'SELECT * FROM "elephants" WHERE ("elephants"."age" = 39)',
+      query:
+        'SELECT "elephants"."id", "elephants"."age" FROM "elephants" WHERE ("elephants"."age" = 39)',
     });
   });
 
@@ -192,7 +193,7 @@ describe('basic sql tests', () => {
 
     expect(data).to.deep.equal({
       query:
-        'SELECT "users"."id", (SELECT "orders"."name" FROM "orders" WHERE ("users"."id" = "orders"."userId")) "orders" FROM "users"',
+        'SELECT "users"."id", (SELECT ROW_TO_JSON(ROW("orders"."name")) FROM "orders" WHERE ("users"."id" = "orders"."userId")) "orders" FROM "users"',
     });
   });
 
@@ -245,6 +246,20 @@ describe('basic sql tests', () => {
     expect(data).to.deep.equal({
       query:
         'SELECT (SELECT ROW_TO_JSON("elephants") FROM "elephants") "blah" FROM "users"',
+    });
+  });
+
+  it('filtered model in shape conforms to filter', async () => {
+    const data = await arql(
+      `
+      users {elephants | filter(elephants.id = users.id)}
+    `,
+      []
+    );
+
+    expect(data).to.deep.equal({
+      query:
+        'SELECT (SELECT ROW_TO_JSON(ROW("elephants"."id", "elephants"."age")) FROM "elephants" WHERE ("elephants"."id" = "users"."id")) "elephants" FROM "users"',
     });
   });
 });

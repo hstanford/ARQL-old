@@ -58,20 +58,16 @@ export default function sql(source: DataSource<any, any>) {
       'join',
       (modifiers: string[], params: any[], contextQueries: any[], expr) => {
         const sources = contextQueries[0];
-        // TODO: handle subqueries properly
         const origin = sources[0];
         const target = sources[1];
-        return origin
+
+        return (source as any).sql
           .select()
           .from(
             origin
               .join(target)
               .on(
-                (source as any).resolveExpression(
-                  contextQueries,
-                  expr,
-                  params
-                )
+                (source as any).resolveExpression(contextQueries, expr, params)
               )
           );
       },
