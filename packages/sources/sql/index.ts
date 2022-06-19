@@ -274,10 +274,13 @@ export default class SQL extends DataSource<any, any> {
       }
     } else if (isParam(field)) {
       out = this.sql.constant(params[field.index - 1]);
+    } else if (isDataModel(field)) {
+      const model = this.baseModels.get(field.name);
+      out = model?.subQuery(field.alias || field.name).select(this.sql.function('ROW_TO_JSON')(model)).from(model);
     } else {
       throw new Error(`${field.type} not supported`);
     }
-    if (field.alias && field.alias !== field.name) out = out.as(field.alias);
+    if (field.alias && field.alias !== field.name && !isDataModel(field)) out = out.as(field.alias);
     return out;
   }
 

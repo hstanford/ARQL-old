@@ -97,7 +97,9 @@ describe('basic sql tests', () => {
   it('Basic aliased name from users', async () => {
     const data = await arql('users {foo: name}', []);
 
-    expect(data).to.deep.equal({ query: 'SELECT "users"."name" AS "foo" FROM "users"' });
+    expect(data).to.deep.equal({
+      query: 'SELECT "users"."name" AS "foo" FROM "users"',
+    });
   });
 
   it('Join and reshaping', async () => {
@@ -114,7 +116,10 @@ describe('basic sql tests', () => {
       []
     );
 
-    expect(data).to.deep.equal({ query: 'SELECT "users"."name" AS "username", "users"."name" AS "ordername" FROM "users" INNER JOIN "orders" ON ("orders"."userId" = "users"."id")' });
+    expect(data).to.deep.equal({
+      query:
+        'SELECT "users"."name" AS "username", "users"."name" AS "ordername" FROM "users" INNER JOIN "orders" ON ("orders"."userId" = "users"."id")',
+    });
   });
 
   it('Basic filtering', async () => {
@@ -125,7 +130,9 @@ describe('basic sql tests', () => {
       [39]
     );
 
-    expect(data).to.deep.equal({ query: 'SELECT * FROM "elephants" WHERE ("elephants"."age" = 39)' });
+    expect(data).to.deep.equal({
+      query: 'SELECT * FROM "elephants" WHERE ("elephants"."age" = 39)',
+    });
   });
 
   it('Basic reshaping with no aliasing', async () => {
@@ -136,7 +143,9 @@ describe('basic sql tests', () => {
       [39]
     );
 
-    expect(data).to.deep.equal({ query: 'SELECT "elephants"."age" AS "elephantAge" FROM "elephants"' });
+    expect(data).to.deep.equal({
+      query: 'SELECT "elephants"."age" AS "elephantAge" FROM "elephants"',
+    });
   });
 
   it('Basic sort with modifier', async () => {
@@ -147,7 +156,10 @@ describe('basic sql tests', () => {
       []
     );
 
-    expect(data).to.deep.equal({ query: 'SELECT "elephants"."age" FROM "elephants" ORDER BY "elephants"."age" DESC' });
+    expect(data).to.deep.equal({
+      query:
+        'SELECT "elephants"."age" FROM "elephants" ORDER BY "elephants"."age" DESC',
+    });
   });
 
   it('Basic sort with opposite modifier', async () => {
@@ -159,7 +171,10 @@ describe('basic sql tests', () => {
     );
 
     // default sort direction is asc
-    expect(data).to.deep.equal({ query: 'SELECT "elephants"."age" FROM "elephants" ORDER BY "elephants"."age"' });
+    expect(data).to.deep.equal({
+      query:
+        'SELECT "elephants"."age" FROM "elephants" ORDER BY "elephants"."age"',
+    });
   });
 
   it('Join in shape', async () => {
@@ -175,7 +190,10 @@ describe('basic sql tests', () => {
       []
     );
 
-    expect(data).to.deep.equal({ 'query': 'SELECT "users"."id", (SELECT "orders"."name" FROM "orders" WHERE ("users"."id" = "orders"."userId")) "orders" FROM "users"' });
+    expect(data).to.deep.equal({
+      query:
+        'SELECT "users"."id", (SELECT "orders"."name" FROM "orders" WHERE ("users"."id" = "orders"."userId")) "orders" FROM "users"',
+    });
   });
 
   it('param in shape', async () => {
@@ -186,6 +204,47 @@ describe('basic sql tests', () => {
       ['hi']
     );
 
-    expect(data).to.deep.equal({ 'query': 'SELECT \'hi\' AS "id" FROM "users"' });
+    expect(data).to.deep.equal({ query: 'SELECT \'hi\' AS "id" FROM "users"' });
+  });
+
+  it('expr in shape', async () => {
+    const data = await arql(
+      `
+      users {id: id + $1,}
+    `,
+      [1]
+    );
+
+    expect(data).to.deep.equal({
+      query: 'SELECT ("users"."id" + 1) AS "id" FROM "users"',
+    });
+  });
+
+  it('model in shape', async () => {
+    const data = await arql(
+      `
+      users {elephants}
+    `,
+      []
+    );
+
+    expect(data).to.deep.equal({
+      query:
+        'SELECT (SELECT ROW_TO_JSON("elephants") FROM "elephants") "elephants" FROM "users"',
+    });
+  });
+
+  it('aliased model in shape', async () => {
+    const data = await arql(
+      `
+      users {blah: elephants}
+    `,
+      []
+    );
+
+    expect(data).to.deep.equal({
+      query:
+        'SELECT (SELECT ROW_TO_JSON("elephants") FROM "elephants") "blah" FROM "users"',
+    });
   });
 });
