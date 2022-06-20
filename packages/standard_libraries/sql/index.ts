@@ -113,11 +113,13 @@ export default function sql(source: DataSource<any, any>) {
     ],
     [
       'first',
-      async (
+      (
         modifiers: string[],
         params: any[],
-        values: Map<any, any> | AnyObj[]
-      ) => {},
+        contextQueries,
+      ) => {
+        return contextQueries[0].distinctOn((source as any).sql.constant(true));
+      },
     ],
     [
       'group',

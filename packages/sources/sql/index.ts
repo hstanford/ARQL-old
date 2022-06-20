@@ -233,8 +233,11 @@ export default class SQL extends DataSource<any, any> {
     }
     if (collection.shape) {
       // if query already shaped (through join etc), remove existing shape
+      // but preserve any transformation
       if (query && '_select' in query) {
-        (query as any)._select.nodes = [];
+        (query as any)._select.nodes = (query as any)._select.nodes.filter(
+          (node: Node) => node.type === 'DISTINCT ON'
+        );
       }
       if (Array.isArray(query)) {
         throw new Error('Multi collections must be transformed before shaping');
@@ -249,15 +252,30 @@ export default class SQL extends DataSource<any, any> {
         }
         fields.push(this.resolveField(queries, field, params));
       }
-      query = (query || this.sql).select(
-        baseQuery
-          ? this.sql.function('JSON_BUILD_OBJECT')(...fields.map(f => [f.alias || f.name, f]).flat(1))
-          : fields
-      );
+      if (baseQuery) {
+        const fieldsAsJson = this.sql.function('JSON_BUILD_OBJECT')(
+          ...fields.map((f) => [f.alias || f.name, f]).flat(1)
+        );
+        if (
+          !query || (query as any)._select?.nodes.filter(
+            (node: Node) => node.type === 'DISTINCT ON'
+          ).length
+        ) {
+          query = (query || this.sql).select(fieldsAsJson);
+        } else {
+          query = (query || this.sql).select(
+            this.sql.function('JSON_AGG')(fieldsAsJson)
+          );
+        }
+      } else {
+        query = (query || this.sql).select(fields);
+      }
     } else {
       if (!Array.isArray(query)) {
         if (query && '_select' in query) {
-          (query as any)._select.nodes = [];
+          (query as any)._select.nodes = (query as any)._select.nodes.filter(
+            (node: Node) => node.type === 'DISTINCT ON'
+          );
         }
         const fields = [];
         for (let field of collection.availableFields) {
@@ -275,11 +293,27 @@ export default class SQL extends DataSource<any, any> {
             )
           );
         }
-        query = (query || this.sql).select(
-          baseQuery
-            ? this.sql.function('JSON_BUILD_OBJECT')(...fields.map(f => [f.alias || f.name, f]).flat(1))
-            : fields
-        );
+        if (baseQuery) {
+          const fieldsAsJson = this.sql.function('JSON_BUILD_OBJECT')(
+            ...fields.map((f) => [f.alias || f.name, f]).flat(1)
+          );
+          // if the data is just reshaped nested, or distincted internally
+          // then we select the object itself. Otherwise, it's from
+          // another collection and we need to aggregate
+          if (
+            !query || (query as any)._select?.nodes.filter(
+              (node: Node) => node.type === 'DISTINCT ON'
+            ).length
+          ) {
+            query = (query || this.sql).select(fieldsAsJson);
+          } else {
+            query = (query || this.sql).select(
+              this.sql.function('JSON_AGG')(fieldsAsJson)
+            );
+          }
+        } else {
+          query = (query || this.sql).select(fields);
+        }
       } else {
         // ?
       }
@@ -298,7 +332,7 @@ export default class SQL extends DataSource<any, any> {
       // try looking at the constituent tables
       // TODO: make this more robust
       const fromNodes =
-        val?.nodes.filter(isFrom).map((node) => node.nodes)[0] || [];
+        val?.nodes?.filter(isFrom).map((node) => node.nodes)[0] || [];
       for (const node of fromNodes) {
         const anyNode = node as any;
         const collectionName = field?.from?.name || field?.model?.name;
@@ -322,7 +356,8 @@ export default class SQL extends DataSource<any, any> {
       }
       // if not found try looking at the query itself
       if (!out) {
-        backupOut = (val as any)[field.name] || (val as any).table?.[field.name];
+        backupOut =
+          (val as any)[field.name] || (val as any).table?.[field.name];
       }
       if (out) {
         break;

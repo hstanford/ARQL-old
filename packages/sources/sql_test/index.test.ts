@@ -193,7 +193,7 @@ describe('basic sql tests', () => {
 
     expect(data).to.deep.equal({
       query:
-        'SELECT "users"."id", (SELECT JSON_BUILD_OBJECT(\'name\', "orders"."name") FROM "orders" WHERE ("users"."id" = "orders"."userId")) "orders" FROM "users"',
+        'SELECT "users"."id", (SELECT JSON_AGG(JSON_BUILD_OBJECT(\'name\', "orders"."name")) FROM "orders" WHERE ("users"."id" = "orders"."userId")) "orders" FROM "users"',
     });
   });
 
@@ -259,7 +259,7 @@ describe('basic sql tests', () => {
 
     expect(data).to.deep.equal({
       query:
-        'SELECT (SELECT JSON_BUILD_OBJECT(\'id\', "elephants"."id", \'age\', "elephants"."age") FROM "elephants" WHERE ("elephants"."id" = "users"."id")) "elephants" FROM "users"',
+        'SELECT (SELECT JSON_AGG(JSON_BUILD_OBJECT(\'id\', "elephants"."id", \'age\', "elephants"."age")) FROM "elephants" WHERE ("elephants"."id" = "users"."id")) "elephants" FROM "users"',
     });
   });
 
@@ -331,7 +331,23 @@ describe('basic sql tests', () => {
     );
     expect(data).to.deep.equal({
       query:
-        'SELECT "users"."id", "elephants"."age", (SELECT JSON_BUILD_OBJECT(\'id\', "orders"."id", \'userId\', "orders"."userId", \'name\', "orders"."name") FROM "orders" WHERE "orders"."id") "orders" FROM (SELECT "users"."id", "users"."name" FROM "users") "users" INNER JOIN (SELECT "elephants"."id", "elephants"."age" FROM "elephants") "elephants" ON ("users"."id" = "elephants"."id")',
+        'SELECT "users"."id", "elephants"."age", (SELECT JSON_AGG(JSON_BUILD_OBJECT(\'id\', "orders"."id", \'userId\', "orders"."userId", \'name\', "orders"."name")) FROM "orders" WHERE "orders"."id") "orders" FROM (SELECT "users"."id", "users"."name" FROM "users") "users" INNER JOIN (SELECT "elephants"."id", "elephants"."age" FROM "elephants") "elephants" ON ("users"."id" = "elephants"."id")',
+    });
+  });
+
+  it('supports relationships', async () => {
+    const data = await arql(`u: users {u.id, u.orders {name}}`);
+    expect(data).to.deep.equal({
+      query:
+        'SELECT "users"."id", (SELECT JSON_AGG(JSON_BUILD_OBJECT(\'name\', "orders"."name")) FROM "orders" WHERE ("users"."id" = "orders"."userId")) "orders" FROM "users"',
+    });
+  });
+
+  it('supports relationships to lone models', async () => {
+    const data = await arql(`orders {id, orders.user {name}}`);
+    expect(data).to.deep.equal({
+      query:
+        'SELECT "orders"."id", (SELECT DISTINCT ON(TRUE) JSON_BUILD_OBJECT(\'name\', "users"."name") FROM "users" WHERE ("orders"."userId" = "users"."id")) "user" FROM "orders"',
     });
   });
 });
