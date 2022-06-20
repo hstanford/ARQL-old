@@ -16,6 +16,7 @@ import {
   isParam,
   isDataReference,
   DataField,
+  getAlias,
 } from '@arql/core';
 
 import {
@@ -214,8 +215,20 @@ export default class SQL extends DataSource<any, any> {
         params,
         contextQueries,
         baseQuery,
-        isSubQuery
+        isSubQuery ||
+          !!(isCollection(collection.value) && collection.value.shape)
       );
+      // if the inner collection is shaped, select from that
+      // so we have access to any renamed or new fields
+      if (
+        query &&
+        'type' in query &&
+        query.type === 'SUBQUERY' &&
+        isCollection(collection.value) &&
+        collection.value.shape
+      ) {
+        query = this.sql.select().from(query);
+      }
     }
     if (collection.transform) {
       const transform = this.transforms.get(collection.transform.name);
@@ -257,7 +270,8 @@ export default class SQL extends DataSource<any, any> {
           ...fields.map((f) => [f.alias || f.name, f]).flat(1)
         );
         if (
-          !query || (query as any)._select?.nodes.filter(
+          !query ||
+          (query as any)._select?.nodes.filter(
             (node: Node) => node.type === 'DISTINCT ON'
           ).length
         ) {
@@ -301,7 +315,8 @@ export default class SQL extends DataSource<any, any> {
           // then we select the object itself. Otherwise, it's from
           // another collection and we need to aggregate
           if (
-            !query || (query as any)._select?.nodes.filter(
+            !query ||
+            (query as any)._select?.nodes.filter(
               (node: Node) => node.type === 'DISTINCT ON'
             ).length
           ) {
@@ -345,7 +360,7 @@ export default class SQL extends DataSource<any, any> {
             (col: ColumnNode) => col.name === field.name
           );
         } else if (collectionName === anyNode?.table?.tableName) {
-          out = anyNode.table[field.name];
+          out = anyNode[field.name] || anyNode.table[field.name];
         }
         if (out) {
           break;
@@ -355,7 +370,7 @@ export default class SQL extends DataSource<any, any> {
         out = (val as any).table?.[field.name];
       }
       // if not found try looking at the query itself
-      if (!out) {
+      if (!out && !backupOut) {
         backupOut =
           (val as any)[field.name] || (val as any).table?.[field.name];
       }

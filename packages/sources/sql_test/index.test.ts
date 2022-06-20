@@ -353,6 +353,17 @@ describe('basic sql tests', () => {
 
   it('supports "first" transforms', async () => {
     const data = await arql(`orders | first() {id, name}`);
-    expect(data).to.deep.equal({ query: 'SELECT DISTINCT ON(TRUE) "orders"."id", "orders"."name" FROM "orders"' });
+    expect(data).to.deep.equal({
+      query:
+        'SELECT DISTINCT ON(TRUE) "orders"."id", "orders"."name" FROM "orders"',
+    });
+  });
+
+  it('supports passing fields from inner shapes', async () => {
+    const data = await arql(`(users { id, uname: name }) {uname}`);
+    expect(data).to.deep.equal({
+      query:
+        'SELECT "users"."uname" FROM (SELECT "users"."id", "users"."name" AS "uname" FROM "users") "users"',
+    });
   });
 });
