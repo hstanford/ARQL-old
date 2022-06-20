@@ -350,4 +350,9 @@ describe('basic sql tests', () => {
         'SELECT "orders"."id", (SELECT DISTINCT ON(TRUE) JSON_BUILD_OBJECT(\'name\', "users"."name") FROM "users" WHERE ("orders"."userId" = "users"."id")) "user" FROM "orders"',
     });
   });
+
+  it('supports "first" transforms', async () => {
+    const data = await arql(`orders | first() {id, name}`);
+    expect(data).to.deep.equal({ query: 'SELECT DISTINCT ON(TRUE) "orders"."id", "orders"."name" FROM "orders"' });
+  });
 });

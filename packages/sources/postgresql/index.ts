@@ -76,6 +76,7 @@ export default class PostgresSQL extends SQL {
       throw new Error("Couldn't resolve query");
     }
     const { rows: out } = await this.db.query(query.toQuery());
-    return out;
+    // implies use of "first" transform
+    return '_distinctOn' in query ? out[0] : out;
   }
 }
