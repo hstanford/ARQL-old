@@ -77,9 +77,11 @@ export default function sql(source: DataSource<any, any>) {
       (
         modifiers: string[],
         params: any[],
-        values: Map<any, any> | AnyObj[]
+        contextQueries
       ): any => {
-        return;
+        const sources = contextQueries[0];
+        const sql = (source as any).sql;
+        return sql.select().from(sql.binaryOperator('UNION')(sources[0], sources[1]));
       },
     ],
     [
@@ -153,6 +155,9 @@ export default function sql(source: DataSource<any, any>) {
         );
       },
     ],
-    ['uniq', async (modifiers: string[], params: any[], values: any) => {}],
+    ['uniq', (modifiers: string[], params: any[], values: any) => {
+      // use distinct/distinct on? Group by?
+      throw new Error('Not implemented');
+    }],
   ]);
 }

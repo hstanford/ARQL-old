@@ -360,7 +360,7 @@ export default class SQL extends DataSource<any, any> {
           out = subCollection.columns.find(
             (col: ColumnNode) => col.name === field.name
           );
-        } else if (collectionName === anyNode?.table?.tableName) {
+        } else if (collectionName && collectionName === anyNode?.table?.tableName) {
           out = anyNode[field.name] || anyNode.table[field.name];
         }
         if (out) {

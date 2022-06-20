@@ -407,4 +407,14 @@ describe('basic sql tests', () => {
         'SELECT "users"."id", ARRAY_AGG("users"."id") AS "num" FROM "users" GROUP BY "users"."id"',
     });
   });
+
+  it.skip('supports union', async () => {
+    const data = await arql(`
+    (
+      users {id, name},
+      orders {id, name}
+    ) | union {id, name}
+    `);
+    expect(data).to.deep.equal({ query: '' });
+  });
 });
