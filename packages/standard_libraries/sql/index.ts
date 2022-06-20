@@ -132,18 +132,26 @@ export default function sql(source: DataSource<any, any>) {
         );
       },
     ],
-    ['count', (modifiers: string[], params: any[]) => {
-      const sql = (source as any).sql;
-      return sql.function('count')(sql.constant(1));
-    }],
+    [
+      'count',
+      (modifiers: string[], params: any[]) => {
+        const sql = (source as any).sql;
+        return sql.function('count')(sql.constant(1));
+      },
+    ],
     [
       'array',
-      async (
+      (
         modifiers: string[],
         params: any[],
-        values: AnyObj,
+        contextQueries,
         field: ContextualisedField
-      ) => {},
+      ) => {
+        const sql = (source as any).sql;
+        return sql.function('ARRAY_AGG')(
+          (source as any).resolveField(contextQueries, field, params)
+        );
+      },
     ],
     ['uniq', async (modifiers: string[], params: any[], values: any) => {}],
   ]);

@@ -396,4 +396,15 @@ describe('basic sql tests', () => {
         'SELECT "users"."id", count(1) AS "num" FROM "users" GROUP BY "users"."id"',
     });
   });
+
+  it('supports array aggregations', async () => {
+    const data = await arql(`users | group(id) {
+      id,
+      num: array(id)
+    }`);
+    expect(data).to.deep.equal({
+      query:
+        'SELECT "users"."id", ARRAY_AGG("users"."id") AS "num" FROM "users" GROUP BY "users"."id"',
+    });
+  });
 });

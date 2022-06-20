@@ -434,6 +434,7 @@ export default class SQL extends DataSource<any, any> {
       out = transform(
         field.modifier,
         params,
+        contextQueries,
         ...field.args
       );
     } else {
