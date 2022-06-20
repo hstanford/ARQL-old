@@ -366,4 +366,34 @@ describe('basic sql tests', () => {
         'SELECT "users"."uname" FROM (SELECT "users"."id", "users"."name" AS "uname" FROM "users") "users"',
     });
   });
+
+  it('supports field switching', async () => {
+    const data = await arql(`users {name: id, id: name}`);
+    expect(data).to.deep.equal({
+      query:
+        'SELECT "users"."id" AS "name", "users"."name" AS "id" FROM "users"',
+    });
+  });
+
+  it('supports count aggregations in the aggregation', async () => {
+    const data = await arql(`users | group(id, {
+      id,
+      num: count(id)
+    })`);
+    expect(data).to.deep.equal({
+      query:
+        'SELECT "users"."id", "users"."num" FROM (SELECT "users"."id", count(1) AS "num" FROM "users" GROUP BY "users"."id") "users"',
+    });
+  });
+
+  it('supports count aggregations outside the aggregation', async () => {
+    const data = await arql(`users | group(id) {
+      id,
+      num: count(id)
+    }`);
+    expect(data).to.deep.equal({
+      query:
+        'SELECT "users"."id", count(1) AS "num" FROM "users" GROUP BY "users"."id"',
+    });
+  });
 });

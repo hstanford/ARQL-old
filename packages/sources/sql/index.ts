@@ -17,6 +17,7 @@ import {
   isDataReference,
   DataField,
   getAlias,
+  isTransform,
 } from '@arql/core';
 
 import {
@@ -423,6 +424,18 @@ export default class SQL extends DataSource<any, any> {
         ?.subQuery(field.alias || field.name)
         .select(this.sql.function('ROW_TO_JSON')(model))
         .from(model);
+    } else if (isTransform(field)) {
+      const transform = this.transforms.get(field.name);
+      if (!transform) {
+        throw new Error(
+          `Couldn't resolve transform "${field.name}"`
+        );
+      }
+      out = transform(
+        field.modifier,
+        params,
+        ...field.args
+      );
     } else {
       throw new Error(`${field.type} not supported`);
     }

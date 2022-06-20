@@ -113,24 +113,29 @@ export default function sql(source: DataSource<any, any>) {
     ],
     [
       'first',
-      (
-        modifiers: string[],
-        params: any[],
-        contextQueries,
-      ) => {
+      (modifiers: string[], params: any[], contextQueries) => {
         return contextQueries[0].distinctOn((source as any).sql.constant(true));
       },
     ],
     [
       'group',
-      async (
+      (
         modifiers: string[],
         params: any[],
-        values: Map<any, any> | AnyObj[],
+        contextQueries,
         ...groupFields: ContextualisedField[]
-      ) => {},
+      ) => {
+        return contextQueries[0].group(
+          ...groupFields.map((field) =>
+            (source as any).resolveField(contextQueries, field, params)
+          )
+        );
+      },
     ],
-    ['count', async (modifiers: string[], params: any[], values: AnyObj) => {}],
+    ['count', (modifiers: string[], params: any[]) => {
+      const sql = (source as any).sql;
+      return sql.function('count')(sql.constant(1));
+    }],
     [
       'array',
       async (
