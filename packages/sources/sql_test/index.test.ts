@@ -417,4 +417,24 @@ describe('basic sql tests', () => {
     `);
     expect(data).to.deep.equal({ query: '' });
   });
+
+  it('supports subqueries in multi-collections', async () => {
+    const data = await arql(
+      `
+      (
+        u: users,
+        o: orders | filter(orders.id = $1)
+      ) | join(u.id = o.userId) {
+        u.id,
+        orderId: o.id,
+      }
+    `,
+      [1]
+    );
+
+    expect(data).to.deep.equal({
+      query:
+        'SELECT "users"."id", "orders"."id" AS "orderId" FROM (SELECT "users"."id", "users"."name" FROM "users") "users" INNER JOIN (SELECT "orders"."id", "orders"."userId", "orders"."name" FROM "orders" WHERE ("orders"."id" = 1)) "orders" ON ("users"."id" = "orders"."userId")',
+    });
+  });
 });

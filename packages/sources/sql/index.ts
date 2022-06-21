@@ -351,16 +351,35 @@ export default class SQL extends DataSource<any, any> {
         val?.nodes?.filter(isFrom).map((node) => node.nodes)[0] || [];
       for (const node of fromNodes) {
         const anyNode = node as any;
-        const collectionName = field?.from?.name || field?.model?.name;
+        const availableNames: string[] = [];
+        if (field.from) {
+          field.from.alias && availableNames.push(field.from.alias);
+          field.from.name && availableNames.push(getAlias(field.from.name));
+          if (isCollection(field.from.value)) {
+            field.from.value.alias &&
+              availableNames.push(field.from.value.alias);
+            field.from.value.name && availableNames.push(getAlias(field.from.value.name));
+          }
+        } else if (field.model) {
+          availableNames.push(field.model.name);
+        }
         const table = anyNode?.table;
         if (anyNode?.type === 'JOIN') {
           const subCollection = [anyNode.from?.table, anyNode.to?.table].find(
-            (node) => node?.tableName === collectionName
+            (node) => availableNames.includes(node?.tableName)
           );
+          if (!subCollection)
+            console.log(
+              availableNames,
+              [anyNode.from?.table, anyNode.to?.table],
+              field
+            );
           out = subCollection.columns.find(
             (col: ColumnNode) => col.name === field.name
           );
-        } else if (collectionName && collectionName === anyNode?.table?.tableName) {
+        } else if (
+          availableNames.includes(anyNode?.table?.tableName)
+        ) {
           out = anyNode[field.name] || anyNode.table[field.name];
         }
         if (out) {
@@ -427,16 +446,9 @@ export default class SQL extends DataSource<any, any> {
     } else if (isTransform(field)) {
       const transform = this.transforms.get(field.name);
       if (!transform) {
-        throw new Error(
-          `Couldn't resolve transform "${field.name}"`
-        );
+        throw new Error(`Couldn't resolve transform "${field.name}"`);
       }
-      out = transform(
-        field.modifier,
-        params,
-        contextQueries,
-        ...field.args
-      );
+      out = transform(field.modifier, params, contextQueries, ...field.args);
     } else {
       throw new Error(`${field.type} not supported`);
     }
