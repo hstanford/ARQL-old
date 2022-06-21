@@ -438,7 +438,7 @@ describe('basic sql tests', () => {
     });
   });
 
-  it('supports subqueries in multi-collections', async () => {
+  it('supports subqueries in a reshape', async () => {
     const data = await arql(
       `
       users {
