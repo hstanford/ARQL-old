@@ -504,7 +504,7 @@ describe('data modification', () => {
     expect(data2).to.have.length(3);
   });
 
-  it('can delete from a selection', async () => {
+  it.skip('can delete from a selection', async () => {
     const data0 = await arql('users', []);
     expect(data0).to.have.length(3);
 

@@ -118,7 +118,7 @@ describe('basic sql tests', () => {
 
     expect(data).to.deep.equal({
       query:
-        'SELECT "users"."name" AS "username", "orders"."name" AS "ordername" FROM (SELECT "users"."id", "users"."name" FROM "users") "users" INNER JOIN (SELECT "orders"."id", "orders"."userId", "orders"."name" FROM "orders") "orders" ON ("orders"."userId" = "users"."id")',
+        'SELECT "u"."name" AS "username", "o"."name" AS "ordername" FROM (SELECT "users"."id", "users"."name" FROM "users") "u" INNER JOIN (SELECT "orders"."id", "orders"."userId", "orders"."name" FROM "orders") "o" ON ("o"."userId" = "u"."id")',
     });
   });
 
@@ -279,7 +279,7 @@ describe('basic sql tests', () => {
 
     expect(data).to.deep.equal({
       query:
-        'SELECT "users"."id", "orders"."id" AS "orderId" FROM (SELECT "users"."id", "users"."name" FROM "users") "users" INNER JOIN (SELECT "orders"."id", "orders"."userId", "orders"."name" FROM "orders") "orders" ON ("users"."id" = "orders"."userId")',
+        'SELECT "u"."id", "o"."id" AS "orderId" FROM (SELECT "users"."id", "users"."name" FROM "users") "u" INNER JOIN (SELECT "orders"."id", "orders"."userId", "orders"."name" FROM "orders") "o" ON ("u"."id" = "o"."userId")',
     });
   });
 
@@ -300,7 +300,7 @@ describe('basic sql tests', () => {
 
     expect(data).to.deep.equal({
       query:
-        'SELECT "users"."id", "orders"."id" AS "orderId", "orders"."name" FROM (SELECT "users"."id", "users"."name" FROM "users") "users" INNER JOIN (SELECT "orders"."id", "orders"."userId", "orders"."name" FROM "orders") "orders" ON ("users"."id" = "orders"."userId") ORDER BY "orders"."id"',
+        'SELECT "u"."id", "o"."id" AS "orderId", "o"."name" FROM (SELECT "users"."id", "users"."name" FROM "users") "u" INNER JOIN (SELECT "orders"."id", "orders"."userId", "orders"."name" FROM "orders") "o" ON ("u"."id" = "o"."userId") ORDER BY "o"."id"',
     });
   });
 
@@ -434,7 +434,7 @@ describe('basic sql tests', () => {
 
     expect(data).to.deep.equal({
       query:
-        'SELECT "users"."id", "orders"."id" AS "orderId" FROM (SELECT "users"."id", "users"."name" FROM "users") "users" INNER JOIN (SELECT "orders"."id", "orders"."userId", "orders"."name" FROM "orders" WHERE ("orders"."id" = 1)) "orders" ON ("users"."id" = "orders"."userId")',
+        'SELECT "u"."id", "o"."id" AS "orderId" FROM (SELECT "users"."id", "users"."name" FROM "users") "u" INNER JOIN (SELECT "orders"."id", "orders"."userId", "orders"."name" FROM "orders" WHERE ("orders"."id" = 1)) "o" ON ("u"."id" = "o"."userId")',
     });
   });
 
@@ -452,6 +452,34 @@ describe('basic sql tests', () => {
     expect(data).to.deep.equal({
       query:
         'SELECT "users"."id", (SELECT JSON_AGG(JSON_BUILD_OBJECT(\'id\', "orders"."id", \'userId\', "orders"."userId", \'name\', "orders"."name")) FROM "orders" WHERE ("orders"."userId" = "users"."id")) "order" FROM "users"',
+    });
+  });
+
+  it('supports subqueries properly', async () => {
+    const data = await arql(
+      `
+      (u: users {id}) {id}
+    `,
+      []
+    );
+
+    expect(data).to.deep.equal({
+      query:
+        'SELECT "u"."id" FROM (SELECT "users"."id" FROM "users") "u"',
+    });
+  });
+
+  it('supports switching column names', async () => {
+    const data = await arql(
+      `
+      (u: users {name: id, id: name}) {u.id, u.name}
+    `,
+      []
+    );
+
+    expect(data).to.deep.equal({
+      query:
+        'SELECT "u"."id", "u"."name" FROM (SELECT "users"."id" AS "name", "users"."name" AS "id" FROM "users") "u"',
     });
   });
 });

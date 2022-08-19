@@ -67,28 +67,31 @@ export default function sql(source: DataSource<any, any>) {
             origin
               .join(target)
               .on(
-                (source as any).resolveExpression(contextQueries, expr, params)
+                (source as any).resolveExpression(
+                  contextQueries,
+                  expr,
+                  params,
+                  false
+                )
               )
           );
       },
     ],
     [
       'union',
-      (
-        modifiers: string[],
-        params: any[],
-        contextQueries
-      ): any => {
+      (modifiers: string[], params: any[], contextQueries): any => {
         const sources = contextQueries[0];
         const sql = (source as any).sql;
-        return sql.select().from(sql.binaryOperator('UNION')(sources[0], sources[1]));
+        return sql
+          .select()
+          .from(sql.binaryOperator('UNION')(sources[0], sources[1]));
       },
     ],
     [
       'filter',
       (modifiers: string[], params: any[], contextQueries, expr) => {
         return contextQueries[0].where(
-          (source as any).resolveField(contextQueries, expr, params)
+          (source as any).resolveField(contextQueries, expr, params, true)
         );
       },
     ],
@@ -101,7 +104,7 @@ export default function sql(source: DataSource<any, any>) {
         ...fields: ContextualisedField[]
       ) => {
         let mapper = function (field: ContextualisedField) {
-          return (source as any).resolveField(contextQueries, field, params);
+          return (source as any).resolveField(contextQueries, field, params, true);
         };
         if (modifiers.includes('desc')) {
           mapper = function (field: ContextualisedField) {
@@ -129,7 +132,7 @@ export default function sql(source: DataSource<any, any>) {
       ) => {
         return contextQueries[0].group(
           ...groupFields.map((field) =>
-            (source as any).resolveField(contextQueries, field, params)
+            (source as any).resolveField(contextQueries, field, params, true)
           )
         );
       },
@@ -155,9 +158,12 @@ export default function sql(source: DataSource<any, any>) {
         );
       },
     ],
-    ['uniq', (modifiers: string[], params: any[], values: any) => {
-      // use distinct/distinct on? Group by?
-      throw new Error('Not implemented');
-    }],
+    [
+      'uniq',
+      (modifiers: string[], params: any[], values: any) => {
+        // use distinct/distinct on? Group by?
+        throw new Error('Not implemented');
+      },
+    ],
   ]);
 }

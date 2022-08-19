@@ -311,7 +311,7 @@ export class Contextualiser {
           : collection,
       availableFields: collection.availableFields,
       requiredFields: [],
-      name: getAlias(collection.alias || collection.name),
+      name: getAlias(collection.name),
       subModels: collection.subModels,
       sources: uniq(collection.sources.concat(outTransform.sources)),
       shape: outShape,
@@ -355,7 +355,7 @@ export class Contextualiser {
           : collection,
       availableFields: [],
       requiredFields: [],
-      name: getAlias(collection.alias || collection.name),
+      name: getAlias(collection.name),
       subModels: collection.subModels,
       sources: uniq(collection.sources.concat(...sources)),
       shape,
@@ -411,10 +411,7 @@ export class Contextualiser {
 
     ContextualisedCollection.name = getCollectionName(ContextualisedCollection);
 
-    if (collection.alias) {
-      context.aliases.set(collection.alias, ContextualisedCollection);
-      ContextualisedCollection.alias = collection.alias;
-    } else if (ContextualisedCollection.name) {
+    if (ContextualisedCollection.name) {
       context.aliases.set(
         ContextualisedCollection.name,
         ContextualisedCollection
@@ -432,6 +429,14 @@ export class Contextualiser {
       if (isDataField(field)) context.aliases.set(field.name, field);
     }
 
+
+    if (collection.alias) {
+      context.aliases.set(collection.alias, out);
+      out.alias = collection.alias;
+    }
+
+    if (out.name) context.aliases.set(getAlias(out.name), out);
+
     if (collection.shape) {
       out = this.shapeSource(out, collection.shape, context);
     } else {
@@ -439,11 +444,6 @@ export class Contextualiser {
       // we don't want it on the output collection
       delete out.shape;
     }
-
-    if (collection.alias) {
-      context.aliases.set(collection.alias, out);
-    }
-    if (out.name) context.aliases.set(getAlias(out.name), out);
 
     return out;
   }

@@ -28,6 +28,7 @@ import {
   Node,
   ColumnNode,
   Table,
+  Column,
 } from 'sql-ts';
 
 interface SQLSourceOpts extends DataSourceOpts {
@@ -148,7 +149,8 @@ export default class SQL extends DataSource<any, any> {
     params: any[],
     contextQueries: Intermediate[],
     baseQuery: Intermediate = undefined,
-    isSubQuery: boolean = false
+    isSubQuery: boolean = false,
+    alias: string | undefined = undefined
   ): Intermediate {
     let query: Intermediate = baseQuery;
     if (isCollection(value)) {
@@ -159,7 +161,8 @@ export default class SQL extends DataSource<any, any> {
         params,
         contextQueries,
         query,
-        isSubQuery
+        isSubQuery,
+        alias
       );
     } else if (isDataModel(value)) {
       const model = this.baseModels.get(value.name);
@@ -172,7 +175,9 @@ export default class SQL extends DataSource<any, any> {
         }
         query = query.from(model);
       } else {
-        query = isSubQuery ? model.subQuery(value.alias || value.name) : model;
+        query = isSubQuery
+          ? model.subQuery(alias || value.alias || value.name)
+          : model;
       }
     }
     return query;
@@ -185,7 +190,8 @@ export default class SQL extends DataSource<any, any> {
     params: any[],
     contextQueries: Intermediate[],
     baseQuery: Intermediate = undefined,
-    isSubQuery: boolean = false
+    isSubQuery: boolean = false,
+    alias: string | undefined = undefined
   ): Intermediate {
     let query: Intermediate = baseQuery;
     if (Array.isArray(collection.value)) {
@@ -198,7 +204,8 @@ export default class SQL extends DataSource<any, any> {
             params,
             contextQueries,
             baseQuery,
-            true
+            true,
+            alias
           );
           if (Array.isArray(resolved)) {
             throw new Error('Nested array source values are unsupported');
@@ -217,7 +224,8 @@ export default class SQL extends DataSource<any, any> {
         contextQueries,
         baseQuery,
         isSubQuery ||
-          !!(isCollection(collection.value) && collection.value.shape)
+          !!(isCollection(collection.value) && collection.value.shape),
+        alias || collection.alias
       );
       // if the inner collection is shaped, select from that
       // so we have access to any renamed or new fields
@@ -252,6 +260,12 @@ export default class SQL extends DataSource<any, any> {
         (query as any)._select.nodes = (query as any)._select.nodes.filter(
           (node: Node) => node.type === 'DISTINCT ON'
         );
+        for (let key in query) {
+          if ((query as any)[key]?.hasOwnProperty('dataType')) {
+            // instanceof Column not working - different ts-node instances?
+            delete (query as any)[key];
+          }
+        }
       }
       if (Array.isArray(query)) {
         throw new Error('Multi collections must be transformed before shaping');
@@ -291,6 +305,12 @@ export default class SQL extends DataSource<any, any> {
           (query as any)._select.nodes = (query as any)._select.nodes.filter(
             (node: Node) => node.type === 'DISTINCT ON'
           );
+          for (let key in query) {
+            if ((query as any)[key]?.hasOwnProperty('dataType')) {
+              // instanceof Column not working - different ts-node instances?
+              delete (query as any)[key];
+            }
+          }
         }
         const fields = [];
         for (let field of collection.availableFields) {
@@ -337,7 +357,11 @@ export default class SQL extends DataSource<any, any> {
     return query;
   }
 
-  findColumn(contextQueries: Intermediate[], field: DataField) {
+  findColumn(
+    contextQueries: Intermediate[],
+    field: DataField,
+    withinSubQuery: boolean = false
+  ) {
     let out: any;
     let backupOut: any;
     // TODO: can this be typed better?
@@ -345,12 +369,39 @@ export default class SQL extends DataSource<any, any> {
       return node.type === 'FROM';
     }
     for (let val of contextQueries.flat(1)) {
+      if (
+        val?.hasOwnProperty(field.name) &&
+        (field.from?.alias || field.from?.name) ===
+          (val.alias || (val.table as any)?.tableName) &&
+        !withinSubQuery
+      ) {
+        out = (val as any)[field.name];
+        break;
+      }
       // try looking at the constituent tables
       // TODO: make this more robust
       const fromNodes =
         val?.nodes?.filter(isFrom).map((node) => node.nodes)[0] || [];
       for (const node of fromNodes) {
         const anyNode = node as any;
+        if (node.type === 'JOIN') {
+          for (let subNode of [anyNode.to, anyNode.from]) {
+            if (
+              subNode?.hasOwnProperty(field.name) &&
+              (field.from?.alias || field.from?.name) ===
+                (subNode.alias || subNode.table?.name)
+            ) {
+              out = subNode[field.name];
+            }
+          }
+          if (out) {
+            break;
+          }
+        }
+        if (anyNode?.hasOwnProperty(field.name)) {
+          out = anyNode[field.name];
+          break;
+        }
         const availableNames: string[] = [];
         if (field.from) {
           field.from.alias && availableNames.push(field.from.alias);
@@ -358,7 +409,8 @@ export default class SQL extends DataSource<any, any> {
           if (isCollection(field.from.value)) {
             field.from.value.alias &&
               availableNames.push(field.from.value.alias);
-            field.from.value.name && availableNames.push(getAlias(field.from.value.name));
+            field.from.value.name &&
+              availableNames.push(getAlias(field.from.value.name));
           }
         } else if (field.model) {
           availableNames.push(field.model.name);
@@ -377,9 +429,7 @@ export default class SQL extends DataSource<any, any> {
           out = subCollection.columns.find(
             (col: ColumnNode) => col.name === field.name
           );
-        } else if (
-          availableNames.includes(anyNode?.table?.tableName)
-        ) {
+        } else if (availableNames.includes(anyNode?.table?.tableName)) {
           out = anyNode[field.name] || anyNode.table[field.name];
         }
         if (out) {
@@ -410,7 +460,8 @@ export default class SQL extends DataSource<any, any> {
   resolveField(
     contextQueries: Intermediate[],
     field: DelegatedField,
-    params: any[]
+    params: any[],
+    withinSubQuery: boolean = false
   ) {
     let out: any;
     if (isCollection(field)) {
@@ -432,9 +483,14 @@ export default class SQL extends DataSource<any, any> {
         Table.prototype.subQuery.apply(baseTable || this.sql, [field.alias])
       );
     } else if (field.type === 'exprtree') {
-      out = this.resolveExpression(contextQueries, field, params);
+      out = this.resolveExpression(
+        contextQueries,
+        field,
+        params,
+        withinSubQuery
+      );
     } else if (isDataField(field)) {
-      out = this.findColumn(contextQueries, field);
+      out = this.findColumn(contextQueries, field, withinSubQuery);
     } else if (isParam(field)) {
       out = this.sql.constant(params[field.index - 1]);
     } else if (isDataModel(field)) {
@@ -460,7 +516,8 @@ export default class SQL extends DataSource<any, any> {
   resolveExpression(
     contextQueries: Intermediate[],
     expression: ContextualisedExpr,
-    params: any[]
+    params: any[],
+    withinSubQuery: boolean = false
   ) {
     let resolvedArgs: any[] = [];
     for (let arg of expression.args) {
@@ -469,13 +526,17 @@ export default class SQL extends DataSource<any, any> {
           this.resolveCollections(arg, [], [], params, contextQueries)
         );
       } else if (arg.type === 'exprtree') {
-        resolvedArgs.push(this.resolveExpression(contextQueries, arg, params));
+        resolvedArgs.push(
+          this.resolveExpression(contextQueries, arg, params, withinSubQuery)
+        );
       } else if (arg.type === 'datamodel') {
         throw new Error('Datamodels not supported in expressions');
       } else if (arg.type === 'param') {
         resolvedArgs.push(params[arg.index - 1]);
       } else if (isDataField(arg)) {
-        resolvedArgs.push(this.resolveField(contextQueries, arg, params));
+        resolvedArgs.push(
+          this.resolveField(contextQueries, arg, params, withinSubQuery)
+        );
       } else {
         throw new Error(`Expression type ${arg.type} is not supported`);
       }
