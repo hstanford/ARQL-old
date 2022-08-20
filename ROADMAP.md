@@ -51,10 +51,6 @@ npm run playground
 
 ## Milestones
 
-### July 2022
-
-- PostgreSQL source
-
 ### Aug 2022
 
 - Properly respected source capabilities

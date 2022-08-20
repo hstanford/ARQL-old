@@ -11,6 +11,9 @@
 
 ## Contextualiser
 
+- Expose expected output data type built from the contextualised AST
+- Add tests
+
 ## Delegator
 
 - feedback optimisations in delegator (delegated queries can recieve results of other delegated queries)
