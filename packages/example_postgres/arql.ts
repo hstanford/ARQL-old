@@ -7,8 +7,10 @@ import {
   delegator,
   Collector,
   getSourcedModels,
-  DataModel,
 } from '@arql/core';
+import {
+  DataModel,
+} from '@arql/types';
 
 // standard libraries
 import generic from '@arql/stdlib-general';
