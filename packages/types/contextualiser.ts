@@ -137,7 +137,16 @@ export interface DataModel {
 }
 export class DataModel {
   type = 'datamodel' as const;
-  constructor (opts: Omit<DataModel, 'type'>) {
+  clone(override?: Partial<DataModel>) {
+    const newDataModel = new DataModel(this);
+    if (override)
+      Object.assign(newDataModel, override);
+    return newDataModel;
+  }
+  getAvailableFields() {
+    return [] as ContextualisedField[];
+  }
+  constructor (opts: Omit<DataModel, 'type' | 'clone' | 'getAvailableFields'>) {
     Object.assign(this, opts);
   }
 }

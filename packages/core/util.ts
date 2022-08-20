@@ -1,5 +1,7 @@
 import {
   Alphachain,
+  BaseDataField,
+  BaseDataReference,
   BaseModel,
   ContextualisedCollection,
   DataField,
@@ -53,8 +55,7 @@ export function getSourcesModel<
   M extends SourceMap<K>,
   T extends BaseModel<M>
 >(model: T, key: K, sourceModels: M, getModel: (name: string) => DataModel) {
-  return {
-    type: 'datamodel',
+  return new DataModel({
     name: key,
     source: sourceModels[key],
     fields: (Object.keys(model) as (keyof T)[]).reduce<
@@ -66,7 +67,7 @@ export function getSourcesModel<
       if (typeof k !== 'string') {
         throw new Error('Expected string key');
       }
-      const data = model[k];
+      const data: BaseDataField | BaseDataReference<M> = model[k];
       let out: DataReference | DataField;
       if (data.type === 'datareference') {
         out = {
@@ -95,7 +96,7 @@ export function getSourcesModel<
       }
       return acc.concat(out);
     }, []),
-  };
+  });
 }
 
 export function getSourcedModels<T extends ModelsDeclarationTypes<any>>(

@@ -22,7 +22,7 @@ import {
   ContextualisedTransform,
   ContextualiserState,
   DataField,
-  DataModel,
+  DataModel as BaseDataModel,
   DataReference,
   DataSource,
   Dest,
@@ -60,6 +60,12 @@ class ContextualisedCollection extends BaseContextualisedCollection {
     return this.shape
       ? shapeToAvailableFields(this.shape, this)
       : this.availableFields;
+  }
+}
+
+class DataModel extends BaseDataModel {
+  getAvailableFields(): ContextualisedField[] {
+    return this.fields.filter(isDataField);
   }
 }
 
@@ -125,20 +131,13 @@ function shapeToAvailableFields(
 function getAvailableFieldsFromCollection(
   collectionValue: ContextualisedCollectionValue
 ): ContextualisedField[] {
-  let fields = [];
-  if (isCollection(collectionValue)) {
-    fields = collectionValue.availableFields;
-    if (collectionValue.shape) {
-      fields = shapeToAvailableFields(collectionValue.shape, collectionValue);
-    }
-  } else if (isDataModel(collectionValue)) {
-    fields = collectionValue.fields.filter(isDataField);
-  } else {
+  if (!('getAvailableFields' in collectionValue)) {
     throw new Error(
       `Unsupported collectionValue type ${collectionValue.type} for extracting fields`
     );
   }
-  return fields;
+
+  return collectionValue.getAvailableFields();
 }
 
 function getSubmodels(collectionValue: ContextualisedCollectionValue) {
@@ -732,7 +731,10 @@ export class Contextualiser {
     }
 
     if (field.alias) {
-      if (isCollection(contextualisedField)) {
+      if (
+        isCollection(contextualisedField) ||
+        isDataModel(contextualisedField)
+      ) {
         contextualisedField = contextualisedField.clone({ alias: field.alias });
       } else {
         contextualisedField = { ...contextualisedField, alias: field.alias };

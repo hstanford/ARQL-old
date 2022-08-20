@@ -35,12 +35,11 @@ export class Data {
     this.onChange();
   }
   addModel(name: string, ...sourceNames: string[]) {
-    const newModel: DataModel = {
-      type: 'datamodel',
+    const newModel = new DataModel({
       source: this.sources.get(sourceNames[0]),
       name,
       fields: [],
-    };
+    });
     this.models.set(name, newModel);
     for (const sourceName of sourceNames) {
       const source = this.sources.get(sourceName);

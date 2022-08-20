@@ -19,8 +19,7 @@ function selfReference(model: DataModel) {
   }
 }
 
-export const items: DataModel = {
-  type: 'datamodel',
+export const items = new DataModel({
   name: 'items',
   source: mainDb,
   fields: [
@@ -43,7 +42,7 @@ export const items: DataModel = {
         source: f.source || mainDb,
       } as unknown as DataField)
   ),
-};
+});
 
 selfReference(items);
 mainDb.add(items);
