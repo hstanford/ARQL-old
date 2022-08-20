@@ -1,6 +1,6 @@
-import { dataType } from './models';
-import { Alphachain, ExprTree, Modifier, Param, Transform } from './parser';
-import { AnyObj } from './util';
+import { dataType } from './models.js';
+import { Alphachain, ExprTree, Modifier, Param, Transform } from './parser.js';
+import { AnyObj } from './util.js';
 
 export type operatorOp = (...args: any[]) => any;
 export type transformFn = (...args: any[]) => any;

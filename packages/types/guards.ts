@@ -1,9 +1,9 @@
-import { Collection, Query } from './parser';
+import { Collection, Query } from './parser.js';
 import {
   ContextualisedCollection,
   ContextualisedQuery,
-} from './contextualiser';
-import { DelegatedCollection, DelegatedQuery } from './delegator';
+} from './contextualiser.js';
+import { DelegatedCollection, DelegatedQuery } from './delegator.js';
 
 export function isCollection<T>(
   ipt: T

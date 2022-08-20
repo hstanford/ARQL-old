@@ -1,4 +1,4 @@
-import { PickByNotValue } from './util';
+import { PickByNotValue } from './util.js';
 export type dataType = 'string' | 'number' | 'boolean' | 'json' | 'date';
 
 export interface BaseDataField {

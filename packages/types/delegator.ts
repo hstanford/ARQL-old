@@ -7,7 +7,7 @@ import {
   ContextualisedFunction,
   ContextualisedParam,
   ContextualisedQuery,
-} from './contextualiser';
+} from './contextualiser.js';
 
 export type Modify<T, R> = Omit<T, keyof R> & R;
 export interface DelegatedQueryResult {
