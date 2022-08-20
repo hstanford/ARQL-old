@@ -29,7 +29,7 @@ import {
   isParam,
   isQuery,
   DataSource,
-} from './types.js';
+} from '@arql/types';
 
 import { combine } from './sources.js';
 import { getCollectionName, uniq } from './util.js';

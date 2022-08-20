@@ -6,7 +6,7 @@
  * arity of the operators
  */
 
-import type { ExprUnary, RankedOperator } from './types.js';
+import { ExprUnary, RankedOperator } from '@arql/types';
 
 function indexOfSymbol(arr: ExprUnary[], symbol: string) {
   for (let i = 0; i < arr.length; i++) {

@@ -44,7 +44,7 @@ import type {
   Field,
   Query,
   Wildcard,
-} from './types.js';
+} from '@arql/types';
 
 export default function buildParser(opResolver = (expr: any) => expr) {
   // first_name, firstName, f1rstnam3 etc

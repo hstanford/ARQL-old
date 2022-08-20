@@ -12,7 +12,7 @@
 // 1. run all the queries in parallel to get the data
 // 2. feed the ast through the native resolver, replacing the delegated queries with data
 //    also support in-memory data access for fields whose source is the native resolver
-import { DataSourceOpts, ResolutionTree } from './types.js';
+import { DataSourceOpts, ResolutionTree } from '@arql/types';
 
 import Native from './native.js';
 

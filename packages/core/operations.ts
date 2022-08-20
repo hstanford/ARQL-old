@@ -1,7 +1,7 @@
 /**
  * Utility functions and guides for custom operator creation
  */
-import type { Operator, RankedOperator } from './types.js';
+import type { Operator, RankedOperator } from '@arql/types';
 export const EXPR = Symbol('EXPR');
 
 // operators must be +-*/<>=~!@£#%^&|`?:

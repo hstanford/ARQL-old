@@ -8,23 +8,23 @@
 
 import {
   AnyObj,
-  DataModel,
   ContextualisedExpr,
   DataField,
+  DataModel,
+  DataSource,
   DataSourceOpts,
   DelegatedCollection,
   DelegatedField,
   DelegatedQuery,
   DelegatedQueryResult,
-  operatorOp,
-  transformFn,
-  isDataReference,
-  isTransform,
   isCollection,
   isDataModel,
+  isDataReference,
   isParam,
-} from './types.js';
-import { DataSource } from './types.js';
+  isTransform,
+  operatorOp,
+  transformFn,
+} from '@arql/types';
 import { v4 as uuid } from 'uuid';
 import { getAlias } from './util.js';
 

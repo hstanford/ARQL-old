@@ -7,7 +7,7 @@ import {
   isDataReference,
   isParam,
   isDataField,
-} from './types.js';
+} from '@arql/types';
 import { uniq } from './util.js';
 
 export class UnresolveableSource extends DataSource<any, any> {}

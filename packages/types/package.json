@@ -1,0 +1,18 @@
+{
+  "name": "@arql/types",
+  "version": "0.0.1",
+  "description": "Types module for ARQL (Abstract Relational Query Language)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "rimraf dist && tsc"
+  },
+  "author": "Henry Stanford",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^17.0.14",
+    "rimraf": "^3.0.2",
+    "typescript": "^4.5.5"
+  }
+}

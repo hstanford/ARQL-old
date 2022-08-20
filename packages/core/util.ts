@@ -1,14 +1,14 @@
-import type {
+import {
   Alphachain,
-  ContextualisedCollection,
-  ModelsDeclarationTypes,
-  DataSource,
-  DataModel,
-  DataField,
-  DataReference,
   BaseModel,
-} from './types.js';
-import { isAlphachain } from './types.js';
+  ContextualisedCollection,
+  DataField,
+  DataModel,
+  DataReference,
+  DataSource,
+  isAlphachain,
+  ModelsDeclarationTypes,
+} from '@arql/types';
 
 export function uniq<T>(arr: T[]) {
   return arr.filter(

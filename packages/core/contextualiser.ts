@@ -16,7 +16,6 @@ import {
   ContextualisedExpr,
   ContextualisedField,
   ContextualisedFunction,
-  ContextualisedParam,
   ContextualisedQuery,
   ContextualisedCollection,
   ContextualisedCollectionValue,
@@ -46,7 +45,7 @@ import {
   Collection,
   Transform,
   TransformDef,
-} from './types.js';
+} from '@arql/types';
 
 import type { ARQLParser } from './parser';
 
