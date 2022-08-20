@@ -13,6 +13,7 @@
   "dependencies": {
     "@arql/core": "file:../../core",
     "@arql/source-sql": "file:../sql",
+    "@arql/types": "file:../../types",
     "sql-ts": "^6.1.0"
   },
   "devDependencies": {

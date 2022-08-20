@@ -1,5 +1,4 @@
-import { transforms } from '@arql/stdlib-general';
-import { DataModel, BaseModel } from '@arql/core';
+import { BaseModel } from '@arql/types';
 
 import {
   Field,

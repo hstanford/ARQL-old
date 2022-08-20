@@ -2,7 +2,7 @@
  * A models/data setup for tests, using multiple
  * native data sources.
  */
-import { DataModel, DataField } from '@arql/core';
+import { DataModel, DataField } from '@arql/types';
 import picoConfigurer from '@arql/stdlib-picodb';
 import Pico from '@arql/source-picodb';
 

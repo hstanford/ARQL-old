@@ -1,4 +1,4 @@
-import { operators, transforms } from '@arql/stdlib-general';
+import { operators } from '@arql/stdlib-general';
 
 type ArrayElement<ArrayType extends readonly unknown[]> =
   ArrayType extends readonly (infer ElementType)[] ? ElementType : never;

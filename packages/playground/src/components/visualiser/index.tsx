@@ -1,25 +1,12 @@
 import {
   DataModel,
   isDataReference,
-  DataField,
-  DataReference,
-} from '@arql/core';
-import * as d3 from 'd3';
-import React, { useEffect, useRef } from 'react';
+} from '@arql/types';
+import React from 'react';
 import ForceGraph from '../forceGraph';
-import { Box, Button, Dialog, Stack, Typography } from '@mui/material';
-import DataObjectIcon from '@mui/icons-material/DataObject';
-import { Add, Remove, Delete } from '@mui/icons-material';
+import { Box, Button, Stack } from '@mui/material';
 import { Data } from '../../models';
 
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
-import Fields from './fields';
-import Relationships from './relationships';
 import Model from './model';
 import SourceCreator from './sourceCreator';
 import ModelCreator from './modelCreator';

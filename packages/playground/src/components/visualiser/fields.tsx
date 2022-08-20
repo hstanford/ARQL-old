@@ -1,9 +1,7 @@
-import { DataModel, DataField, isDataField } from '@arql/core';
+import { DataModel, DataField, isDataField } from '@arql/types';
 import React from 'react';
 import {
-  Box,
   Button,
-  Dialog,
   FormControl,
   InputLabel,
   MenuItem,

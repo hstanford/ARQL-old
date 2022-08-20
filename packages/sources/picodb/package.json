@@ -10,7 +10,7 @@
   "author": "Henry Stanford",
   "license": "ISC",
   "dependencies": {
-    "@arql/core": "file:../../core",
+    "@arql/types": "file:../../types",
     "picodb": "^1.0.4"
   },
   "devDependencies": {

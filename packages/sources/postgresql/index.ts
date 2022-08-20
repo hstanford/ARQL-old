@@ -1,9 +1,9 @@
 import {
-  AnyObj,
+  Dictionary,
   DataSourceOpts,
   DelegatedQuery,
   DelegatedCollection,
-} from '@arql/core';
+} from '@arql/types';
 
 import SQL from '@arql/source-sql';
 import Pg, { ClientConfig } from 'pg';
@@ -63,8 +63,8 @@ export default class PostgresSQL extends SQL {
 
   async resolve(
     ast: DelegatedQuery | DelegatedCollection,
-    data: AnyObj[] | null,
-    results: AnyObj[][],
+    data: Dictionary[] | null,
+    results: Dictionary[][],
     params: any[]
   ) {
     await this.untilReady();

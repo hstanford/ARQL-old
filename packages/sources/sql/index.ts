@@ -1,24 +1,24 @@
+import { getAlias } from '@arql/core';
 import {
-  DataSource,
-  transformFn,
-  operatorOp,
-  AnyObj,
-  DataSourceOpts,
-  DelegatedQuery,
-  DelegatedCollection,
-  isCollection,
-  DataModel,
-  isDataModel,
-  isDataField,
   BaseModel,
   ContextualisedExpr,
-  DelegatedField,
-  isParam,
-  isDataReference,
   DataField,
-  getAlias,
+  DataModel,
+  DataSource,
+  DataSourceOpts,
+  DelegatedCollection,
+  DelegatedField,
+  DelegatedQuery,
+  Dictionary,
+  isCollection,
+  isDataField,
+  isDataModel,
+  isDataReference,
+  isParam,
   isTransform,
-} from '@arql/core';
+  operatorOp,
+  transformFn,
+} from '@arql/types';
 
 import {
   FromNode,
@@ -28,7 +28,6 @@ import {
   Node,
   ColumnNode,
   Table,
-  Column,
 } from 'sql-ts';
 
 interface SQLSourceOpts extends DataSourceOpts {
@@ -100,8 +99,8 @@ export default class SQL extends DataSource<any, any> {
 
   async resolve(
     ast: DelegatedQuery | DelegatedCollection,
-    data: AnyObj[] | null,
-    results: AnyObj[][],
+    data: Dictionary[] | null,
+    results: Dictionary[][],
     params: any[]
   ): Promise<any> {
     const query = await this.resolveQueryObject(ast, data, results, params);
@@ -111,11 +110,11 @@ export default class SQL extends DataSource<any, any> {
 
   async resolveQueryObject(
     ast: DelegatedQuery | DelegatedCollection,
-    data: AnyObj[] | null,
-    results: AnyObj[][],
+    data: Dictionary[] | null,
+    results: Dictionary[][],
     params: any[]
   ) {
-    let sourceQuery: Intermediate, destQuery: AnyObj | AnyObj[] | undefined;
+    let sourceQuery: Intermediate, destQuery: Dictionary | Dictionary[] | undefined;
     if (ast.type === 'query') {
       if (ast.sourceCollection) {
         if (ast.sourceCollection.type === 'delegatedQueryResult')

@@ -12,6 +12,7 @@
   "dependencies": {
     "@arql/core": "file:../../core",
     "@arql/stdlib-general": "file:../../standard_libraries/general",
+    "@arql/types": "file:../../types",
     "picodb": "^1.0.4",
     "sql-ts": "^6.2.0"
   },

@@ -1,9 +1,11 @@
 import type {
-  ContextualisedField,
-  TransformDef,
   Native,
-  AnyObj,
 } from '@arql/core';
+import {
+  ContextualisedField,
+  Dictionary,
+  TransformDef,
+} from '@arql/types';
 import Pico from '@arql/source-picodb';
 
 // this configuration applies to all data sources:
@@ -102,22 +104,22 @@ export function native(source: Native) {
     (
       modifiers: string[],
       params: any[],
-      values: Map<any, any> | AnyObj[],
+      values: Map<any, any> | Dictionary[],
       ...args: any[]
-    ) => Promise<AnyObj[]>
+    ) => Promise<Dictionary[]>
   >([
     [
       'join',
       async (
         modifiers: string[],
         params: any[],
-        values: Map<any, any> | AnyObj[],
+        values: Map<any, any> | Dictionary[],
         condition: ContextualisedField
-      ): Promise<AnyObj[]> => {
+      ): Promise<Dictionary[]> => {
         if (Array.isArray(values)) {
           throw new Error('Unsupported input');
         }
-        const vals: AnyObj[] = [];
+        const vals: Dictionary[] = [];
         let i = 0;
         for (const [alias, model] of values.entries()) {
           if (i++ > 0) break;
@@ -146,7 +148,7 @@ export function native(source: Native) {
       async (
         modifiers: string[],
         params: any[],
-        values: Map<any, any> | AnyObj[],
+        values: Map<any, any> | Dictionary[],
         condition: ContextualisedField
       ) => {
         if (!Array.isArray(values)) {
@@ -172,7 +174,7 @@ export function native(source: Native) {
       async (
         modifiers: string[],
         params: any[],
-        values: Map<any, any> | AnyObj[],
+        values: Map<any, any> | Dictionary[],
         ...fields: ContextualisedField[]
       ) => {
         if (!Array.isArray(values)) {

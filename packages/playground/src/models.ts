@@ -1,10 +1,12 @@
 import {
   Native,
+} from '@arql/core';
+import {
   DataModel,
   DataField,
   DataReference,
   DataSource,
-} from '@arql/core';
+} from '@arql/types';
 import nativeConfigurer from '@arql/stdlib-native';
 import { v4 as uuid } from 'uuid';
 export class Data {

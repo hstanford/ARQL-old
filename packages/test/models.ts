@@ -4,10 +4,12 @@
  */
 import {
   Native,
-  DataModel,
-  ModelsDeclarationTypes,
   getSourcedModels,
 } from '@arql/core';
+import {
+  DataModel,
+  ModelsDeclarationTypes,
+} from '@arql/types';
 import { v4 as uuid } from 'uuid';
 import nativeConfigurer from '@arql/stdlib-native';
 

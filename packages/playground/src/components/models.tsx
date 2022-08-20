@@ -11,7 +11,7 @@ import {
   TextField,
 } from '@mui/material';
 import { Data } from '../models';
-import type { DataField, DataReference } from '@arql/core';
+import type { DataField, DataReference } from '@arql/types';
 import Visualiser from './visualiser';
 
 export default function Models({

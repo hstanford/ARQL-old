@@ -1,15 +1,15 @@
 import {
-  DataSource,
-  transformFn,
-  operatorOp,
-  AnyObj,
-  DataSourceOpts,
-  DelegatedQuery,
-  DelegatedCollection,
-  isCollection,
   ContextualisedExpr,
+  DataSource,
+  DataSourceOpts,
+  DelegatedCollection,
   DelegatedField,
-} from '@arql/core';
+  DelegatedQuery,
+  Dictionary,
+  isCollection,
+  operatorOp,
+  transformFn,
+} from '@arql/types';
 
 interface PicoSourceOpts extends DataSourceOpts {
   db: any;
@@ -43,13 +43,13 @@ export default class Pico extends DataSource<any, any> {
 
   async resolve(
     ast: DelegatedQuery | DelegatedCollection,
-    data: AnyObj[] | null,
-    results: AnyObj[][],
+    data: Dictionary[] | null,
+    results: Dictionary[][],
     params: any[]
   ) {
     let sourceQuery: any,
       sourceShape: any,
-      destQuery: AnyObj | AnyObj[] | undefined;
+      destQuery: Dictionary | Dictionary[] | undefined;
     if (ast.type === 'query') {
       if (ast.sourceCollection) {
         if (ast.sourceCollection.type === 'delegatedQueryResult')

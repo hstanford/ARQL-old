@@ -1,6 +1,5 @@
 import { Add } from '@mui/icons-material';
 import {
-  Box,
   Button,
   Dialog,
   FormControl,
@@ -9,7 +8,6 @@ import {
   Select,
   Stack,
   TextField,
-  Typography,
 } from '@mui/material';
 import React from 'react';
 import { Data, getColourForSource } from '../../models';

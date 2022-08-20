@@ -1,4 +1,4 @@
-import type { ModelsDeclarationTypes } from '@arql/core';
+import type { ModelsDeclarationTypes } from '@arql/types';
 
 export const Models = {
   elephants: {

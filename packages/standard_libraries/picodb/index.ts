@@ -1,4 +1,4 @@
-import type { ContextualisedField } from '@arql/core';
+import type { ContextualisedField } from '@arql/types';
 import type Pico from '@arql/source-picodb';
 
 export default function pico(source: Pico) {

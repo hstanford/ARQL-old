@@ -1,15 +1,13 @@
 import {
   DataModel,
-  DataReference,
   isDataField,
   isDataReference,
-} from '@arql/core';
+} from '@arql/types';
 import React from 'react';
 import {
   Box,
   Button,
   Checkbox,
-  Dialog,
   FormControl,
   InputLabel,
   MenuItem,

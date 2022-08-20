@@ -13,6 +13,7 @@
   "dependencies": {
     "@arql/core": "file:../../core",
     "@arql/source-picodb": "file:../picodb",
+    "@arql/types": "file:../../types",
     "picodb": "^1.0.4"
   },
   "devDependencies": {
