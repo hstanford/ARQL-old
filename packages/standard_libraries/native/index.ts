@@ -1,5 +1,5 @@
 import { Native, getAlias } from '@arql/core';
-import { ContextualisedField, AnyObj } from '@arql/types';
+import { ContextualisedField, Dictionary } from '@arql/types';
 
 // TODO: make this better
 function getKey(...values: any[]) {
@@ -42,22 +42,22 @@ export default function native(source: Native) {
     (
       modifiers: string[],
       params: any[],
-      values: Map<any, any> | AnyObj[],
+      values: Map<any, any> | Dictionary[],
       ...args: any[]
-    ) => Promise<AnyObj | AnyObj[]>
+    ) => Promise<Dictionary | Dictionary[]>
   >([
     [
       'join',
       async (
         modifiers: string[],
         params: any[],
-        values: Map<any, any> | AnyObj[],
+        values: Map<any, any> | Dictionary[],
         condition: ContextualisedField
-      ): Promise<AnyObj[]> => {
+      ): Promise<Dictionary[]> => {
         if (Array.isArray(values)) {
           throw new Error('Unsupported input');
         }
-        const vals: AnyObj[] = [];
+        const vals: Dictionary[] = [];
         let i = 0;
         for (const [alias, model] of values.entries()) {
           if (i++ > 0) break;
@@ -86,12 +86,12 @@ export default function native(source: Native) {
       async (
         modifiers: string[],
         params: any[],
-        values: Map<any, any> | AnyObj[]
-      ): Promise<AnyObj[]> => {
+        values: Map<any, any> | Dictionary[]
+      ): Promise<Dictionary[]> => {
         if (Array.isArray(values)) {
           throw new Error('Unsupported input');
         }
-        const vals: AnyObj[] = [];
+        const vals: Dictionary[] = [];
         for (const [, model] of values.entries()) {
           for (const row of model) {
             vals.push(row);
@@ -105,7 +105,7 @@ export default function native(source: Native) {
       async (
         modifiers: string[],
         params: any[],
-        values: Map<any, any> | AnyObj[],
+        values: Map<any, any> | Dictionary[],
         condition: ContextualisedField
       ) => {
         if (!Array.isArray(values)) {
@@ -131,7 +131,7 @@ export default function native(source: Native) {
       async (
         modifiers: string[],
         params: any[],
-        values: Map<any, any> | AnyObj[],
+        values: Map<any, any> | Dictionary[],
         ...fields: ContextualisedField[]
       ) => {
         if (!Array.isArray(values)) {
@@ -169,7 +169,7 @@ export default function native(source: Native) {
       async (
         modifiers: string[],
         params: any[],
-        values: Map<any, any> | AnyObj[]
+        values: Map<any, any> | Dictionary[]
       ) => {
         if (!Array.isArray(values)) {
           throw new Error('Unsupported input format for "first"');
@@ -182,7 +182,7 @@ export default function native(source: Native) {
       async (
         modifiers: string[],
         params: any[],
-        values: Map<any, any> | AnyObj[],
+        values: Map<any, any> | Dictionary[],
         ...groupFields: ContextualisedField[]
       ) => {
         if (!Array.isArray(values)) {
@@ -222,7 +222,7 @@ export default function native(source: Native) {
     ],
     [
       'count',
-      async (modifiers: string[], params: any[], values: AnyObj) => {
+      async (modifiers: string[], params: any[], values: Dictionary) => {
         return values.__values?.length || 0;
       },
     ],
@@ -231,7 +231,7 @@ export default function native(source: Native) {
       async (
         modifiers: string[],
         params: any[],
-        values: AnyObj,
+        values: Dictionary,
         field: ContextualisedField
       ) => {
         if (!values.__values) {

@@ -7,7 +7,6 @@
  */
 
 import {
-  AnyObj,
   ContextualisedExpr,
   DataField,
   DataModel,
@@ -17,6 +16,7 @@ import {
   DelegatedField,
   DelegatedQuery,
   DelegatedQueryResult,
+  Dictionary,
   isCollection,
   isDataModel,
   isDataReference,
@@ -31,7 +31,7 @@ import { getAlias } from './util.js';
 export default class Native extends DataSource<any, any> {
   transforms: Map<string, transformFn> = new Map();
   operators: Map<string, operatorOp> = new Map();
-  data: AnyObj;
+  data: Dictionary;
   params: any[] = [];
 
   supportsExpressions: boolean = true;
@@ -96,7 +96,7 @@ export default class Native extends DataSource<any, any> {
       | DataModel
       | DataField
       | DelegatedQueryResult,
-    data: AnyObj,
+    data: Dictionary,
     results: any[],
     params: any[]
   ): Promise<[string, any]> {
@@ -121,7 +121,7 @@ export default class Native extends DataSource<any, any> {
     } else if (collection.type === 'datamodel') {
       return [
         collection.name,
-        this.data[collection.name].map((item: AnyObj) => {
+        this.data[collection.name].map((item: Dictionary) => {
           const merged = { ...data, ...item };
           merged[collection.name] = merged;
           return merged;
@@ -130,7 +130,7 @@ export default class Native extends DataSource<any, any> {
     } else if (collection.type === 'delegatedQueryResult') {
       return [
         collection.alias || '',
-        results[collection.index].map((item: AnyObj) => {
+        results[collection.index].map((item: Dictionary) => {
           const merged = { ...data, ...item };
           merged[collection.alias || ''] = merged;
           return merged;
@@ -146,7 +146,7 @@ export default class Native extends DataSource<any, any> {
     results: any[],
     params: any[],
     exposeAlias: boolean
-  ): Promise<AnyObj[] | AnyObj> {
+  ): Promise<Dictionary[] | Dictionary> {
     const intermediate = await this.resolveIntermediate(
       collection,
       data,
@@ -164,11 +164,11 @@ export default class Native extends DataSource<any, any> {
 
   async applyTransformsAndShape(
     collection: DelegatedCollection,
-    intermediate: Map<string, AnyObj[]> | AnyObj[] | AnyObj | undefined,
+    intermediate: Map<string, Dictionary[]> | Dictionary[] | Dictionary | undefined,
     results: any[],
     params: any[],
     exposeAlias: boolean
-  ): Promise<AnyObj[] | AnyObj> {
+  ): Promise<Dictionary[] | Dictionary> {
     let single =
       intermediate &&
       !(intermediate instanceof Map) &&
@@ -176,7 +176,7 @@ export default class Native extends DataSource<any, any> {
     if (single) {
       intermediate = [intermediate];
     }
-    let resolved: AnyObj[] | AnyObj | undefined;
+    let resolved: Dictionary[] | Dictionary | undefined;
 
     if (collection.transform) {
       const transform = this.transforms.get(collection.transform.name);
@@ -224,15 +224,15 @@ export default class Native extends DataSource<any, any> {
     data: any,
     results: any[],
     params: any[]
-  ): Promise<Map<string, AnyObj[]> | AnyObj[] | undefined> {
-    // resolveCollections should only ever produce an anyobj array
+  ): Promise<Map<string, Dictionary[]> | Dictionary[] | undefined> {
+    // resolveCollections should only ever produce an Dictionary array
     // there's an intermediate point that for value type ContextualisedCollection[]
-    // you'll have a Map<string, AnyObj[]>, that will be passed into some kind of join
-    let intermediate: Map<string, AnyObj[]> | AnyObj[] | undefined;
+    // you'll have a Map<string, Dictionary[]>, that will be passed into some kind of join
+    let intermediate: Map<string, Dictionary[]> | Dictionary[] | undefined;
     if (Array.isArray(collection.value)) {
       if (collection.value.length) {
         // ContextualisedCollectionArray, instanceof doesn't narrow here
-        intermediate = new Map<string, AnyObj[]>();
+        intermediate = new Map<string, Dictionary[]>();
         for (const collectionValue of collection.value) {
           const [key, value] = await this.resolveCollection(
             collectionValue,
@@ -284,10 +284,10 @@ export default class Native extends DataSource<any, any> {
 
   async resolveShape(
     shape: DelegatedField[] | DelegatedField[][],
-    collection: AnyObj[] | AnyObj | undefined,
+    collection: Dictionary[] | Dictionary | undefined,
     results: any[],
     params: any[]
-  ): Promise<AnyObj | AnyObj[]> {
+  ): Promise<Dictionary | Dictionary[]> {
     if (Array.isArray(shape[0])) {
       const multi = [];
       for (const subShape of shape as DelegatedField[][]) {
@@ -298,7 +298,7 @@ export default class Native extends DataSource<any, any> {
       return multi;
     }
     if (!collection) {
-      const shaped: AnyObj = {};
+      const shaped: Dictionary = {};
       for (let field of shape as DelegatedField[]) {
         if (isDataReference(field)) continue;
         const [key, resolved] = await this.resolveField(
@@ -311,8 +311,8 @@ export default class Native extends DataSource<any, any> {
       }
       return shaped;
     }
-    const reShape = async (item: AnyObj) => {
-      const shaped: AnyObj = {};
+    const reShape = async (item: Dictionary) => {
+      const shaped: Dictionary = {};
       for (let field of shape as DelegatedField[]) {
         if (isDataReference(field)) continue;
         const [key, resolved] = await this.resolveField(
@@ -326,7 +326,7 @@ export default class Native extends DataSource<any, any> {
       return shaped;
     };
     if (Array.isArray(collection)) {
-      const out: AnyObj[] = [];
+      const out: Dictionary[] = [];
       for (let item of collection) {
         out.push(await reShape(item));
       }
@@ -338,7 +338,7 @@ export default class Native extends DataSource<any, any> {
 
   async resolveField(
     field: DelegatedField,
-    item: AnyObj,
+    item: Dictionary,
     results: any[],
     params: any[]
   ): Promise<[string, any]> {
@@ -436,8 +436,8 @@ export default class Native extends DataSource<any, any> {
       );
       return [
         key,
-        out.map((obj: AnyObj) => {
-          const picked: AnyObj = {};
+        out.map((obj: Dictionary) => {
+          const picked: Dictionary = {};
           for (let datafield of field.fields) {
             if (datafield.type === 'datafield') {
               picked[datafield.name] = obj[datafield.name];
@@ -463,11 +463,11 @@ export default class Native extends DataSource<any, any> {
   async resolveDest(
     dest: DelegatedCollection,
     modifier: string | undefined,
-    sourceCollection: AnyObj | AnyObj[] | undefined,
+    sourceCollection: Dictionary | Dictionary[] | undefined,
     data: any,
     results: any[],
     params: any[]
-  ): Promise<AnyObj | AnyObj[] | undefined> {
+  ): Promise<Dictionary | Dictionary[] | undefined> {
     if (modifier === '-+') {
       if (Array.isArray(dest.value) || dest.value.type !== 'datamodel') {
         throw new Error('Not supported');
@@ -533,8 +533,8 @@ export default class Native extends DataSource<any, any> {
       const arrToDelete = Array.isArray(toDelete) ? toDelete : [toDelete];
       // TODO: do this comparison for hidden internal UUIDs for native
       this.data[dest.name] = this.data[dest.name].filter(
-        (item: AnyObj) =>
-          !arrToDelete.find((other: AnyObj) => item._id === other._id)
+        (item: Dictionary) =>
+          !arrToDelete.find((other: Dictionary) => item._id === other._id)
       );
 
       // apply shape to data output
@@ -572,13 +572,13 @@ export default class Native extends DataSource<any, any> {
         throw new Error('Unsupported destination model');
       }
       const arrToUpdate = Array.isArray(toUpdate) ? toUpdate : [toUpdate];
-      arrToUpdate.forEach((item: AnyObj) =>
+      arrToUpdate.forEach((item: Dictionary) =>
         Object.assign(item, sourceCollection)
       );
       // TODO: do this comparison for hidden internal UUIDs for native
-      this.data[dest.name].forEach((item: AnyObj) => {
+      this.data[dest.name].forEach((item: Dictionary) => {
         const matching = arrToUpdate.find(
-          (other: AnyObj) => item._id === other._id
+          (other: Dictionary) => item._id === other._id
         );
         Object.assign(item, matching);
       });
@@ -599,13 +599,13 @@ export default class Native extends DataSource<any, any> {
 
   async resolve(
     ast: DelegatedQuery | DelegatedCollection,
-    data: AnyObj[] | null,
-    results: AnyObj[][],
+    data: Dictionary[] | null,
+    results: Dictionary[][],
     params: any[]
   ) {
     if (ast.type === 'query') {
-      let collection: AnyObj | AnyObj[] | undefined,
-        dest: AnyObj | AnyObj[] | undefined;
+      let collection: Dictionary | Dictionary[] | undefined,
+        dest: Dictionary | Dictionary[] | undefined;
       if (ast.sourceCollection) {
         if (ast.sourceCollection.type === 'delegatedQueryResult')
           collection = results[ast.sourceCollection.index];

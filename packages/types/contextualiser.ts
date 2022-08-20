@@ -1,6 +1,6 @@
 import { dataType } from './models.js';
 import { Alphachain, ExprTree, Modifier, Param, Transform } from './parser.js';
-import { AnyObj } from './util.js';
+import { Dictionary } from './util.js';
 
 export type operatorOp = (...args: any[]) => any;
 export type transformFn = (...args: any[]) => any;
@@ -42,10 +42,10 @@ export abstract class DataSource<ModelType, FieldType> {
 
   async resolve(
     subquery: ContextualisedQuery | ContextualisedCollection,
-    data: AnyObj[] | null,
-    results: AnyObj[][],
+    data: Dictionary[] | null,
+    results: Dictionary[][],
     params: any[]
-  ): Promise<AnyObj[] | AnyObj> {
+  ): Promise<Dictionary[] | Dictionary> {
     return [];
   }
 
