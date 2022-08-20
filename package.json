@@ -6,14 +6,12 @@
   "directories": {
     "test": "test"
   },
-  "dependencies": {
-    "prettier": "^2.5.1"
-  },
+  "dependencies": {},
   "scripts": {
     "install": "lerna bootstrap",
-    "build": "lerna run build",
-    "test": "lerna run test",
-    "playground": "lerna run playground:start"
+    "build": "nx run-many --target=build",
+    "test": "nx run-many --target=test",
+    "playground": "nx run @arql/playground:start"
   },
   "repository": {
     "type": "git",
@@ -29,6 +27,8 @@
     "singleQuote": true
   },
   "devDependencies": {
-    "lerna": "^5.0.0"
+    "lerna": "^5.0.0",
+    "nx": "14.5.8",
+    "prettier": "^2.5.1"
   }
 }
