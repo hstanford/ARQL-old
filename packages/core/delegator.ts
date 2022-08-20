@@ -16,9 +16,7 @@ import {
   DataModel,
   DataField,
   DelegatedQueryResult,
-  DelegatedField,
   ResolutionTree,
-  DelegatedCollection,
   DelegatedQuery,
   ContextualisedField,
   isMultiShape,
@@ -29,6 +27,8 @@ import {
   isParam,
   isQuery,
   DataSource,
+  ContextualisedCollectionValue,
+  isDelegatedQueryResult,
 } from '@arql/types';
 
 import { combine } from './sources.js';
@@ -56,7 +56,7 @@ function findSplitShapeMulti(
   inShape: ContextualisedField[] | ContextualisedField[][]
 ) {
   if (isMultiShape(inShape)) {
-    const shapes: DelegatedField[][] = [];
+    const shapes: ContextualisedField[][] = [];
     for (let shape of inShape) {
       shapes.push(findSplitShape(ast, queries, shape));
     }
@@ -74,7 +74,7 @@ function findSplitShape(
   if (ast.type !== 'collection') {
     throw new Error('cannot find shape split for non-source');
   }
-  let shape: DelegatedField[] = inShape;
+  let shape: ContextualisedField[] = inShape;
   const sourceDataSources = uniq(combine(ast.subModels || []));
   const shapeDataSources = uniq(combine(inShape || []));
   const inShapeNotInSource = shapeDataSources.filter(
@@ -88,11 +88,12 @@ function findSplitShape(
           field.sources.every((source) => inShapeNotInSource.includes(source))
         ) {
           queries.push(field);
-          return {
+          const res: DelegatedQueryResult = {
             type: 'delegatedQueryResult',
             index: queries.length - 1,
             alias: typeof field.name === 'string' ? field.name : undefined,
           };
+          return res;
         }
         if (
           field.sources.some((source) => inShapeNotInSource.includes(source))
@@ -104,8 +105,7 @@ function findSplitShape(
             isCollection(field.value[0])
           ) {
             queries.push(field.value[0]);
-            return {
-              ...field,
+            return field.clone({
               value: [
                 {
                   type: 'delegatedQueryResult',
@@ -113,10 +113,10 @@ function findSplitShape(
                   alias: getCollectionName(field.value[0]),
                 },
               ],
-            };
+            });
           } else {
             if (!Array.isArray(field.value)) {
-              return { ...field, value: findSplit(field.value, queries) };
+              return field.clone({ value: findSplit(field.value, queries) });
             }
             throw new Error(
               'Mixed source shapes currently have minimal support'
@@ -156,25 +156,26 @@ function findSplitShape(
 }
 
 function findSplit(
-  ast: DataModel | ContextualisedCollection | DataField,
+  ast: ContextualisedCollectionValue,
   queries: (ContextualisedQuery | ContextualisedCollection)[]
-): DelegatedCollection | DelegatedQueryResult {
+): ContextualisedCollection | DelegatedQueryResult {
   // if the ast only has one data source, add that
   if (isDataModel(ast)) {
-    queries.push({
-      type: 'collection',
-      value: ast,
-      availableFields: ast.fields,
-      requiredFields: [],
-      sources: [ast.source].filter((i) => !!i),
-    });
+    queries.push(
+      new ContextualisedCollection({
+        value: ast,
+        availableFields: ast.fields,
+        requiredFields: [],
+        sources: [ast.source].filter((i) => !!i),
+      })
+    );
     return {
       type: 'delegatedQueryResult',
       index: queries.length - 1,
       alias: ast.name,
     };
-  } else if (isDataField(ast)) {
-    throw new Error('Cannot Delegate data field on its own');
+  } else if (isDataField(ast) || isDelegatedQueryResult(ast)) {
+    throw new Error(`Cannot Delegate ${ast.type} on its own`);
   }
   if (ast.sources.length === 1) {
     queries.push(ast);
@@ -193,8 +194,8 @@ function findSplit(
   // work out the split of subModel origins based on the sources of the fields in the shape
   let value:
     | DelegatedQueryResult
-    | DelegatedCollection
-    | (DelegatedQueryResult | DelegatedCollection)[] = [];
+    | ContextualisedCollection
+    | (DelegatedQueryResult | ContextualisedCollection)[] = [];
   if (!Array.isArray(ast.value)) {
     value = findSplit(ast.value, queries);
   } else if (ast.value.length === 1) {
@@ -203,11 +204,10 @@ function findSplit(
     value = ast.value.map((v) => findSplit(v, queries));
   }
 
-  return {
-    ...ast,
+  return ast.clone({
     value,
     shape,
-  };
+  });
 }
 
 export default function delegator(ast: ContextualisedQuery): ResolutionTree {

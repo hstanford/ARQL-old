@@ -7,13 +7,13 @@
  */
 
 import {
+  ContextualisedCollection,
   ContextualisedExpr,
+  ContextualisedField,
   DataField,
   DataModel,
   DataSource,
   DataSourceOpts,
-  DelegatedCollection,
-  DelegatedField,
   DelegatedQuery,
   DelegatedQueryResult,
   Dictionary,
@@ -92,7 +92,7 @@ export default class Native extends DataSource<any, any> {
 
   async resolveCollection(
     collection:
-      | DelegatedCollection
+      | ContextualisedCollection
       | DataModel
       | DataField
       | DelegatedQueryResult,
@@ -141,7 +141,7 @@ export default class Native extends DataSource<any, any> {
   }
 
   async resolveCollections(
-    collection: DelegatedCollection,
+    collection: ContextualisedCollection,
     data: any,
     results: any[],
     params: any[],
@@ -163,7 +163,7 @@ export default class Native extends DataSource<any, any> {
   }
 
   async applyTransformsAndShape(
-    collection: DelegatedCollection,
+    collection: ContextualisedCollection,
     intermediate: Map<string, Dictionary[]> | Dictionary[] | Dictionary | undefined,
     results: any[],
     params: any[],
@@ -220,7 +220,7 @@ export default class Native extends DataSource<any, any> {
   }
 
   async resolveIntermediate(
-    collection: DelegatedCollection,
+    collection: ContextualisedCollection,
     data: any,
     results: any[],
     params: any[]
@@ -283,14 +283,14 @@ export default class Native extends DataSource<any, any> {
   }
 
   async resolveShape(
-    shape: DelegatedField[] | DelegatedField[][],
+    shape: ContextualisedField[] | ContextualisedField[][],
     collection: Dictionary[] | Dictionary | undefined,
     results: any[],
     params: any[]
   ): Promise<Dictionary | Dictionary[]> {
     if (Array.isArray(shape[0])) {
       const multi = [];
-      for (const subShape of shape as DelegatedField[][]) {
+      for (const subShape of shape as ContextualisedField[][]) {
         multi.push(
           await this.resolveShape(subShape, collection, results, params)
         );
@@ -299,7 +299,7 @@ export default class Native extends DataSource<any, any> {
     }
     if (!collection) {
       const shaped: Dictionary = {};
-      for (let field of shape as DelegatedField[]) {
+      for (let field of shape as ContextualisedField[]) {
         if (isDataReference(field)) continue;
         const [key, resolved] = await this.resolveField(
           field,
@@ -313,7 +313,7 @@ export default class Native extends DataSource<any, any> {
     }
     const reShape = async (item: Dictionary) => {
       const shaped: Dictionary = {};
-      for (let field of shape as DelegatedField[]) {
+      for (let field of shape as ContextualisedField[]) {
         if (isDataReference(field)) continue;
         const [key, resolved] = await this.resolveField(
           field,
@@ -337,7 +337,7 @@ export default class Native extends DataSource<any, any> {
   }
 
   async resolveField(
-    field: DelegatedField,
+    field: ContextualisedField,
     item: Dictionary,
     results: any[],
     params: any[]
@@ -461,7 +461,7 @@ export default class Native extends DataSource<any, any> {
   }
 
   async resolveDest(
-    dest: DelegatedCollection,
+    dest: ContextualisedCollection,
     modifier: string | undefined,
     sourceCollection: Dictionary | Dictionary[] | undefined,
     data: any,
@@ -598,7 +598,7 @@ export default class Native extends DataSource<any, any> {
   }
 
   async resolve(
-    ast: DelegatedQuery | DelegatedCollection,
+    ast: DelegatedQuery | ContextualisedCollection,
     data: Dictionary[] | null,
     results: Dictionary[][],
     params: any[]

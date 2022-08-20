@@ -1,9 +1,9 @@
 import {
+  ContextualisedCollection,
   ContextualisedExpr,
+  ContextualisedField,
   DataSource,
   DataSourceOpts,
-  DelegatedCollection,
-  DelegatedField,
   DelegatedQuery,
   Dictionary,
   isCollection,
@@ -42,7 +42,7 @@ export default class Pico extends DataSource<any, any> {
   }
 
   async resolve(
-    ast: DelegatedQuery | DelegatedCollection,
+    ast: DelegatedQuery | ContextualisedCollection,
     data: Dictionary[] | null,
     results: Dictionary[][],
     params: any[]
@@ -88,7 +88,7 @@ export default class Pico extends DataSource<any, any> {
   }
 
   async resolveSources(
-    source: DelegatedCollection,
+    source: ContextualisedCollection,
     data: any,
     results: any[],
     params: any[]
@@ -128,7 +128,7 @@ export default class Pico extends DataSource<any, any> {
     return [query, shape];
   }
 
-  resolveField(field: DelegatedField, params: any[]) {
+  resolveField(field: ContextualisedField, params: any[]) {
     if (isCollection(field)) {
       throw new Error('Subsources not supported');
     } else if (field.type === 'exprtree') {
@@ -152,6 +152,8 @@ export default class Pico extends DataSource<any, any> {
         throw new Error('Datamodels not supported in expressions');
       } else if (arg.type === 'param') {
         value = params[arg.index - 1];
+      } else if (arg.type === 'delegatedQueryResult') {
+        throw new Error('Delegated query results not supported in expressions');
       } else {
         field = arg.name;
       }
@@ -166,7 +168,7 @@ export default class Pico extends DataSource<any, any> {
     return op(field, value);
   }
 
-  resolveDest(dest: DelegatedCollection): any {
+  resolveDest(dest: ContextualisedCollection): any {
     throw new Error('Not implemented');
   }
 }

@@ -3,13 +3,13 @@ import {
   ContextualisedCollection,
   ContextualisedQuery,
 } from './contextualiser.js';
-import { DelegatedCollection, DelegatedQuery } from './delegator.js';
+import { DelegatedQuery } from './delegator.js';
 
 export function isCollection<T>(
   ipt: T
 ): ipt is Extract<
   T,
-  Collection | ContextualisedCollection | DelegatedCollection
+  Collection | ContextualisedCollection
 > {
   return (ipt as any)?.type === 'collection';
 }

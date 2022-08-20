@@ -7,6 +7,7 @@ import {
   isDataReference,
   isParam,
   isDataField,
+  isDelegatedQueryResult,
 } from '@arql/types';
 import { uniq } from './util.js';
 
@@ -32,6 +33,8 @@ export function combine(fields: ContextualisedField[]) {
       sources = [];
     } else if (isDataReference(m)) {
       sources = uniq([m.model.source, m.other.source]);
+    } else if (isDelegatedQueryResult(m)) {
+      sources = [];
     } else {
       sources = m.sources;
     }

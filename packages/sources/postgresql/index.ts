@@ -2,7 +2,7 @@ import {
   Dictionary,
   DataSourceOpts,
   DelegatedQuery,
-  DelegatedCollection,
+  ContextualisedCollection,
 } from '@arql/types';
 
 import SQL from '@arql/source-sql';
@@ -62,7 +62,7 @@ export default class PostgresSQL extends SQL {
   }
 
   async resolve(
-    ast: DelegatedQuery | DelegatedCollection,
+    ast: DelegatedQuery | ContextualisedCollection,
     data: Dictionary[] | null,
     results: Dictionary[][],
     params: any[]

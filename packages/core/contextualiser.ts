@@ -17,7 +17,7 @@ import {
   ContextualisedField,
   ContextualisedFunction,
   ContextualisedQuery,
-  ContextualisedCollection,
+  ContextualisedCollection as BaseContextualisedCollection,
   ContextualisedCollectionValue,
   ContextualisedTransform,
   ContextualiserState,
@@ -45,6 +45,8 @@ import {
   Collection,
   Transform,
   TransformDef,
+  ContextualisedParam,
+  isDelegatedQueryResult,
 } from '@arql/types';
 
 import type { ARQLParser } from './parser';
@@ -52,6 +54,14 @@ import type { ARQLParser } from './parser';
 import { combine } from './sources.js';
 
 import { uniq, uniqBy, getAlias, getCollectionName } from './util.js';
+
+class ContextualisedCollection extends BaseContextualisedCollection {
+  getAvailableFields() {
+    return this.shape
+      ? shapeToAvailableFields(this.shape, this)
+      : this.availableFields;
+  }
+}
 
 function combineFields(subFields: ContextualisedField[]) {
   const fields = [];
@@ -64,12 +74,13 @@ function combineFields(subFields: ContextualisedField[]) {
       // a data field being mentioned requires itself
       fields.push({ ...subField, alias: undefined });
       if (subField.from) {
-        fields.push({
-          type: 'datafield',
-          from: subField.from,
-          name: subField.from.name,
-          source: getSourcesFromContextualisedField(subField.from),
-        } as DataField);
+        fields.push(
+          new DataField({
+            from: subField.from,
+            name: getAlias(subField.from.name),
+            source: getSourcesFromContextualisedField(subField.from),
+          })
+        );
       }
     } else if (isDataModel(subField)) {
       // a Data model doesn't put any requirements out
@@ -92,7 +103,7 @@ function combineFields(subFields: ContextualisedField[]) {
 
 function shapeToAvailableFields(
   shape: ContextualisedField[] | ContextualisedField[][],
-  collection: ContextualisedCollectionValue
+  collection: ContextualisedCollection
 ): DataField[] {
   if (isMultiShape(shape)) {
     const fields: DataField[] = [];
@@ -103,12 +114,11 @@ function shapeToAvailableFields(
   }
   return shape.map(
     (f) =>
-      ({
-        type: 'datafield',
+      new DataField({
         from: collection,
-        name: f.alias,
+        name: getAlias(f.alias),
         source: getSourcesFromContextualisedField(f),
-      } as DataField)
+      })
   );
 }
 
@@ -148,6 +158,9 @@ function getSubmodels(collectionValue: ContextualisedCollectionValue) {
 function getSourcesFromCollectionValue(
   collectionValue: ContextualisedCollectionValue
 ) {
+  if (isDelegatedQueryResult(collectionValue)) {
+    throw new Error('Unexpected delegated query result in contextualiser');
+  }
   const firstField = isCollection(collectionValue)
     ? collectionValue?.availableFields?.[0]
     : collectionValue?.fields?.[0];
@@ -178,6 +191,8 @@ function getSourcesFromContextualisedField(field: ContextualisedField) {
   } else if (isDataReference(field)) {
     // TODO: should get source of joining fields rather than models
     return uniq([field.model.source, field.other.source]);
+  } else if (isDelegatedQueryResult(field)) {
+    throw new Error('Unexpected delegated query result in contextualiser');
   } else {
     return field.sources;
   }
@@ -233,11 +248,10 @@ export class Contextualiser {
   }
 
   run(ast: Query) {
-    const contextualisedQuery: ContextualisedQuery = {
-      type: ast.type,
+    const contextualisedQuery = new ContextualisedQuery({
       modifier: ast.modifier,
       sources: [],
-    };
+    });
     const context: ContextualiserState = {
       aliases: new Map(),
     };
@@ -301,8 +315,7 @@ export class Contextualiser {
     if (outShape) {
       outTransform.args = outTransform.args.filter((arg) => arg !== outShape);
     }
-    const outCollection: ContextualisedCollection = {
-      type: 'collection',
+    const outCollection = new ContextualisedCollection({
       transform: outTransform,
       value:
         Array.isArray(collection.value) && !collection.transform
@@ -314,7 +327,7 @@ export class Contextualiser {
       subModels: collection.subModels,
       sources: uniq(collection.sources.concat(outTransform.sources)),
       shape: outShape,
-    };
+    });
     if (outShape) {
       return this.applySourceShape(outCollection, outShape, context);
     } else {
@@ -346,8 +359,7 @@ export class Contextualiser {
         )
       : combineFields(shape);
 
-    const out: ContextualisedCollection = {
-      type: 'collection',
+    const out = new ContextualisedCollection({
       value:
         Array.isArray(collection.value) && !collection.value.length
           ? []
@@ -358,66 +370,65 @@ export class Contextualiser {
       subModels: collection.subModels,
       sources: uniq(collection.sources.concat(...sources)),
       shape,
-    };
+    });
     out.availableFields = shapeToAvailableFields(shape, out);
     applyRequiredFields(out, requiredFields);
     return out;
   }
 
   handleCollection(collection: Collection, context: ContextualiserState) {
-    const ContextualisedCollection: ContextualisedCollection = {
-      type: 'collection',
+    const contextualisedCollection = new ContextualisedCollection({
       availableFields: [],
       requiredFields: [],
       value: [],
       sources: [],
-    };
+    });
     if (Array.isArray(collection.value)) {
-      ContextualisedCollection.value = collection.value.map((s) =>
+      contextualisedCollection.value = collection.value.map((s) =>
         this.handleCollection(s, context)
       );
-      this.aggregateCollections(ContextualisedCollection);
+      this.aggregateCollections(contextualisedCollection);
     } else if (isCollection(collection.value)) {
-      ContextualisedCollection.value = this.handleCollection(
+      contextualisedCollection.value = this.handleCollection(
         collection.value,
         context
       );
-      this.aggregateCollections(ContextualisedCollection);
+      this.aggregateCollections(contextualisedCollection);
     } else if (isAlphachain(collection.value)) {
       const model = this.getModel(collection.value, context);
 
-      ContextualisedCollection.value = model;
-      ContextualisedCollection.subModels = [model];
+      contextualisedCollection.value = model;
+      contextualisedCollection.subModels = [model];
       const availableFields = isCollection(model)
         ? model.availableFields
         : model.fields;
       if (availableFields)
-        ContextualisedCollection.availableFields = availableFields; // need contextualising?
+        contextualisedCollection.availableFields = availableFields; // need contextualising?
       // TODO: fix this hack by passing required fields back down
       const firstField = availableFields?.[0];
-      ContextualisedCollection.sources = getSourcesFromCollectionValue(model);
+      contextualisedCollection.sources = getSourcesFromCollectionValue(model);
       // TODO: sources independent from shape if inner join?
     }
 
     if (
-      !Array.isArray(ContextualisedCollection.value) &&
-      isDataField(ContextualisedCollection.value)
+      !Array.isArray(contextualisedCollection.value) &&
+      isDataField(contextualisedCollection.value)
     ) {
-      ContextualisedCollection.sources.push(
-        ...getSourcesFromCollectionValue(ContextualisedCollection.value)
+      contextualisedCollection.sources.push(
+        ...getSourcesFromCollectionValue(contextualisedCollection.value)
       );
     }
 
-    ContextualisedCollection.name = getCollectionName(ContextualisedCollection);
+    contextualisedCollection.name = getCollectionName(contextualisedCollection);
 
-    if (ContextualisedCollection.name) {
+    if (contextualisedCollection.name) {
       context.aliases.set(
-        ContextualisedCollection.name,
-        ContextualisedCollection
+        contextualisedCollection.name,
+        contextualisedCollection
       );
     }
 
-    let out = ContextualisedCollection;
+    let out = contextualisedCollection;
     if (collection.transforms.length) {
       for (const transform of collection.transforms) {
         out = this.transformCollection(out, transform, context);
@@ -427,7 +438,6 @@ export class Contextualiser {
     for (let field of out.availableFields) {
       if (isDataField(field)) context.aliases.set(field.name, field);
     }
-
 
     if (collection.alias) {
       context.aliases.set(collection.alias, out);
@@ -462,8 +472,7 @@ export class Contextualiser {
       : model.fields;
     const firstField = availableFields?.[0];
 
-    let out: ContextualisedCollection = {
-      type: 'collection',
+    let out = new ContextualisedCollection({
       availableFields: availableFields || [],
       requiredFields: [],
       value: model,
@@ -472,7 +481,7 @@ export class Contextualiser {
         ? getSourcesFromDataField(firstField)
         : [],
       name: model.name,
-    };
+    });
 
     if (dest.transforms.length) {
       for (const transform of dest.transforms) {
@@ -505,18 +514,16 @@ export class Contextualiser {
     const availableFields = isCollection(model)
       ? model.availableFields
       : model.fields;
-    const collection: ContextualisedCollection = {
-      type: 'collection',
+    const collection = new ContextualisedCollection({
       name,
       value: model,
       availableFields,
       requiredFields: [],
       sources: getSourcesFromCollectionValue(model),
-    };
+    });
 
     const firstOtherField = dataReference.other.fields?.[0];
-    let out: ContextualisedCollection = {
-      type: 'collection',
+    let out = new ContextualisedCollection({
       name: dataReference.other.name,
       value: dataReference.other,
       availableFields: dataReference.other.fields,
@@ -527,7 +534,7 @@ export class Contextualiser {
           : []
         ).concat(collection.sources)
       ),
-    };
+    });
 
     for (const trfm of trfms) {
       out = this.transformCollection(out, trfm, context);
@@ -569,7 +576,8 @@ export class Contextualiser {
             if (
               isExpr(subModel) ||
               isParam(subModel) ||
-              isTransform(subModel)
+              isTransform(subModel) ||
+              isDelegatedQueryResult(subModel)
             ) {
               throw new Error(`${subModel.type} invalid for submodel`);
             }
@@ -633,8 +641,7 @@ export class Contextualiser {
     requiredFields = combineFields(requiredFields);
 
     // TODO: handle shape modification e.g. groups
-    return {
-      type: 'transform',
+    return new ContextualisedTransform({
       name: match.name,
       modifier: transform.description.parts.filter(
         (part) => match.modifiers && match.modifiers.indexOf(part) !== -1
@@ -650,7 +657,7 @@ export class Contextualiser {
         }, [])
       ),
       requiredFields,
-    };
+    });
   }
 
   getShape(
@@ -725,7 +732,11 @@ export class Contextualiser {
     }
 
     if (field.alias) {
-      contextualisedField = { ...contextualisedField, alias: field.alias };
+      if (isCollection(contextualisedField)) {
+        contextualisedField = contextualisedField.clone({ alias: field.alias });
+      } else {
+        contextualisedField = { ...contextualisedField, alias: field.alias };
+      }
     }
 
     return contextualisedField;
@@ -788,7 +799,7 @@ export class Contextualiser {
         requiredFields: combineFields(args),
       };
     } else if (isParam(expr)) {
-      return { type: 'param', index: expr.index };
+      return new ContextualisedParam({ index: expr.index });
     } else if (isFunction(expr)) {
       if (!isAlphachain(expr.expr)) {
         throw new Error('Unhandled function call on complex sub-expression');

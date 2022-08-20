@@ -6,8 +6,8 @@ import {
   DataModel,
   DataSource,
   DataSourceOpts,
-  DelegatedCollection,
-  DelegatedField,
+  ContextualisedCollection,
+  ContextualisedField,
   DelegatedQuery,
   Dictionary,
   isCollection,
@@ -98,7 +98,7 @@ export default class SQL extends DataSource<any, any> {
   }
 
   async resolve(
-    ast: DelegatedQuery | DelegatedCollection,
+    ast: DelegatedQuery | ContextualisedCollection,
     data: Dictionary[] | null,
     results: Dictionary[][],
     params: any[]
@@ -109,7 +109,7 @@ export default class SQL extends DataSource<any, any> {
   }
 
   async resolveQueryObject(
-    ast: DelegatedQuery | DelegatedCollection,
+    ast: DelegatedQuery | ContextualisedCollection,
     data: Dictionary[] | null,
     results: Dictionary[][],
     params: any[]
@@ -142,7 +142,7 @@ export default class SQL extends DataSource<any, any> {
   }
 
   resolveCollectionValue(
-    value: DelegatedCollection['value'],
+    value: ContextualisedCollection['value'],
     data: any,
     results: any[],
     params: any[],
@@ -183,7 +183,7 @@ export default class SQL extends DataSource<any, any> {
   }
 
   resolveCollections(
-    collection: DelegatedCollection,
+    collection: ContextualisedCollection,
     data: any,
     results: any[],
     params: any[],
@@ -458,7 +458,7 @@ export default class SQL extends DataSource<any, any> {
 
   resolveField(
     contextQueries: Intermediate[],
-    field: DelegatedField,
+    field: ContextualisedField,
     params: any[],
     withinSubQuery: boolean = false
   ) {
@@ -548,7 +548,7 @@ export default class SQL extends DataSource<any, any> {
     return op(...resolvedArgs);
   }
 
-  resolveDest(dest: DelegatedCollection): any {
+  resolveDest(dest: ContextualisedCollection): any {
     throw new Error('Not implemented');
   }
 }

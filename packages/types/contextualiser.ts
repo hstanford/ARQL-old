@@ -61,6 +61,7 @@ export abstract class DataSource<ModelType, FieldType> {
 export type ContextualisedField =
   | DataField
   | DataModel
+  | DelegatedQueryResult
   | ContextualisedCollection
   | ContextualisedExpr
   | ContextualisedParam
@@ -77,6 +78,12 @@ export interface DataField {
   from?: ContextualisedCollection;
   alias?: string;
 }
+export class DataField {
+  type = 'datafield' as const;
+  constructor (opts: Omit<DataField, 'type'>) {
+    Object.assign(this, opts);
+  }
+}
 
 export function isDataField(ipt: any): ipt is DataField {
   return ipt?.type === 'datafield';
@@ -91,8 +98,15 @@ export interface DataReference {
   alias?: string | Alphachain;
 }
 
+export class DataReference {
+  type = 'datareference' as const;
+  constructor (opts: Omit<DataReference, 'type'>) {
+    Object.assign(this, opts);
+  }
+}
+
 export function isDataReference(ipt: any): ipt is DataReference {
-  return ipt?.type === 'datareference';
+  return ipt instanceof DataReference || ipt?.type === 'datareference';
 }
 
 export interface ContextualisedParam {
@@ -100,6 +114,12 @@ export interface ContextualisedParam {
   type: 'param';
   name?: string | undefined;
   alias?: string;
+}
+export class ContextualisedParam {
+  type = 'param' as const;
+  constructor (opts: Omit<ContextualisedParam, 'type'>) {
+    Object.assign(this, opts);
+  }
 }
 
 export function isParam<T>(
@@ -115,6 +135,12 @@ export interface DataModel {
   source: DataSource<any, any>;
   fields: (DataField | DataReference)[];
 }
+export class DataModel {
+  type = 'datamodel' as const;
+  constructor (opts: Omit<DataModel, 'type'>) {
+    Object.assign(this, opts);
+  }
+}
 
 export function isDataModel(ipt: any): ipt is DataModel {
   return ipt?.type === 'datamodel';
@@ -125,6 +151,12 @@ export interface TransformDef {
   name: string;
   modifiers?: string[];
   nArgs: string | number;
+}
+export class TransformDef {
+  type = 'transformdef' as const;
+  constructor (opts: Omit<TransformDef, 'type'>) {
+    Object.assign(this, opts);
+  }
 }
 
 export function isTransformDef(ipt: any): ipt is TransformDef {
@@ -142,11 +174,31 @@ export interface ContextualisedQuery {
   modifier?: Modifier;
   sources: DataSource<any, any>[];
 }
+export class ContextualisedQuery {
+  type = 'query' as const;
+  constructor (opts: Omit<ContextualisedQuery, 'type'>) {
+    Object.assign(this, opts);
+  }
+}
+
+export interface DelegatedQueryResult {
+  name?: never;
+  fields?: never;
+  sources?: never;
+  type: 'delegatedQueryResult';
+  index: number;
+  alias?: string;
+}
+
+export function isDelegatedQueryResult(ipt: any): ipt is DelegatedQueryResult {
+  return ipt?.type === 'delegatedQueryResult';
+}
 
 export type ContextualisedCollectionValue =
   | DataField
   | DataModel
-  | ContextualisedCollection;
+  | ContextualisedCollection
+  | DelegatedQueryResult;
 
 export interface ContextualisedCollection {
   type: 'collection';
@@ -160,6 +212,21 @@ export interface ContextualisedCollection {
   transform?: ContextualisedTransform;
   alias?: string;
 }
+export class ContextualisedCollection {
+  type = 'collection' as const;
+  clone(override?: Partial<ContextualisedCollection>) {
+    const newCollection = new ContextualisedCollection(this);
+    if (override)
+      Object.assign(newCollection, override);
+    return newCollection;
+  }
+  getAvailableFields() {
+    return [] as ContextualisedField[];
+  }
+  constructor (opts: Omit<ContextualisedCollection, 'type' | 'getAvailableFields' | 'clone'>) {
+    Object.assign(this, opts);
+  }
+}
 
 export interface ContextualisedTransform {
   type: 'transform';
@@ -168,6 +235,13 @@ export interface ContextualisedTransform {
   args: (ContextualisedField | ContextualisedExpr | ContextualisedField[])[];
   sources: DataSource<any, any>[];
   requiredFields: ContextualisedField[];
+}
+
+export class ContextualisedTransform {
+  type = 'transform' as const;
+  constructor (opts: Omit<ContextualisedTransform, 'type'>) {
+    Object.assign(this, opts);
+  }
 }
 
 export interface ContextualisedFunction extends ContextualisedTransform {
